@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -50,7 +50,6 @@ class run_pipeline_algo
         any_read_algo() noexcept : nothing{} {}
     };
 
-    diagnostics* diag_;
     span<const std::uint8_t> request_buffer_;
     span<const pipeline_request_stage> stages_;
     std::vector<stage_response>* response_;
@@ -98,23 +97,23 @@ class run_pipeline_algo
             auto& processor = access::get_impl((*response_)[current_stage_index_]).get_processor();
             processor.reset(stage.stage_specific.enc, st.meta_mode);
             processor.sequence_number() = stage.seqnum;
-            read_response_algo_.execute = {temp_diag_, &processor};
+            read_response_algo_.execute = {&processor};
             break;
         }
         case pipeline_stage_kind::prepare_statement:
-            read_response_algo_.prepare_statement = {temp_diag_, stage.seqnum};
+            read_response_algo_.prepare_statement = {stage.seqnum};
             break;
         case pipeline_stage_kind::close_statement:
             // Close statement doesn't have a response
             read_response_algo_.nothing = nullptr;
             break;
         case pipeline_stage_kind::set_character_set:
-            read_response_algo_.set_character_set = {temp_diag_, stage.stage_specific.charset, stage.seqnum};
+            read_response_algo_.set_character_set = {stage.stage_specific.charset, stage.seqnum};
             break;
         case pipeline_stage_kind::reset_connection:
-            read_response_algo_.reset_connection = {temp_diag_, stage.seqnum};
+            read_response_algo_.reset_connection = {stage.seqnum};
             break;
-        case pipeline_stage_kind::ping: read_response_algo_.ping = {temp_diag_, stage.seqnum}; break;
+        case pipeline_stage_kind::ping: read_response_algo_.ping = {stage.seqnum}; break;
         default: BOOST_ASSERT(false);  // LCOV_EXCL_LINE
         }
     }
@@ -127,7 +126,7 @@ class run_pipeline_algo
         }
     }
 
-    void on_stage_finished(const connection_state_data& st, error_code stage_ec)
+    void on_stage_finished(const connection_state_data& st, diagnostics& output_diag, error_code stage_ec)
     {
         if (stage_ec)
         {
@@ -136,14 +135,14 @@ class run_pipeline_algo
             if (is_fatal_error(stage_ec))
             {
                 pipeline_ec_ = stage_ec;
-                *diag_ = temp_diag_;
+                output_diag = temp_diag_;
                 has_hatal_error_ = true;
             }
             else if (!pipeline_ec_)
             {
                 // In the absence of fatal errors, the first error we encounter is the result of the operation
                 pipeline_ec_ = stage_ec;
-                *diag_ = temp_diag_;
+                output_diag = temp_diag_;
             }
 
             // Propagate the error
@@ -168,29 +167,26 @@ class run_pipeline_algo
     {
         switch (stages_[current_stage_index_].kind)
         {
-        case pipeline_stage_kind::execute: return read_response_algo_.execute.resume(st, ec);
+        case pipeline_stage_kind::execute: return read_response_algo_.execute.resume(st, temp_diag_, ec);
         case pipeline_stage_kind::prepare_statement:
-            return read_response_algo_.prepare_statement.resume(st, ec);
+            return read_response_algo_.prepare_statement.resume(st, temp_diag_, ec);
         case pipeline_stage_kind::reset_connection:
-            return read_response_algo_.reset_connection.resume(st, ec);
+            return read_response_algo_.reset_connection.resume(st, temp_diag_, ec);
         case pipeline_stage_kind::set_character_set:
-            return read_response_algo_.set_character_set.resume(st, ec);
-        case pipeline_stage_kind::ping: return read_response_algo_.ping.resume(st, ec);
+            return read_response_algo_.set_character_set.resume(st, temp_diag_, ec);
+        case pipeline_stage_kind::ping: return read_response_algo_.ping.resume(st, temp_diag_, ec);
         case pipeline_stage_kind::close_statement: return next_action();  // has no response
         default: BOOST_ASSERT(false); return next_action();               // LCOV_EXCL_LINE
         }
     }
 
 public:
-    run_pipeline_algo(diagnostics& diag, run_pipeline_algo_params params) noexcept
-        : diag_(&diag),
-          request_buffer_(params.request_buffer),
-          stages_(params.request_stages),
-          response_(params.response)
+    run_pipeline_algo(run_pipeline_algo_params params) noexcept
+        : request_buffer_(params.request_buffer), stages_(params.request_stages), response_(params.response)
     {
     }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         next_action act;
 
@@ -199,12 +195,16 @@ public:
         case 0:
 
             // Clear previous state
-            diag_->clear();
             setup_response();
 
             // If the request is empty, don't do anything
             if (stages_.empty())
                 break;
+
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
 
             // Write the request. use_ssl is attached by top_level_algo
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({request_buffer_, false}))
@@ -222,7 +222,7 @@ public:
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    set_stage_error(pipeline_ec_, diagnostics(*diag_));
+                    set_stage_error(pipeline_ec_, diagnostics(diag));
                     continue;
                 }
 
@@ -235,7 +235,7 @@ public:
                     BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
                 // Process the stage's result
-                on_stage_finished(st, act.error());
+                on_stage_finished(st, diag, act.error());
             }
         }
 

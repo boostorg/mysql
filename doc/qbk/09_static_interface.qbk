@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -7,6 +7,9 @@
 
 [section:static_interface The static interface]
 [nochunk]
+
+We have already covered the static interface basics in
+[link mysql.tutorial_static_interface the tutorials]. This section expands on this topic.
 
 To use the static interface, we must first define a data structure that describes the shape of
 our rows. We have several options:
@@ -17,20 +20,34 @@ our rows. We have several options:
   to use PFR automatic reflection capabilities.
 * Use `std::tuple`.
 
-We will start with Boost.Describe and explain the other options later.
-For a comparison, please refer to [link mysql.static_interface.comparison this table].
+We will work with the following table:
 
-For example, given the following table definition:
+[!teletype]
+```
+CREATE TABLE employee(
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    salary INT UNSIGNED,
+    company_id CHAR(10) NOT NULL,
+    FOREIGN KEY (company_id) REFERENCES company(id)
+);
+```
 
-[static_setup]
+[note
+    For simplicity, code snippets use C++20 coroutines. You can use the techniques
+    described here with lower C++ standards by using sync functions, callbacks or
+    `asio::yield_context`. The [link mysql.static_interface.comparison comparison table]
+    shows the C++ standard required by each technique shown here.
+]
 
-We can define our row type like this:
+Let's start with Boost.Describe. If we want to query the first three fields, we can define our row type like this:
 
-[describe_post]
+[static_interface_describe_employee_v1]
 
 And write the following to query our table:
 
-[static_query]
+[static_interface_query]
 
 Note that [refmem static_results rows] returns a `boost::span` object,
 which is a C++11 backport of `std::span`. The span points into memory owned by the
@@ -50,11 +67,11 @@ Extra columns in the query are ignored.
 If your query contains columns with names that don't qualify as C++ identifiers,
 you can use SQL aliases. For example, given this struct:
 
-[describe_statistics]
+[static_interface_describe_statistics]
 
 You can write your query as:
 
-[static_field_order]
+[static_interface_field_order]
 
 
 
@@ -71,15 +88,14 @@ and is performed before reading any data. The following checks are performed:
 * [*Nullability]: if MySQL reports that a column can be `NULL`, your type must account for it. You can use
   `std::optional<T>` or `boost::optional<T>` for these columns.
 
-For example, if your table is defined like this:
+Let's add the `salary` field to our employee query. We might try the following:
 
-[static_nulls_table]
+[static_interface_describe_employee_v2]
 
-Using the `post` type we defined above will cause an error, because
-the `body` field may be `NULL`, but our type doesn't account for it.
+However, this won't work because of the nullability check.
 In this case, the correct definition would be:
 
-[describe_post_v2]
+[static_interface_describe_employee_v3]
 
 
 
@@ -89,11 +105,11 @@ In this case, the correct definition would be:
 If you're using C++20 or above, you can use Boost.PFR to reflect types
 without the `BOOST_DESCRIBE_STRUCT` macro:
 
-[describe_post_pfr]
+[static_interface_pfr_employee]
 
 PFR reflection can be enabled in Boost.MySQL by using [reflink pfr_by_name]:
 
-[static_pfr_by_name]
+[static_interface_pfr_by_name]
 
 
 Note that [reflink pfr_by_name] is what we call a ['marker type] - an empty type that tells
@@ -102,9 +118,9 @@ marker type is used, Boost.Describe is used to retrieve reflection data for stru
 
 [reflink pfr_by_position] is similar to `pfr_by_name`, but will match
 columns in the query to struct fields by position, rather than name.
-It only requires C++14 to work. For instance:
+It only requires C++17 to work. For instance:
 
-[static_pfr_by_position]
+[static_interface_pfr_by_position]
 
 Please refer to [link mysql.static_interface.comparison this table] for a comparison
 with Boost.Describe.
@@ -119,7 +135,7 @@ with Boost.Describe.
 
 You can also use `std::tuple`s as row types. This can be handy for simple queries:
 
-[static_tuples]
+[static_interface_tuples]
 
 Fields in tuples are matched to query columns by order. The query must return as many
 columns as fields the tuple has, at least. Any extra trailing columns in the query are ignored.
@@ -159,8 +175,8 @@ This table may help you decide:
     [
         [Boost.Describe]
         [
-            [static_comparison_describe_struct][br]
-            [static_comparison_describe]
+            [static_interface_comparison_describe_struct][br]
+            [static_interface_comparison_describe]
         ]
         [
             C++14
@@ -177,8 +193,8 @@ This table may help you decide:
     [
         [Boost.PFR using names]
         [
-            [static_comparison_pfr_struct][br]
-            [static_comparison_pfr_by_name]
+            [static_interface_comparison_pfr_struct][br]
+            [static_interface_comparison_pfr_by_name]
         ]
         [
             C++20
@@ -195,8 +211,8 @@ This table may help you decide:
     [
         [Boost.PFR using field position]
         [
-            [static_comparison_pfr_struct][br]
-            [static_comparison_pfr_by_position]
+            [static_interface_comparison_pfr_struct][br]
+            [static_interface_comparison_pfr_by_position]
         ]
         [
             C++17[br]
@@ -217,7 +233,7 @@ This table may help you decide:
     [
         [Standard tuples]
         [
-            [static_comparison_tuples]
+            [static_interface_comparison_tuples]
         ]
         [
             C++14

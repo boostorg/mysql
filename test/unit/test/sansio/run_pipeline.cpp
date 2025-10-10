@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -68,7 +68,7 @@ struct fixture_base : algo_fixture_base
         span<const std::uint8_t> req_buffer = mock_request,
         std::vector<stage_response>* response = nullptr
     )
-        : algo(diag, {req_buffer, stages, response})
+        : algo({req_buffer, stages, response})
     {
     }
 };
@@ -207,14 +207,15 @@ BOOST_AUTO_TEST_CASE(reset_connection)
     fix.st.current_charset = utf8mb4_charset;
 
     // Run the test
-    algo_test().expect_write(mock_request).expect_read(create_ok_frame(3, ok_builder().build())).check(fix);
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(create_ok_frame(3, ok_builder().build()))
+        .will_set_current_charset(character_set{})  // charset was reset
+        .check(fix);
 
     // All stages succeeded
     BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
-
-    // The current character set was reset
-    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 BOOST_AUTO_TEST_CASE(set_character_set)
@@ -228,14 +229,15 @@ BOOST_AUTO_TEST_CASE(set_character_set)
     fixture fix(stages);
 
     // Run the test
-    algo_test().expect_write(mock_request).expect_read(create_ok_frame(19, ok_builder().build())).check(fix);
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(create_ok_frame(19, ok_builder().build()))
+        .will_set_current_charset(utf8mb4_charset)  // character set updated
+        .check(fix);
 
     // All stages succeeded
     BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
-
-    // The current character set was set
-    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
 }
 
 BOOST_AUTO_TEST_CASE(ping)
@@ -252,14 +254,12 @@ BOOST_AUTO_TEST_CASE(ping)
     algo_test()
         .expect_write(mock_request)
         .expect_read(create_ok_frame(32, ok_builder().no_backslash_escapes(true).build()))
+        .will_set_backslash_escapes(false)  // OK packet processed
         .check(fix);
 
     // All stages succeeded
     BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
-
-    // The OK packet was processed successfully
-    BOOST_TEST(fix.st.backslash_escapes == false);
 }
 
 BOOST_AUTO_TEST_CASE(combination)
@@ -288,6 +288,8 @@ BOOST_AUTO_TEST_CASE(combination)
         .expect_read(create_coldef_frame(1, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(2, meta_builder().name("def").build_coldef()))
         .expect_read(prepare_stmt_response_builder().seqnum(1).id(1).num_columns(0).num_params(0).build())
+        .will_set_backslash_escapes(true)           // updated by all the OK packets
+        .will_set_current_charset(utf8mb4_charset)  // updated by set character set
         .check(fix);
 
     // All stages succeeded
@@ -295,8 +297,6 @@ BOOST_AUTO_TEST_CASE(combination)
     fix.check_all_stages_succeeded();
 
     // The pipeline had its intended effect
-    BOOST_TEST(fix.st.backslash_escapes == true);
-    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
     BOOST_TEST(fix.resp.at(3).as_statement().id() == 3u);
     BOOST_TEST(fix.resp.at(4).as_statement().id() == 1u);
 }
@@ -397,6 +397,7 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
                          .message("my_message")
                          .build_frame())
         .expect_read(create_ok_frame(10, ok_builder().no_backslash_escapes(true).build()))
+        .will_set_backslash_escapes(false)  // we processed the OK packet correctly
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 
     // Stage errors
@@ -404,9 +405,6 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
     fix.check_stage_error(0, {}, {});
     fix.check_stage_error(1, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
     fix.check_stage_error(2, {}, {});
-
-    // We processed the OK packet correctly
-    BOOST_TEST(fix.st.backslash_escapes == false);
 }
 
 BOOST_AUTO_TEST_CASE(fatal_error_first)
@@ -554,11 +552,9 @@ BOOST_AUTO_TEST_CASE(no_response_success)
         .expect_read(create_ok_frame(32, ok_builder().build()))
         .expect_read(create_ok_frame(16, ok_builder().build()))
         .expect_read(create_ok_frame(0, ok_builder().build()))
+        .will_set_backslash_escapes(true)           // updated by all the OK packets
+        .will_set_current_charset(utf8mb4_charset)  // updated by set character set
         .check(fix);
-
-    // The pipeline had its intended effect
-    BOOST_TEST(fix.st.backslash_escapes == true);
-    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
 }
 
 BOOST_AUTO_TEST_CASE(no_response_error_1)
@@ -589,11 +585,9 @@ BOOST_AUTO_TEST_CASE(no_response_error_1)
                          .code(common_server_errc::er_bad_table_error)
                          .message("other_msg")
                          .build_frame())
+        .will_set_backslash_escapes(true)           // OK packet processed
+        .will_set_current_charset(utf8mb4_charset)  // set character set succeeded
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
-
-    // The stages that succeeded had their intended effect
-    BOOST_TEST(fix.st.backslash_escapes == true);
-    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
 }
 
 BOOST_AUTO_TEST_CASE(no_response_error_2)
@@ -620,11 +614,9 @@ BOOST_AUTO_TEST_CASE(no_response_error_2)
                          .message("bad_charset")
                          .build_frame())
         .expect_read(create_ok_frame(0, ok_builder().build()))
+        .will_set_backslash_escapes(true)           // OK packet processed
+        .will_set_current_charset(character_set{})  // reset connection succeeded
         .check(fix, common_server_errc::er_unknown_character_set, create_server_diag("bad_charset"));
-
-    // The stages that succeeded had their intended effect
-    BOOST_TEST(fix.st.backslash_escapes == true);
-    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 BOOST_AUTO_TEST_CASE(no_response_fatal_error)
@@ -642,15 +634,11 @@ BOOST_AUTO_TEST_CASE(no_response_fatal_error)
     fixture_base fix(stages);
     fix.st.backslash_escapes = false;
 
-    // Run the test
+    // Run the test. This checks that the state was not modified
     algo_test()
         .expect_write(mock_request)
         .expect_read(asio::error::network_reset)
         .check(fix, asio::error::network_reset);
-
-    // Nothing was modified
-    BOOST_TEST(fix.st.backslash_escapes == false);
-    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 BOOST_AUTO_TEST_CASE(reusing_responses)
@@ -678,6 +666,38 @@ BOOST_AUTO_TEST_CASE(reusing_responses)
     BOOST_TEST(resp.at(0).error() == error_code());
     BOOST_TEST(resp.at(0).diag() == diagnostics());
     BOOST_TEST(resp.at(1).as_results().info() == "msg");
+}
+
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(error_invalid_connection_status)
+{
+    struct
+    {
+        detail::connection_status status;
+        error_code expected_err;
+    } test_cases[] = {
+        {detail::connection_status::not_connected,             client_errc::not_connected            },
+        {detail::connection_status::engaged_in_multi_function, client_errc::engaged_in_multi_function},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.status)
+        {
+            // Setup
+            const std::array<pipeline_request_stage, 2> stages{
+                {
+                 {pipeline_stage_kind::execute, 42u, resultset_encoding::binary},
+                 {pipeline_stage_kind::prepare_statement, 11u, {}},
+                 }
+            };
+            fixture fix(stages);
+            fix.st.status = tc.status;
+
+            // Run the test
+            algo_test().check(fix, tc.expected_err);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -189,7 +189,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(close_statement_error)
     fix.net.close(fix.conn).validate_no_error();
 
     // Close the statement fails, as it requires communication with the server
-    fix.net.close_statement(fix.conn, stmt).validate_any_error();
+    fix.net.close_statement(fix.conn, stmt).validate_error(client_errc::not_connected);
 }
 
 // Read resultset head
@@ -244,8 +244,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_error)
         .validate_error(common_server_errc::er_bad_field_error, "Unknown column 'bad_field' in 'field list'");
 }
 
-// Read some rows. No error spotcheck here
-// TODO: write a unit test with this
+// Read some rows
 BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
 {
     // Setup
@@ -280,6 +279,23 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
     BOOST_TEST(st.info() == "");
 }
 
+BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_error)
+{
+    // Setup
+    fix.connect();
+
+    // Generate an execution state
+    execution_state st;
+    fix.net.start_execution(fix.conn, "SELECT * FROM one_row_table", st).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // Close the connection
+    fix.net.close(fix.conn).validate_no_error();
+
+    // Trying to read rows errors
+    fix.net.read_some_rows(fix.conn, st).validate_error(client_errc::not_connected);
+}
+
 // Ping
 BOOST_MYSQL_SPOTCHECK_TEST(ping_success)
 {
@@ -293,7 +309,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(ping_success)
 BOOST_MYSQL_SPOTCHECK_TEST(ping_error)
 {
     // Pinging an unconnected connection fails
-    fix.net.ping(fix.conn).validate_any_error();
+    fix.net.ping(fix.conn).validate_error(client_errc::not_connected);
 }
 
 // Reset connection
@@ -317,11 +333,10 @@ BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_success)
 BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_error)
 {
     // Resetting an unconnected connection fails
-    fix.net.reset_connection(fix.conn).validate_any_error();
+    fix.net.reset_connection(fix.conn).validate_error(client_errc::not_connected);
 }
 
-// Close connection
-// TODO: make a unit test with double close and an error case
+// Close connection. There is no way to trigger an error here.
 BOOST_MYSQL_SPOTCHECK_TEST(close_success)
 {
     // Setup
@@ -332,90 +347,50 @@ BOOST_MYSQL_SPOTCHECK_TEST(close_success)
 
     // We are no longer able to query
     results result;
-    fix.net.execute_query(fix.conn, "SELECT 1", result).validate_any_error();
-
-    // Closing again returns OK (and does nothing)
-    fix.net.close(fix.conn).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT 1", result).validate_error(client_errc::not_connected);
 }
 
+// Read some rows (static version). This is the only one
+// that is a separate overload.
 #ifdef BOOST_MYSQL_CXX14
-// Execute (static) - errors are already covered by the other tests
-BOOST_MYSQL_SPOTCHECK_TEST(execute_static_success)
-{
-    // Setup
-    fix.connect();
-    static_results_t result;
-
-    // Execute the function
-    fix.net.execute_static(fix.conn, "CALL sp_spotchecks()", result).validate_no_error();
-
-    // Check
-    row_multifield expected[]{
-        {boost::optional<float>(1.1f), 11, std::string("aaa")}
-    };
-    BOOST_TEST(result.rows<0>() == expected, per_element());
-}
-
-// start_execution, read_resultset_head, read_some_rows success
-BOOST_MYSQL_SPOTCHECK_TEST(start_execution_and_followups_static_success)
+BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_success)
 {
     // Setup
     fix.connect();
     static_state_t st;
 
     // Start
-    fix.net.start_execution_static(fix.conn, "CALL sp_spotchecks()", st).validate_no_error();
+    fix.net.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 1", st)
+        .validate_no_error();
     BOOST_TEST(st.should_read_rows());
 
-    // Read r1 rows
+    // Read rows
     std::array<row_multifield, 2> storage;
-    std::size_t num_rows = fix.net.read_some_rows_static_1(fix.conn, st, storage).get();
+    std::size_t num_rows = fix.net.read_some_rows_static(fix.conn, st, storage).get();
     row_multifield expected_multifield{boost::optional<float>(1.1f), 11, std::string("aaa")};  // MSVC 14.1
     BOOST_TEST(num_rows == 1u);
     BOOST_TEST(storage[0] == expected_multifield);
 
-    // Ensure we're in the next resultset
-    num_rows = fix.net.read_some_rows_static_1(fix.conn, st, storage).get();
+    // Finish
+    num_rows = fix.net.read_some_rows_static(fix.conn, st, storage).get();
     BOOST_TEST(num_rows == 0u);
-    BOOST_TEST(st.should_read_head());
-
-    // Read r2 head
-    fix.net.read_resultset_head_static(fix.conn, st).validate_no_error();
-    BOOST_TEST(st.should_read_rows());
-
-    // Read r2 rows
-    std::array<row_2fields, 2> storage2;
-    num_rows = fix.net.read_some_rows_static_2(fix.conn, st, storage2).get();
-    BOOST_TEST(num_rows == 1u);
-    row_2fields expected_2fields{1, std::string("f0")};
-    BOOST_TEST(storage2[0] == expected_2fields);
-
-    // Ensure we're in the next resultset
-    num_rows = fix.net.read_some_rows_static_2(fix.conn, st, storage2).get();
-    BOOST_TEST(num_rows == 0u);
-    BOOST_TEST(st.should_read_head());
-
-    // Read r3 head (empty)
-    fix.net.read_resultset_head_static(fix.conn, st).validate_no_error();
     BOOST_TEST(st.complete());
 }
 
-// read_some_rows failure (the other error cases are already widely tested)
 BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_error)
 {
     // Setup
-    fix.connect();
+    fix.connect(connect_params_builder().multi_queries(true));
     static_state_t st;
 
     // Start
-    fix.net.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 42", st)
+    fix.net.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 42; SELECT 1", st)
         .validate_no_error();
     BOOST_TEST(st.should_read_rows());
 
     // No rows matched, so reading rows reads the OK packet. This will report the num resultsets mismatch
     std::array<row_multifield, 2> storage;
-    fix.net.read_some_rows_static_1(fix.conn, st, storage)
-        .validate_error(client_errc::num_resultsets_mismatch);
+    fix.net.read_some_rows_static(fix.conn, st, storage).validate_error(client_errc::num_resultsets_mismatch);
 }
 #endif
 

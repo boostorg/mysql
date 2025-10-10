@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -39,7 +39,9 @@ using state_t = static_execution_state<row1, row1, row2, row1, row2>;
 struct fixture : io_context_fixture
 {
     state_t st;
-    any_connection conn{create_test_any_connection(ctx)};
+    any_connection conn{
+        create_test_any_connection(ctx, {}, detail::connection_status::engaged_in_multi_function)
+    };
     std::array<row1, 3> storage1;
     std::array<row2, 3> storage2;
 
@@ -129,16 +131,20 @@ BOOST_FIXTURE_TEST_CASE(repeated_row_types, fixture)
     BOOST_TEST((storage2[0] == row2{99.9}));
 }
 
-BOOST_FIXTURE_TEST_CASE(error_row_type_mismatch, fixture)
+BOOST_FIXTURE_TEST_CASE(error_row_type_mismatch_1, fixture)
 {
     add_meta_row1();
 
-    // 1st resultset: row1. Note that this will consume the message
+    // 1st resultset: row1
     stream().add_bytes(create_text_row_message(0, 10, 4.2f));
     conn.async_read_some_rows(st, storage2_span(), as_netresult)
         .validate_error(client_errc::row_type_mismatch);
+}
 
-    // Advance resultset
+BOOST_FIXTURE_TEST_CASE(error_row_type_mismatch_2, fixture)
+{
+    // Advance resultset to the 3rd resultset
+    add_meta_row1();
     add_ok();
     add_meta_row1();
     add_ok();
@@ -146,7 +152,7 @@ BOOST_FIXTURE_TEST_CASE(error_row_type_mismatch, fixture)
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // 3rd resultset: row2
-    stream().add_bytes(create_text_row_message(1, 9.1));
+    stream().add_bytes(create_text_row_message(0, 9.1));
     conn.async_read_some_rows(st, storage1_span(), as_netresult)
         .validate_error(client_errc::row_type_mismatch);
 }

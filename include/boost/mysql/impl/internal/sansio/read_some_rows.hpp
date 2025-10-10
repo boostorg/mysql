@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -14,6 +14,7 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
@@ -27,9 +28,9 @@ namespace detail {
 
 class read_some_rows_algo
 {
-    diagnostics* diag_;
     execution_processor* proc_;
     output_ref output_;
+    bool is_top_level_;
 
     struct state_t
     {
@@ -93,9 +94,17 @@ class read_some_rows_algo
         return {error_code(), read_rows};
     }
 
+    // Status changes are only performed if we're the top-level algorithm.
+    // After an error, multi-function operations are considered finished
+    void maybe_set_status_ready(connection_state_data& st) const
+    {
+        if (is_top_level_)
+            st.status = connection_status::ready;
+    }
+
 public:
-    read_some_rows_algo(diagnostics& diag, read_some_rows_algo_params params) noexcept
-        : diag_(&diag), proc_(params.proc), output_(params.output)
+    read_some_rows_algo(read_some_rows_algo_params params, bool is_top_level = true) noexcept
+        : proc_(params.proc), output_(params.output), is_top_level_(is_top_level)
     {
     }
 
@@ -104,33 +113,50 @@ public:
     const execution_processor& processor() const { return *proc_; }
     execution_processor& processor() { return *proc_; }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
-        if (ec)
-            return ec;
-
         switch (state_.resume_point)
         {
         case 0:
-
-            // Clear diagnostics
-            diag_->clear();
 
             // Clear any previous use of shared fields.
             // Required for the dynamic version to work.
             st.shared_fields.clear();
 
-            // If we are not reading rows, return
+            // If we are not reading rows, return (for compatibility, we don't error here)
             if (!processor().is_reading_rows())
                 return next_action();
+
+            // Check connection status. The check is only correct if we're the top-level algorithm
+            if (is_top_level_)
+            {
+                ec = st.check_status_multi_function();
+                if (ec)
+                    return ec;
+            }
 
             // Read at least one message. Keep parsing state, in case a previous message
             // was parsed partially
             BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number(), true))
+            if (ec)
+            {
+                // If there was an error reading the message, we're no longer in a multi-function operation
+                maybe_set_status_ready(st);
+                return ec;
+            }
 
             // Process messages
-            std::tie(ec, state_.rows_read) = process_some_rows(st, *proc_, output_, *diag_);
-            return ec;
+            std::tie(ec, state_.rows_read) = process_some_rows(st, *proc_, output_, diag);
+            if (ec)
+            {
+                // If there was an error parsing the message, we're no longer in a multi-function operation
+                maybe_set_status_ready(st);
+                return ec;
+            }
+
+            // If we received the final OK packet, we're no longer in a multi-function operation
+            if (proc_->is_complete() && is_top_level_)
+                st.status = connection_status::ready;
         }
 
         return next_action();

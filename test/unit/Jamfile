@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,8 +21,6 @@ run
         src/utils.cpp
 
         # Actual tests
-        test/auth/auth.cpp
-
         test/protocol/static_buffer.cpp
         test/protocol/capabilities.cpp
         test/protocol/null_bitmap.cpp
@@ -40,6 +38,14 @@ run
         test/sansio/message_reader.cpp
         test/sansio/top_level_algo.cpp
 
+        test/sansio/handshake/handshake.cpp
+        test/sansio/handshake/handshake_mnp.cpp
+        test/sansio/handshake/handshake_mnp_hash_password.cpp
+        test/sansio/handshake/handshake_csha2p.cpp
+        test/sansio/handshake/handshake_csha2p_hash_password.cpp
+        test/sansio/handshake/handshake_csha2p_encrypt_password.cpp
+        test/sansio/handshake/handshake_capabilities.cpp
+        test/sansio/handshake/handshake_connection_state_data.cpp
         test/sansio/read_resultset_head.cpp
         test/sansio/start_execution.cpp
         test/sansio/read_some_rows.cpp
@@ -51,6 +57,8 @@ run
         test/sansio/reset_connection.cpp
         test/sansio/prepare_statement.cpp
         test/sansio/run_pipeline.cpp
+        test/sansio/quit_connection.cpp
+        test/sansio/close_connection.cpp
 
         test/execution_processor/execution_processor.cpp
         test/execution_processor/execution_state_impl.cpp
@@ -137,3 +145,11 @@ run
         <include>include
     : target-name boost_mysql_unittests
     ;
+
+
+# Tests edge cases when encrypting passwords that require mocking OpenSSL.
+# It looks like this works even if boost_mysql links to the SSL libraries.
+run test_csha2p_encrypt_password_errors.cpp
+    /boost/mysql/test//boost_mysql
+    /boost/test//boost_unit_test_framework/<warnings-as-errors>off
+;

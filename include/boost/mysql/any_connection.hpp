@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -34,9 +34,11 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/assert.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/system/result.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -129,6 +131,11 @@ struct any_connection_params
  * - Has the same level of performance.
  *
  * This is a move-only type.
+ *
+ * \par Single outstanding async operation per connection
+ * At any given point in time, only one async operation can be outstanding
+ * per connection. If an async operation is initiated while another one is in progress,
+ * it will fail with \ref client_errc::operation_in_progress.
  *
  * \par Default completion tokens
  * The default completion token for all async operations in this class is
@@ -307,7 +314,7 @@ public:
     }
 
     /**
-     * \brief Returns format options suitable to format SQL according to the current connection configuation.
+     * \brief Returns format options suitable to format SQL according to the current connection configuration.
      * \details
      * If the current character set is known (as given by \ref current_character_set), returns
      * a value suitable to be passed to SQL formatting functions. Otherwise, returns an error.
@@ -332,7 +339,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \returns The matadata mode that will be used for queries and statement executions.
+     * \returns The metadata mode that will be used for queries and statement executions.
      */
     metadata_mode meta_mode() const noexcept { return impl_.meta_mode(); }
 
@@ -350,6 +357,41 @@ public:
      * \param v The new metadata mode.
      */
     void set_meta_mode(metadata_mode v) noexcept { impl_.set_meta_mode(v); }
+
+    /**
+     * \brief Retrieves the connection id associated to the current session.
+     * \details
+     * If a session has been established, returns its associated connection id.
+     * If no session has been established (i.e. \ref async_connect hasn't been called yet)
+     * or the session has been terminated (i.e. \ref async_close has been called), an empty
+     * optional is returned.
+     *
+     * The connection id is a 4 byte value that uniquely identifies a client session
+     * at a given point in time. It can be used with the
+     * <a href="https://dev.mysql.com/doc/refman/8.4/en/kill.html">`KILL`</a> SQL statement
+     * to cancel queries and terminate connections.
+     *
+     * The server sends the connection id assigned to the current session as part of the
+     * handshake process. The value is stored and made available through this function.
+     * The same id can also be obtained by calling the
+     * <a
+     * href="https://dev.mysql.com/doc/refman/8.4/en/information-functions.html#function_connection-id">CONNECTION_ID()</a>
+     * SQL function. However, this function is faster and more reliable, since it does not entail
+     * communication with the server.
+     *
+     * This function is equivalent to the
+     * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-thread-id.html">`mysql_thread_id`</a> function
+     * in the C connector. This function works properly in 64-bit systems, as opposed to what
+     * the official docs suggest (see
+     * <a href="https://dev.mysql.com/doc/relnotes/mysql/5.7/en/news-5-7-5.html">this changelog</a>).
+     *
+     * It is safe to call this function while an async operation is outstanding, except for \ref async_connect
+     * and \ref async_close.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    boost::optional<std::uint32_t> connection_id() const noexcept { return impl_.connection_id(); }
 
     /**
      * \brief Establishes a connection to a MySQL server.

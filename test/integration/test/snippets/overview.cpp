@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -9,7 +9,9 @@
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/pfr.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
@@ -31,6 +33,7 @@
 #include <string>
 
 #include "test_common/ci_server.hpp"
+#include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/run_coro.hpp"
 #include "test_integration/snippets/credentials.hpp"
@@ -38,23 +41,6 @@
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 using namespace boost::mysql::test;
-
-// Defined outside the namespace to prevent unused warnings
-#if !defined(BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT)
-asio::awaitable<void> dont_run(mysql::any_connection& conn)
-{
-    //[overview_async_dont
-    // Coroutine body
-    // DO NOT DO THIS!!!!
-    mysql::results result1, result2;
-    co_await asio::experimental::make_parallel_group(
-        conn.async_execute("SELECT 1", result1, asio::deferred),
-        conn.async_execute("SELECT 2", result2, asio::deferred)
-    )
-        .async_wait(asio::experimental::wait_for_all(), asio::deferred);
-    //]
-}
-#endif
 
 inline namespace overview {
 //[overview_static_struct
@@ -169,6 +155,27 @@ asio::awaitable<void> overview_coro(mysql::any_connection& conn)
         );
         //]
     }
+#if !defined(BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT)
+    {
+        try
+        {
+            //[overview_async_parallel
+            // This is an error: a single connection can't run two operations
+            // in parallel. Create more connections or use connection_pool, instead.
+            mysql::results result1, result2;
+            co_await asio::experimental::make_parallel_group(
+                conn.async_execute("SELECT 1", result1, asio::deferred),
+                conn.async_execute("SELECT 2", result2, asio::deferred)
+            )
+                .async_wait(asio::experimental::wait_for_all(), asio::deferred);
+            //]
+        }
+        catch (const mysql::error_with_diagnostics& err)
+        {
+            BOOST_TEST(err.code() == mysql::client_errc::operation_in_progress);
+        }
+    }
+#endif
     {
         //[overview_no_exceptions
         mysql::error_code ec;

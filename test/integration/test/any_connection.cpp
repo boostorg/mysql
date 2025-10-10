@@ -1,10 +1,11 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
@@ -16,6 +17,7 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/engine_impl.hpp>
@@ -138,7 +140,7 @@ BOOST_FIXTURE_TEST_CASE(backslash_escapes, any_connection_fixture)
 }
 
 // Max buffer sizes
-BOOST_AUTO_TEST_CASE(max_buffer_size)
+BOOST_AUTO_TEST_CASE(max_buffer_size_success)
 {
     // Create the connection
     any_connection_params params;
@@ -154,12 +156,38 @@ BOOST_AUTO_TEST_CASE(max_buffer_size)
     auto q = format_sql(fix.conn.format_opts().value(), "SELECT {}", std::string(450, 'a'));
     fix.conn.async_execute(q, r, as_netresult).validate_no_error();
     BOOST_TEST(r.rows() == makerows(1, std::string(450, 'a')), per_element());
+}
+
+BOOST_AUTO_TEST_CASE(max_buffer_size_write_error)
+{
+    // Create the connection
+    any_connection_params params;
+    params.initial_buffer_size = 512u;
+    params.max_buffer_size = 512u;
+    any_connection_fixture fix(params);
+
+    // Connect
+    fix.conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Trying to write more than 512 bytes fails
-    q = format_sql(fix.conn.format_opts().value(), "SELECT LENGTH({})", std::string(512, 'a'));
+    results r;
+    auto q = format_sql(fix.conn.format_opts().value(), "SELECT LENGTH({})", std::string(512, 'a'));
     fix.conn.async_execute(q, r, as_netresult).validate_error(client_errc::max_buffer_size_exceeded);
+}
+
+BOOST_AUTO_TEST_CASE(max_buffer_size_read_error)
+{
+    // Create the connection
+    any_connection_params params;
+    params.initial_buffer_size = 512u;
+    params.max_buffer_size = 512u;
+    any_connection_fixture fix(params);
+
+    // Connect
+    fix.conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Trying to read more than 512 bytes fails
+    results r;
     fix.conn.async_execute("SELECT REPEAT('a', 512)", r, as_netresult)
         .validate_error(client_errc::max_buffer_size_exceeded);
 }
@@ -207,7 +235,7 @@ BOOST_DATA_TEST_CASE(naggle_disabled, network_functions_any::sync_and_async())
 // Regression test: using a non-connected connection doesn't crash
 BOOST_FIXTURE_TEST_CASE(using_non_connected_connection, any_connection_fixture)
 {
-    conn.async_ping(as_netresult).validate_any_error();
+    conn.async_ping(as_netresult).validate_error(client_errc::not_connected);
 }
 
 // Spotcheck: we can use cancel_after and other tokens
@@ -360,6 +388,8 @@ BOOST_FIXTURE_TEST_CASE(default_token_redirect_error, any_connection_fixture)
     });
 }
 
+#endif
+
 // Spotcheck: immediate completions dispatched to the immediate executor
 BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
 {
@@ -379,6 +409,76 @@ BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
     });
 }
 
-#endif
+// Spotcheck: attempting to run an async op in an engaged connection fails without UB
+BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, io_context_fixture)
+{
+    // Setup
+    any_connection c1(ctx), c2(ctx);
+    results rlock, r1;
+    const auto params = connect_params_builder().disable_ssl().build();
+    c1.async_connect(params, as_netresult).validate_no_error();
+    c2.async_connect(params, as_netresult).validate_no_error();
+
+    // Get a unique lock name. We can use the connection id for this
+    const auto lock_name = std::to_string(c1.connection_id().value());
+
+    // Issue a long-running query by trying to acquire an acquired lock with a long timeout
+    c1.async_execute(with_params("CALL get_lock_checked({}, 60)", lock_name), rlock, as_netresult)
+        .validate_no_error();
+    auto execute_res = c2.async_execute(
+        with_params("CALL get_lock_checked({}, 60)", lock_name),
+        rlock,
+        as_netresult
+    );
+
+    // Other operations fail because the connection is engaged
+    c2.async_execute("SELECT 1", r1, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_prepare_statement("SELECT 1", as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_reset_connection(as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_connect(connect_params{}, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_close(as_netresult).validate_error(client_errc::operation_in_progress);
+
+    // Release the lock, so the query finishes
+    c1.async_execute("DO RELEASE_ALL_LOCKS()", r1, as_netresult).validate_no_error();
+    std::move(execute_res).validate_no_error();
+
+    // The error is non-fatal: we can issue more queries
+    c2.async_execute("SELECT 1", r1, as_netresult).validate_no_error();
+}
+
+BOOST_FIXTURE_TEST_CASE(op_in_progress_connect, any_connection_fixture)
+{
+    // Launch a connect op
+    const auto params = connect_params_builder().build();
+    auto connect_result = conn.async_connect(params, as_netresult);
+
+    // While in progress, launch another one, with different params.
+    // This fails with the expected error
+    conn.async_connect(
+            connect_params_builder().set_tcp("bad", 1000).credentials("bad_username", "bad_password").build(),
+            as_netresult
+    )
+        .validate_error(client_errc::operation_in_progress);
+
+    // The initial operation succeeds
+    std::move(connect_result).validate_no_error();
+
+    // The connection is usable
+    results r;
+    conn.async_execute("SELECT 1", r, as_netresult).validate_no_error();
+}
+
+// Double close is safe
+BOOST_FIXTURE_TEST_CASE(double_close, any_connection_fixture)
+{
+    // Setup
+    connect();
+
+    // Close the connection
+    conn.async_close(as_netresult).validate_no_error();
+
+    // Closing again is OK
+    conn.async_close(as_netresult).validate_no_error();
+}
 
 BOOST_AUTO_TEST_SUITE_END()

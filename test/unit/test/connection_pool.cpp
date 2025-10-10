@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(move_ctor_invalid_invalid)
     pooled_connection conn;
     pooled_connection conn2;
 
-    // Moving an invalid souce to an invalid target works
+    // Moving an invalid source to an invalid target works
     conn = std::move(conn2);
     BOOST_TEST(!conn.valid());
     BOOST_TEST(!conn2.valid());

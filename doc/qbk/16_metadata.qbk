@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,7 +19,7 @@ present even if no row was returned by the query (e.g. a `SELECT` on an empty ta
 how to handle metadata when running a query or a statement:
 
 * If [refmem connection meta_mode] is `metadata_mode::minimal` (the default), the library
-  will retain the minimal amout of data required to run the operation. Additional information,
+  will retain the minimal amount of data required to run the operation. Additional information,
   like column names, won't be retained. Unless you are using metadata explicitly, you should keep
   this default, as it consumes slightly less memory.
 * If [refmem connection meta_mode] is `metadata_mode::full`, the library will retain all the information

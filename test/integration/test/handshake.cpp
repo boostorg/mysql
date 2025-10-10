@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -65,10 +65,11 @@ struct transport_test_case
 };
 std::ostream& operator<<(std::ostream& os, const transport_test_case& tc) { return os << tc.name; }
 
-std::vector<transport_test_case> make_secure_transports()
+std::vector<transport_test_case> make_all_transports()
 {
     std::vector<transport_test_case> res{
-        {"tcp_ssl", connect_params_builder().ssl(ssl_mode::require).build(), true},
+        {"tcp",     connect_params_builder().ssl(ssl_mode::disable).build(), false},
+        {"tcp_ssl", connect_params_builder().ssl(ssl_mode::require).build(), true },
     };
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
@@ -81,14 +82,6 @@ std::vector<transport_test_case> make_secure_transports()
     return res;
 }
 
-std::vector<transport_test_case> make_all_transports()
-{
-    auto res = make_secure_transports();
-    res.push_back({"tcp", connect_params_builder().ssl(ssl_mode::disable).build(), false});
-    return res;
-}
-
-auto secure_transports = make_secure_transports();
 auto all_transports = make_all_transports();
 
 // Check whether the connection is using SSL or not
@@ -109,6 +102,7 @@ void check_ssl(Conn& conn, bool expected, boost::source_location loc = BOOST_MYS
 }
 
 // mysql_native_password
+BOOST_TEST_DECORATOR(*run_if(&server_features::mnp))
 BOOST_AUTO_TEST_SUITE(mysql_native_password)
 
 constexpr const char* regular_user = "mysqlnp_user";
@@ -165,10 +159,11 @@ BOOST_FIXTURE_TEST_CASE(tcp_connection_, tcp_connection_fixture)
 
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 
-// caching_sha2_password. We acquire a lock on the sha256_mutex
-// (dummy table, used as a mutex) to avoid race conditions with other test runs
+// caching_sha2_password
+// https://dev.mysql.com/doc/refman/8.4/en/caching-sha2-pluggable-authentication.html
+// The plugin has a server-wide cache that influences the message exchange.
+// We acquire a named lock to avoid race conditions with other test runs
 // (which happens in b2 builds).
-// The sha256 cache is shared between all clients.
 struct caching_sha2_lock : any_connection_fixture
 {
     caching_sha2_lock()
@@ -177,9 +172,10 @@ struct caching_sha2_lock : any_connection_fixture
         conn.async_connect(connect_params_builder().credentials("root", "").build(), as_netresult)
             .validate_no_error();
 
-        // Acquire the lock
+        // Acquire the lock, using a long timeout
         results r;
-        conn.async_execute("LOCK TABLE sha256_mutex WRITE", r, as_netresult).validate_no_error();
+        conn.async_execute("CALL get_lock_checked('sha256_cache', 3600)", r, as_netresult)
+            .validate_no_error();
 
         // The lock is released on fixture destruction, when the connection is closed
     }
@@ -215,7 +211,6 @@ static void clear_sha256_cache()
     fix.conn.async_execute("FLUSH PRIVILEGES", result, as_netresult).validate_no_error();
 };
 
-// Cache hit means that we are sending the password hashed, so it is OK to not have SSL for this
 BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_hit, all_transports)
 {
     // Setup
@@ -229,8 +224,7 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_hit, all_transports)
     check_ssl(conn, sample.expect_ssl);
 }
 
-// Cache miss succeeds only if the underlying transport is secure
-BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_miss_success, secure_transports)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_miss, all_transports)
 {
     // Setup
     connect_params params = sample.params;
@@ -243,21 +237,7 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_miss_success, secure_transp
     check_ssl(conn, sample.expect_ssl);
 }
 
-// A cache miss would force us send a plaintext password over a non-TLS connection, so we fail
-BOOST_FIXTURE_TEST_CASE(cache_miss_error, any_connection_fixture)
-{
-    // Setup
-    connect_params params = connect_params_builder()
-                                .ssl(ssl_mode::disable)
-                                .credentials(regular_user, regular_passwd)
-                                .build();
-    clear_sha256_cache();
-
-    // Handshake fails
-    conn.async_connect(params, as_netresult).validate_error(client_errc::auth_plugin_requires_ssl);
-}
-
-// Empty password users can log in regardless of the SSL usage or cache state
+// The protocol behaves differently with empty passwords
 BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password_cache_hit, all_transports)
 {
     // Setup
@@ -284,11 +264,22 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password_cache_miss, all_tr
     check_ssl(conn, sample.expect_ssl);
 }
 
+// Passwords longer than the scramble work correctly.
+// This is only relevant for cache misses over insecure channels.
+BOOST_FIXTURE_TEST_CASE(long_password_cache_miss, any_connection_fixture)
+{
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::disable)
+                      .credentials("csha2p_long_password_user", "1234567890abcdefghijklmnopqrstuvwxyz")
+                      .build();
+    clear_sha256_cache();
+    conn.async_connect(params, as_netresult).validate_no_error();
+}
+
 BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, any_connection_fixture)
 {
-    // Note: test over non-TLS would return "ssl required"
     auto params = connect_params_builder()
-                      .ssl(ssl_mode::require)
+                      .ssl(ssl_mode::disable)
                       .credentials(regular_user, "bad_password")
                       .build();
     load_sha256_cache(regular_user, regular_passwd);
@@ -298,9 +289,8 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, any_connection_fixture)
 
 BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, any_connection_fixture)
 {
-    // Note: test over non-TLS would return "ssl required"
     auto params = connect_params_builder()
-                      .ssl(ssl_mode::require)
+                      .ssl(ssl_mode::disable)
                       .credentials(regular_user, "bad_password")
                       .build();
     clear_sha256_cache();
@@ -308,18 +298,41 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, any_connection_fixture)
         .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
 }
 
-// Spotcheck: an invalid DB error after cache miss works
+// Spotcheck: an invalid DB error after a cache miss works
 BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
 {
     // Setup
-    auto params = connect_params_builder().ssl(ssl_mode::require).database("bad_db").build();
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::disable)
+                      .credentials(regular_user, regular_passwd)
+                      .database("bad_db")
+                      .build();
     clear_sha256_cache();
 
     // Connect fails
     conn.async_connect(params, as_netresult)
         .validate_error(
             common_server_errc::er_dbaccess_denied_error,
-            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+            "Access denied for user 'csha2p_user'@'%' to database 'bad_db'"
+        );
+}
+
+// Spotcheck: an invalid DB error after a cache hit works
+BOOST_FIXTURE_TEST_CASE(bad_db_cache_hit, any_connection_fixture)
+{
+    // Setup
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::disable)
+                      .credentials(regular_user, regular_passwd)
+                      .database("bad_db")
+                      .build();
+    load_sha256_cache(regular_user, regular_passwd);
+
+    // Connect fails
+    conn.async_connect(params, as_netresult)
+        .validate_error(
+            common_server_errc::er_dbaccess_denied_error,
+            "Access denied for user 'csha2p_user'@'%' to database 'bad_db'"
         );
 }
 

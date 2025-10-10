@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CONNECTION_STATE_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CONNECTION_STATE_HPP
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
@@ -15,6 +16,7 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/any_resumable_ref.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/sansio/close_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/close_statement.hpp>
@@ -82,6 +84,14 @@ class connection_state
     connection_state_data st_data_;
     any_algo algo_;
 
+    // A function compatible with any_resumable_ref that always fails immediately
+    // with operation_in_progress. We can't change algo_ while an algorithm is running,
+    // so we need an any_resumable_ref that doesn't point into algo_
+    static next_action fail_op_in_progress(void*, error_code, std::size_t)
+    {
+        return error_code(client_errc::operation_in_progress);
+    }
+
 public:
     // We initialize the algo state with a dummy value. This will be overwritten
     // by setup() before the first algorithm starts running. Doing this avoids
@@ -102,8 +112,16 @@ public:
     template <class AlgoParams>
     any_resumable_ref setup(diagnostics& diag, AlgoParams params)
     {
-        return any_resumable_ref(algo_.emplace<top_level_algo<get_algo_t<AlgoParams>>>(st_data_, diag, params)
-        );
+        // Clear diagnostics
+        diag.clear();
+
+        // If there is an operation in progress, don't change anything, just fail
+        if (st_data_.op_in_progress)
+            return any_resumable_ref(nullptr, &fail_op_in_progress);
+
+        // Emplace the algorithm
+        using algo_type = top_level_algo<get_algo_t<AlgoParams>>;
+        return any_resumable_ref(algo_.emplace<algo_type>(st_data_, diag, params));
     }
 
     any_resumable_ref setup(diagnostics& diag, close_statement_algo_params params)

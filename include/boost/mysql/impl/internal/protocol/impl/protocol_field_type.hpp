@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -39,7 +39,7 @@ enum class protocol_field_type : std::uint8_t
     json = 0xf5,         // JSON
     newdecimal = 0xf6,   // DECIMAL
     enum_ = 0xf7,        // Apparently not sent
-    set = 0xf8,          // Apperently not sent
+    set = 0xf8,          // Apparently not sent
     tiny_blob = 0xf9,    // Apparently not sent
     medium_blob = 0xfa,  // Apparently not sent
     long_blob = 0xfb,    // Apparently not sent

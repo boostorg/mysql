@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -9,8 +9,10 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/coldef_view.hpp>
@@ -29,6 +31,8 @@
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
@@ -88,41 +92,103 @@ void boost::mysql::test::algo_test::handle_read(detail::connection_state_data& s
 }
 
 detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
-    detail::connection_state_data& st,
     any_algo_ref algo,
+    detail::connection_state_data& st,
+    diagnostics& diag,
     std::size_t num_steps_to_run
 ) const
 {
     BOOST_ASSERT(num_steps_to_run <= num_steps());
 
     // Start the op
-    auto act = algo.resume(st, error_code());
+    auto act = algo.resume(st, diag, error_code());
 
     // Go through the requested steps
     for (std::size_t i = 0; i < num_steps_to_run; ++i)
     {
-        BOOST_TEST_CONTEXT("Step " << i)
+        BOOST_TEST_CONTEXT("Step " << i << ", error_code=" << (act.is_done() ? act.error() : error_code()))
         {
             const auto& step = steps_[i];
             BOOST_TEST_REQUIRE(act.type() == step.type);
             if (step.type == detail::next_action_type::read)
                 handle_read(st, step);
             else if (step.type == detail::next_action_type::write)
-                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, step.bytes);
+            {
+                if (step.check)
+                    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, step.bytes);
+            }
             // Other actions don't need any handling
 
-            act = algo.resume(st, step.result);
+            act = algo.resume(st, diag, step.result);
         }
     }
 
     return act;
 }
 
+boost::mysql::test::algo_test& boost::mysql::test::algo_test::add_step(
+    detail::next_action_type act_type,
+    std::vector<std::uint8_t> bytes,
+    error_code ec,
+    bool check
+)
+{
+    steps_.push_back(step_t{act_type, std::move(bytes), ec, check});
+    return *this;
+}
+
+// Utility to implement state tracking
+class boost::mysql::test::algo_test::state_checker
+{
+    // The tracked state
+    detail::connection_state_data& st_;
+
+    // The values we expect to get after running the algorithm.
+    // If a change is not in expected_state_changes_t, the value shouldn't change
+    detail::connection_status expected_status;
+    detail::db_flavor expected_flavor;
+    detail::capabilities expected_capabilities;
+    std::uint32_t expected_connection_id;
+    metadata_mode expected_meta_mode;
+    bool expected_tls_supported;
+    bool expected_tls_active;
+    bool expected_backslash_escapes;
+    character_set expected_charset;
+
+public:
+    state_checker(detail::connection_state_data& st, const expected_state_changes_t& changes) noexcept
+        : st_(st),
+          expected_status(changes.status.value_or(st.status)),
+          expected_flavor(changes.flavor.value_or(st.flavor)),
+          expected_capabilities(changes.current_capabilities.value_or(st.current_capabilities)),
+          expected_connection_id(changes.connection_id.value_or(st.connection_id)),
+          expected_meta_mode(st.meta_mode),  // no algorithm should modify this
+          expected_tls_supported(changes.tls_active.value_or(st.tls_supported)),
+          expected_tls_active(changes.tls_active.value_or(st.tls_active)),
+          expected_backslash_escapes(changes.backslash_escapes.value_or(st.backslash_escapes)),
+          expected_charset(changes.current_charset.value_or(st.current_charset))
+    {
+    }
+
+    void check() const
+    {
+        BOOST_TEST(st_.status == expected_status);
+        BOOST_TEST(st_.flavor == expected_flavor);
+        BOOST_TEST(st_.current_capabilities == expected_capabilities);
+        BOOST_TEST(st_.connection_id == expected_connection_id);
+        BOOST_TEST(st_.meta_mode == expected_meta_mode);
+        BOOST_TEST(st_.tls_supported == expected_tls_supported);
+        BOOST_TEST(st_.tls_active == expected_tls_active);
+        BOOST_TEST(st_.backslash_escapes == expected_backslash_escapes);
+        BOOST_TEST(st_.current_charset == expected_charset);
+        BOOST_TEST(!st_.op_in_progress);  // No algorithm should modify this
+    }
+};
+
 void boost::mysql::test::algo_test::check_network_errors_impl(
-    detail::connection_state_data& st,
     any_algo_ref algo,
+    detail::connection_state_data& st,
     std::size_t step_number,
-    const diagnostics& actual_diag,
     source_location loc
 ) const
 {
@@ -130,34 +196,30 @@ void boost::mysql::test::algo_test::check_network_errors_impl(
     {
         BOOST_ASSERT(step_number < num_steps());
 
+        // Record the current state, to check that what we changed was on purpose
+        state_checker checker(st, state_changes_);
+
         // Run all the steps that shouldn't cause an error
-        auto act = run_algo_until_step(st, algo, step_number);
+        diagnostics diag;  // Clearing diagnostics is not the algo's responsibility
+        auto act = run_algo_until_step(algo, st, diag, step_number);
         BOOST_TEST_REQUIRE(act.type() == steps_[step_number].type);
 
         // Trigger an error in the requested step
-        act = algo.resume(st, asio::error::bad_descriptor);
+        act = algo.resume(st, diag, asio::error::bad_descriptor);
 
         // The operation finished and returned the network error
         BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
         BOOST_TEST(act.error() == error_code(asio::error::bad_descriptor));
-        BOOST_TEST(actual_diag == diagnostics());
+        BOOST_TEST(diag == diagnostics());
+
+        // Check state changes
+        checker.check();
     }
 }
 
-boost::mysql::test::algo_test& boost::mysql::test::algo_test::add_step(
-    detail::next_action_type act_type,
-    std::vector<std::uint8_t> bytes,
-    error_code ec
-)
-{
-    steps_.push_back(step_t{act_type, std::move(bytes), ec});
-    return *this;
-}
-
 void boost::mysql::test::algo_test::check_impl(
-    detail::connection_state_data& st,
     any_algo_ref algo,
-    const diagnostics& actual_diag,
+    detail::connection_state_data& st,
     error_code expected_ec,
     const diagnostics& expected_diag,
     source_location loc
@@ -165,15 +227,22 @@ void boost::mysql::test::algo_test::check_impl(
 {
     BOOST_TEST_CONTEXT("Called from " << loc)
     {
+        // Record the current state, to check that what we changed was on purpose
+        state_checker checker(st, state_changes_);
+
         // Run the op until completion
-        auto act = run_algo_until_step(st, algo, steps_.size());
+        diagnostics diag;  // Clearing diagnostics is not the algo's responsibility
+        auto act = run_algo_until_step(algo, st, diag, steps_.size());
 
         // Check that we've finished
         BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
 
         // Check results
         BOOST_TEST(act.error() == expected_ec);
-        BOOST_TEST(actual_diag == expected_diag);
+        BOOST_TEST(diag == expected_diag);
+
+        // Check state changes
+        checker.check();
     }
 }
 
@@ -439,7 +508,7 @@ struct boost::mysql::test::test_stream::read_op
     asio::mutable_buffer buff_;
     bool has_posted_{};
 
-    read_op(test_stream& stream, asio::mutable_buffer buff) noexcept : stream_(stream), buff_(buff){};
+    read_op(test_stream& stream, asio::mutable_buffer buff) noexcept : stream_(stream), buff_(buff) {};
 
     template <class Self>
     void operator()(Self& self)
@@ -466,7 +535,7 @@ struct boost::mysql::test::test_stream::write_op
     asio::const_buffer buff_;
     bool has_posted_{};
 
-    write_op(test_stream& stream, asio::const_buffer buff) noexcept : stream_(stream), buff_(buff){};
+    write_op(test_stream& stream, asio::const_buffer buff) noexcept : stream_(stream), buff_(buff) {};
 
     template <class Self>
     void operator()(Self& self)
@@ -546,9 +615,9 @@ static const char* to_string(address_type v)
 std::ostream& boost::mysql::operator<<(std::ostream& os, address_type v) { return os << ::to_string(v); }
 
 // capabilities
-std::ostream& boost::mysql::detail::operator<<(std::ostream& os, const capabilities& v)
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, capabilities v)
 {
-    return os << "capabilities{" << v.get() << "}";
+    return os << "capabilities{" << static_cast<std::uint32_t>(v) << "}";
 }
 
 // db_flavor
@@ -576,6 +645,24 @@ static const char* to_string(detail::resultset_encoding v)
 }
 
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, detail::resultset_encoding v)
+{
+    return os << ::to_string(v);
+}
+
+// connection_status
+static const char* to_string(detail::connection_status v)
+{
+    switch (v)
+    {
+    case detail::connection_status::ready: return "connection_status::ready";
+    case detail::connection_status::not_connected: return "connection_status::not_connected";
+    case detail::connection_status::engaged_in_multi_function:
+        return "connection_status::engaged_in_multi_function";
+    default: return "<unknown connection_status>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, detail::connection_status v)
 {
     return os << ::to_string(v);
 }
@@ -652,24 +739,24 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, pipeline_reques
     return os << " }";
 }
 
-// connection_status
-static const char* to_string(detail::connection_status v)
+// node_status
+static const char* to_string(detail::node_status v)
 {
     switch (v)
     {
-    case detail::connection_status::initial: return "connection_status::initial";
-    case detail::connection_status::connect_in_progress: return "connection_status::connect_in_progress";
-    case detail::connection_status::sleep_connect_failed_in_progress:
-        return "connection_status::sleep_connect_failed_in_progress";
-    case detail::connection_status::reset_in_progress: return "connection_status::reset_in_progress";
-    case detail::connection_status::ping_in_progress: return "connection_status::ping_in_progress";
-    case detail::connection_status::idle: return "connection_status::idle";
-    case detail::connection_status::in_use: return "connection_status::in_use";
-    default: return "<unknown connection_status>";
+    case detail::node_status::initial: return "node_status::initial";
+    case detail::node_status::connect_in_progress: return "node_status::connect_in_progress";
+    case detail::node_status::sleep_connect_failed_in_progress:
+        return "node_status::sleep_connect_failed_in_progress";
+    case detail::node_status::reset_in_progress: return "node_status::reset_in_progress";
+    case detail::node_status::ping_in_progress: return "node_status::ping_in_progress";
+    case detail::node_status::idle: return "node_status::idle";
+    case detail::node_status::in_use: return "node_status::in_use";
+    default: return "<unknown node_status>";
     }
 }
 
-std::ostream& boost::mysql::detail::operator<<(std::ostream& os, connection_status v)
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, node_status v)
 {
     return os << ::to_string(v);
 }
@@ -717,15 +804,18 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, next_connection
 //
 boost::mysql::any_connection boost::mysql::test::create_test_any_connection(
     asio::io_context& ctx,
-    any_connection_params params
+    any_connection_params params,
+    detail::connection_status initial_status
 )
 {
-    return any_connection(detail::access::construct<any_connection>(
+    auto res = any_connection(detail::access::construct<any_connection>(
         std::unique_ptr<detail::engine>(
             new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
         ),
         params
     ));
+    detail::access::get_impl(res).get_state().data().status = initial_status;
+    return res;
 }
 
 test_stream& boost::mysql::test::get_stream(any_connection& conn)

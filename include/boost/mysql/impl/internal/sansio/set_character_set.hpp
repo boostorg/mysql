@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -44,20 +44,18 @@ inline system::result<std::string> compose_set_names(character_set charset)
 class read_set_character_set_response_algo
 {
     int resume_point_{0};
-    diagnostics* diag_;
     character_set charset_;
     std::uint8_t seqnum_{0};
 
 public:
-    read_set_character_set_response_algo(diagnostics& diag, character_set charset, std::uint8_t seqnum)
-        : diag_(&diag), charset_(charset), seqnum_(seqnum)
+    read_set_character_set_response_algo(character_set charset, std::uint8_t seqnum)
+        : charset_(charset), seqnum_(seqnum)
     {
     }
     character_set charset() const { return charset_; }
-    diagnostics& diag() { return *diag_; }
     std::uint8_t& sequence_number() { return seqnum_; }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         // SET NAMES never returns rows. Using execute requires us to allocate
         // a results object, which we can avoid by simply sending the query and reading the OK response.
@@ -71,7 +69,7 @@ public:
                 return ec;
 
             // Verify it's what we expected
-            ec = st.deserialize_ok(*diag_);
+            ec = st.deserialize_ok(diag);
             if (ec)
                 return ec;
 
@@ -97,12 +95,12 @@ class set_character_set_algo
     }
 
 public:
-    set_character_set_algo(diagnostics& diag, set_character_set_algo_params params) noexcept
-        : read_response_st_(diag, params.charset, 0u)
+    set_character_set_algo(set_character_set_algo_params params) noexcept
+        : read_response_st_(params.charset, 0u)
     {
     }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         next_action act;
 
@@ -112,8 +110,10 @@ public:
         {
         case 0:
 
-            // Setup
-            read_response_st_.diag().clear();
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
 
             // Send the execution request
             BOOST_MYSQL_YIELD(resume_point_, 1, compose_request(st))
@@ -121,7 +121,7 @@ public:
                 return ec;
 
             // Read the response
-            while (!(act = read_response_st_.resume(st, ec)).is_done())
+            while (!(act = read_response_st_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
             return act;
         }

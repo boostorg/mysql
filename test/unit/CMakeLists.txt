@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,8 +12,6 @@ add_executable(
     src/utils.cpp
 
     # Actual tests
-    test/auth/auth.cpp
-
     test/protocol/static_buffer.cpp
     test/protocol/capabilities.cpp
     test/protocol/null_bitmap.cpp
@@ -31,6 +29,14 @@ add_executable(
     test/sansio/message_reader.cpp
     test/sansio/top_level_algo.cpp
 
+    test/sansio/handshake/handshake.cpp
+    test/sansio/handshake/handshake_mnp.cpp
+    test/sansio/handshake/handshake_mnp_hash_password.cpp
+    test/sansio/handshake/handshake_csha2p.cpp
+    test/sansio/handshake/handshake_csha2p_hash_password.cpp
+    test/sansio/handshake/handshake_csha2p_encrypt_password.cpp
+    test/sansio/handshake/handshake_capabilities.cpp
+    test/sansio/handshake/handshake_connection_state_data.cpp
     test/sansio/read_resultset_head.cpp
     test/sansio/start_execution.cpp
     test/sansio/read_some_rows.cpp
@@ -42,6 +48,8 @@ add_executable(
     test/sansio/reset_connection.cpp
     test/sansio/prepare_statement.cpp
     test/sansio/run_pipeline.cpp
+    test/sansio/quit_connection.cpp
+    test/sansio/close_connection.cpp
 
     test/execution_processor/execution_processor.cpp
     test/execution_processor/execution_state_impl.cpp
@@ -141,9 +149,42 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
         pch.hpp
     )
 endif()
-boost_mysql_common_target_settings(boost_mysql_unittests)
+boost_mysql_test_target_settings(boost_mysql_unittests)
 
 add_test(
     NAME boost_mysql_unittests
     COMMAND boost_mysql_unittests
+)
+
+# Tests edge cases when encrypting passwords that require mocking OpenSSL.
+# This executable should not link to any OpenSSL libraries.
+add_executable(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    test_csha2p_encrypt_password_errors.cpp
+)
+target_include_directories(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include # our own includes
+    ${OPENSSL_INCLUDE_DIR} # we only need the includes
+)
+target_link_libraries(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    PRIVATE
+    Boost::unit_test_framework
+    Boost::assert
+    Boost::config
+    Boost::container
+    Boost::core
+    Boost::system
+)
+target_compile_features(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    INTERFACE
+    cxx_std_11
+)
+boost_mysql_test_target_settings(boost_mysql_test_csha2p_encrypt_password_errors)
+add_test(
+    NAME boost_mysql_test_csha2p_encrypt_password_errors
+    COMMAND boost_mysql_test_csha2p_encrypt_password_errors
 )

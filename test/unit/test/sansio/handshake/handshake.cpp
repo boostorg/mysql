@@ -1,0 +1,384 @@
+//
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/error_categories.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/mariadb_server_errc.hpp>
+
+#include <vector>
+
+#include "handshake_common.hpp"
+#include "test_common/create_diagnostics.hpp"
+#include "test_unit/create_err.hpp"
+#include "test_unit/create_frame.hpp"
+#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
+#include "test_unit/printing.hpp"
+
+using namespace boost::mysql::test;
+using namespace boost::mysql;
+using detail::capabilities;
+using detail::connection_status;
+
+namespace {
+
+BOOST_AUTO_TEST_SUITE(test_handshake)
+
+//
+// Errors processing server hello
+//
+
+// The initial hello is invalid
+BOOST_AUTO_TEST_CASE(hello_deserialize_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(create_frame(0, {0x09, 0x00}))  // unsupported v9 protocol
+        .check(fix, client_errc::server_unsupported);
+}
+
+// The authentication plugin reports an error while hashing the password
+// with the data in the initial hello
+BOOST_AUTO_TEST_CASE(hello_hash_password_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(std::vector<std::uint8_t>(21, 0x0a)).build())
+        .check(fix, client_errc::protocol_value_error);
+}
+
+// The auth plugin supplied in hello is unknown
+BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_plugin("unknown").auth_data(csha2p_scramble).build())
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
+// If the plugin is unknown, the scramble size might be different
+BOOST_AUTO_TEST_CASE(hello_unknown_plugin_different_scramble_size)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .auth_plugin("unknown")
+                         .auth_data(std::vector<std::uint8_t>(30, 0xab))
+                         .build())
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
+//
+// Errors processing the initial server response
+//
+
+// Deserialization happens with the correct db_flavor
+BOOST_AUTO_TEST_CASE(initial_response_error_flavor)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(mnp_scramble).version("11.4.2-MariaDB-ubu2404").build())
+        .expect_write(login_request_builder().auth_response(mnp_hash).build())
+        .expect_read(
+            err_builder().seqnum(2).code(mariadb_server_errc::er_bad_data).message("bad data").build_frame()
+        )
+        .check(
+            fix,
+            error_code(mariadb_server_errc::er_bad_data, get_mariadb_server_category()),
+            create_server_diag("bad data")
+        );
+}
+
+//
+// Errors processing the auth switch
+//
+
+// The auth switch fails because the plugin reports an error
+// while hashing the password with the data supplied in the auth switch
+BOOST_AUTO_TEST_CASE(authswitch_hash_password_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", std::vector<std::uint8_t>(21, 0x0a))
+        )
+        .check(fix, client_errc::protocol_value_error);
+}
+
+// The auth switch flow fails because of a server error
+BOOST_AUTO_TEST_CASE(authswitch_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_scramble))
+        .expect_write(create_frame(3, mnp_hash))
+        .expect_read(err_builder()
+                         .seqnum(4)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
+// We pass the correct db_flavor to process any errors generated by the auth switch
+BOOST_AUTO_TEST_CASE(authswitch_error_flavor)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .version("11.4.2-MariaDB-ubu2404")
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_scramble))
+        .expect_write(create_frame(3, mnp_hash))
+        .expect_read(
+            err_builder().seqnum(4).code(mariadb_server_errc::er_bad_data).message("Denied").build_frame()
+        )
+        .check(
+            fix,
+            error_code(mariadb_server_errc::er_bad_data, get_mariadb_server_category()),
+            create_server_diag("Denied")
+        );
+}
+
+// Receiving an auth switch after an auth switch is illegal
+BOOST_AUTO_TEST_CASE(authswitch_authswitch)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_scramble))
+        .expect_write(create_frame(3, mnp_hash))
+        .expect_read(create_auth_switch_frame(4, "mysql_native_password", mnp_scramble))
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
+
+// The plugin in the auth switch is unknown
+BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "unknown", mnp_scramble))
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
+// If the plugin is unknown, the scramble may have a different size
+BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin_different_scramble_size)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "unknown", std::vector<std::uint8_t>(30, 0xab)))
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
+// Performing an auth switch to the same plugin is okay
+BOOST_AUTO_TEST_CASE(authswitch_to_itself)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_scramble))
+        .expect_write(create_frame(3, csha2p_hash))
+        .expect_read(create_more_data_frame(4, csha2p_fast_auth_ok))
+        .expect_read(create_ok_frame(5, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+//
+// Errors in the more_data package exchange
+//
+
+// Receiving an auth switch after a more_data package is illegal
+BOOST_AUTO_TEST_CASE(moredata_authswitch)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
+        .expect_read(create_auth_switch_frame(3, "mysql_native_password", mnp_scramble))
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
+
+BOOST_AUTO_TEST_CASE(authswitch_moredata_authswitch)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("mysql_native_password").auth_data(mnp_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("mysql_native_password").auth_response(mnp_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_scramble))
+        .expect_write(create_frame(3, csha2p_hash))
+        .expect_read(create_auth_switch_frame(4, "caching_sha2_password", csha2p_scramble))
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
+
+// We pass the correct db_flavor to error packets deserialized in the more_data exchange
+BOOST_AUTO_TEST_CASE(moredata_error_flavor)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .version("11.4.2-MariaDB-ubu2404")
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
+        .expect_read(
+            err_builder().seqnum(3).code(mariadb_server_errc::er_bad_data).message("Denied").build_frame()
+        )
+        .check(
+            fix,
+            error_code(mariadb_server_errc::er_bad_data, get_mariadb_server_category()),
+            create_server_diag("Denied")
+        );
+}
+
+//
+// Network errors
+//
+
+// Covers everything except for an error after a plugin requests to read a packet
+BOOST_AUTO_TEST_CASE(network_errors)
+{
+    // Setup
+    struct fixture_type : handshake_fixture
+    {
+        fixture_type() { st.tls_supported = true; }
+    };
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_scramble).build())
+        .expect_write(create_ssl_request())
+        .expect_ssl_handshake()
+        .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_hash).build())
+        .expect_read(create_auth_switch_frame(3, "caching_sha2_password", csha2p_scramble))
+        .expect_write(create_frame(4, csha2p_hash))
+        .expect_read(create_more_data_frame(5, csha2p_perform_full_auth))
+        .expect_write(create_frame(6, null_terminated_password()))
+        .expect_read(create_ok_frame(7, ok_builder().build()))
+        .check_network_errors<fixture_type>();
+}
+
+BOOST_AUTO_TEST_CASE(network_errors_read_moredata)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(client_errc::wrong_num_params)
+        .check(fix, client_errc::wrong_num_params);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace

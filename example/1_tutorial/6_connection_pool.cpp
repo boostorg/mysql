@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -169,7 +169,7 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
         auto sock = co_await acc.async_accept();
 
         // Function implementing our session logic.
-        // Take ownership of the socket.
+        // Takes ownership of the socket.
         // Having this as a named variable workarounds a gcc bug
         // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=107288)
         auto session_logic = [&pool, s = std::move(sock)]() mutable {

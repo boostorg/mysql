@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -131,7 +131,7 @@ static_assert(is_writable_field<std::string>::value, "");
 static_assert(is_writable_field<string_with_alloc>::value, "");
 static_assert(is_writable_field<string_no_defctor>::value, "");
 static_assert(is_writable_field<string_view>::value, "");
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 static_assert(is_writable_field<std::string_view>::value, "");
 #endif
 static_assert(!is_writable_field<string_with_traits>::value, "");
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE(to_field_)
     BOOST_TEST(to_field(s) == field_view("ljk"));
     BOOST_TEST(to_field(static_cast<const std::string&>(s)) == field_view("ljk"));
     BOOST_TEST(to_field(string_view("abc")) == field_view("abc"));
-#if defined(__cpp_lib_string_view)
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
     BOOST_TEST(to_field(std::string_view("abc")) == field_view("abc"));
 #endif
     BOOST_TEST(to_field(static_cast<const char*>("abc")) == field_view("abc"));

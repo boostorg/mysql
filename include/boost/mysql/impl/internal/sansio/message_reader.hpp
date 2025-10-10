@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -88,7 +88,7 @@ public:
     // Returns buffer space suitable to read bytes to
     span<std::uint8_t> buffer() { return buffer_.free_area(); }
 
-    // Removes old messages stored in the buffer, and resizes it, if required, to accomodate
+    // Removes old messages stored in the buffer, and resizes it, if required, to accommodate
     // the message currently being parsed.
     BOOST_ATTRIBUTE_NODISCARD
     error_code prepare_buffer()

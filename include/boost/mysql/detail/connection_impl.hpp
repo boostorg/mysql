@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -30,9 +30,11 @@
 #include <boost/mysql/detail/intermediate_handler.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/system/result.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <type_traits>
@@ -221,14 +223,15 @@ class connection_impl
     };
 
     // Connect
-    static connect_algo_params make_params_connect(const handshake_params& params)
+    static connect_algo_params make_params_connect(const void* server_address, const handshake_params& params)
     {
-        return connect_algo_params{params, false};
+        return connect_algo_params{server_address, params, false};
     }
 
     static connect_algo_params make_params_connect_v2(const connect_params& params)
     {
         return connect_algo_params{
+            &params.server_address,
             make_hparams(params),
             params.server_address.type() == address_type::unix_path
         };
@@ -249,8 +252,13 @@ class connection_impl
             handshake_params params
         )
         {
-            eng->set_endpoint(&endpoint);
-            async_run_impl(*eng, *st, make_params_connect(params), *diag, std::forward<Handler>(handler));
+            async_run_impl(
+                *eng,
+                *st,
+                make_params_connect(&endpoint, params),
+                *diag,
+                std::forward<Handler>(handler)
+            );
         }
     };
 
@@ -267,7 +275,6 @@ class connection_impl
             const connect_params* params
         )
         {
-            eng->set_endpoint(&params->server_address);
             async_run_impl(*eng, *st, make_params_connect_v2(*params), *diag, std::forward<Handler>(handler));
         }
     };
@@ -334,6 +341,7 @@ public:
     BOOST_MYSQL_DECL bool ssl_active() const;
     BOOST_MYSQL_DECL bool backslash_escapes() const;
     BOOST_MYSQL_DECL system::result<character_set> current_character_set() const;
+    BOOST_MYSQL_DECL boost::optional<std::uint32_t> connection_id() const;
     BOOST_MYSQL_DECL diagnostics& shared_diag();
 
     engine& get_engine()
@@ -385,13 +393,11 @@ public:
         diagnostics& diag
     )
     {
-        engine_->set_endpoint(&endpoint);
-        run(make_params_connect(params), err, diag);
+        run(make_params_connect(&endpoint, params), err, diag);
     }
 
     void connect_v2(const connect_params& params, error_code& err, diagnostics& diag)
     {
-        engine_->set_endpoint(&params.server_address);
         run(make_params_connect_v2(params), err, diag);
     }
 
@@ -574,6 +580,9 @@ public:
         const pipeline_request& req,
         std::vector<stage_response>& response
     );
+
+    // Exposed for testing
+    connection_state& get_state() { return *st_; }
 };
 
 // To use some completion tokens, like deferred, in C++11, the old macros

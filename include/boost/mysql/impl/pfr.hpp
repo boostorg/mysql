@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -62,20 +62,32 @@ using pfr_fields_t = decltype(pfr::structure_to_tuple(std::declval<const T&>()))
 template <std::size_t N>
 constexpr std::array<string_view, N> to_name_table_storage(std::array<std::string_view, N> input) noexcept
 {
-    std::array<string_view, N> res;
+    std::array<string_view, N> res{};
     for (std::size_t i = 0; i < N; ++i)
         res[i] = input[i];
     return res;
 }
 
-// Workaround for https://github.com/boostorg/pfr/issues/165
-constexpr std::array<string_view, 0u> to_name_table_storage(std::array<std::nullptr_t, 0u>) noexcept
+template <class T>
+constexpr inline std::size_t pfr_row_size_v = mp11::mp_size<pfr_fields_t<T>>::value;
+
+template <class T>
+constexpr std::array<string_view, pfr_row_size_v<T>> create_pfr_name_table() noexcept
 {
-    return {};
+    // Some MSVC compilers have trouble with pfr::names_as_array<T>() when
+    // the row type is empty
+    if constexpr (pfr_row_size_v<T> == 0u)
+    {
+        return {};
+    }
+    else
+    {
+        return to_name_table_storage(pfr::names_as_array<T>());
+    }
 }
 
 template <class T>
-constexpr inline auto pfr_names_storage = to_name_table_storage(pfr::names_as_array<T>());
+constexpr inline auto pfr_names_storage = create_pfr_name_table<T>();
 
 template <class T>
 class row_traits<pfr_by_name<T>, false>

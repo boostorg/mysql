@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -42,7 +42,7 @@ Note that pooling works only with [reflink any_connection].
 [note
     `connection_pool` exposes async functions only. This has to do
     with efficiency and oddities in Boost.Asio executor model.
-    If you need a sync API, please visit [link mysql.connection_pool.sync this section].
+    If you need to use it from sync code, please visit [link mysql.interfacing_sync_async this section].
 ]
 
 
@@ -91,7 +91,7 @@ per-operation cancellation mechanism:
 
 You might consider setting the timeout at a higher level, instead. For instance,
 if you're handling an HTTP request, you can use `cancel_after` to set a timeout
-to the entire request. The [link mysql.examples.connection_pool connection pool example]
+to the entire request. The [link mysql.examples.http_server_cpp20 connection pool example]
 takes this approach.
 
 
@@ -150,7 +150,7 @@ In short:
 * When a connection is created, it goes into the `pending_connect` state.
 * Connection establishment is attempted. If it succeeds, the connection becomes `idle`.
   Otherwise, it stays `pending_connect`, and another attempt will be performed
-  after [refmem pool_params retry_interval] has ellapsed.
+  after [refmem pool_params retry_interval] has elapsed.
 * `idle` connections can be retrieved by [refmem connection_pool async_get_connection],
   and they become `in_use`.
 * If a connection is returned by [refmem pooled_connection return_without_reset],
@@ -166,25 +166,54 @@ In short:
   setting [refmem pool_params ping_interval] to zero.
 
 
-[heading Thread-safety]
+[heading:thread_safe Thread-safety]
 
 By default, [reflink connection_pool] is [*not thread-safe], but it can
 be easily made thread-safe by setting [refmem pool_params thread_safe]:
 
-[connection_pool_thread_safe]
+[connection_pool_thread_safe_create]
 
-Thread-safe connection pools create internally a [asioreflink strand strand],
-Asio's method to enable concurrency without explicit locking.
-Enabling thread-safety will ensure that all intermediate handlers run through
-the created strand, avoiding data races at the cost of some performance.
+To correctly understand what is protected by [refmem pool_params thread_safe]
+and what is not, we need a grasp of how pools are implemented.
+Both [reflink connection_pool] and individual [reflink pooled_connection]'s
+hold pointers to a shared state object containing all data required by the pool:
 
-[note
-  Thread-safety only protects the pool. Individual connections are [*not] thread-safe.
-  Assignments aren't thread-safe, either. See [reflink connection_pool] docs for more info.
-]
+[$mysql/images/connection_pool_impl.svg [align center]]
 
-Thread-safety extends to per-operation cancellation, too.
-Cancelling an operation on a thread-safe pool is safe.
+Thread-safe connection pools internally create an [asioreflink strand strand]
+that protects the connection pool's state. Operations like
+[refmemunq connection_pool async_get_connection], [refmemunq connection_pool async_run]
+and [reflink pooled_connection]'s destructor will run through the strand,
+and are safe to be run from any thread. Operations that mutate
+state handles (the internal `std::shared_ptr`), like [*assignment operators,
+are not thread-safe].
+
+Data outside the pool's state is not protected. In particular,
+[*`asio::cancel_after` creates an internal timer that can cause
+inadvertent race conditions]. For example:
+
+[connection_pool_thread_safe_use]
+
+This coroutine must be run within a strand:
+
+[connection_pool_thread_safe_spawn]
+
+
+If we don't use `asio::make_shared`, we have the following race condition:
+
+* The thread calling `async_get_connection` sets up the timer required by `asio::cancel_after`.
+* In parallel, the thread running the execution context sees that there is a healthy connection
+  and completes the `async_get_connection` operation. As a result, the timer is cancelled.
+  Thus, the timer is accessed concurrently from both threads without protection.
+
+
+If you're using callbacks, code gets slightly more convoluted. The
+above coroutine can be rewritten as:
+
+[connection_pool_thread_safe_callbacks]
+
+Thread-safety is disabled by default because strands impose a performance
+penalty that is avoidable in single-threaded programs.
 
 
 [heading Transport types and TLS]
@@ -197,19 +226,6 @@ falling back to plaintext TCP if it does not.
 You can use [refmem pool_params ssl_ctx] to configure TLS options for
 connections created by the pool. If no context is provided, one will be created for you internally.
 
-
-
-[heading:sync Implementing sync functions]
-
-`connection_pool` is internally implemented in terms of `any_connection` async functions because:
-
-* When managing hundrends of connections, it's much more efficient to use
-  async functions and a limited number of threads, than a thread per connection.
-* Sync functions don't allow setting timeouts.
-
-You can build a sync connection pool on top of `connection_pool` using code like this:
-
-[connection_pool_sync]
 
 
 
@@ -226,7 +242,7 @@ goes as follows:
   (a lightweight query).
 * `num_parallel` = 100 async agents are run in parallel. This means that, at any given
   point in time, no more than 100 parallel connections to MySQL are made.
-* The test measures the time ellapsed between launching the first async agent
+* The test measures the time elapsed between launching the first async agent
   and receiving the response for the last query (`ellapsed_time`).
 * The test is repeated 10 times for each different configuration, and results are averaged.
   This time is used to measure the throughput, in "connections/s" (as given by `N/ellapsed_time`).

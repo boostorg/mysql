@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -26,15 +26,14 @@ namespace detail {
 class read_prepare_statement_response_algo
 {
     int resume_point_{0};
-    diagnostics* diag_;
     std::uint8_t sequence_number_{0};
     unsigned remaining_meta_{0};
     statement res_;
 
-    error_code process_response(connection_state_data& st)
+    error_code process_response(connection_state_data& st, diagnostics& diag)
     {
         prepare_stmt_response response{};
-        auto err = deserialize_prepare_stmt_response(st.reader.message(), st.flavor, response, *diag_);
+        auto err = deserialize_prepare_stmt_response(st.reader.message(), st.flavor, response, diag);
         if (err)
             return err;
         res_ = access::construct<statement>(response.id, response.num_params);
@@ -43,15 +42,11 @@ class read_prepare_statement_response_algo
     }
 
 public:
-    read_prepare_statement_response_algo(diagnostics& diag, std::uint8_t seqnum) noexcept
-        : diag_(&diag), sequence_number_(seqnum)
-    {
-    }
+    read_prepare_statement_response_algo(std::uint8_t seqnum) noexcept : sequence_number_(seqnum) {}
 
     std::uint8_t& sequence_number() { return sequence_number_; }
-    diagnostics& diag() { return *diag_; }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
             return ec;
@@ -60,13 +55,11 @@ public:
         {
         case 0:
 
-            // Note: diagnostics should have been cleaned by other algos
-
             // Read response
             BOOST_MYSQL_YIELD(resume_point_, 1, st.read(sequence_number_))
 
             // Process response
-            ec = process_response(st);
+            ec = process_response(st, diag);
             if (ec)
                 return ec;
 
@@ -89,21 +82,22 @@ class prepare_statement_algo
     string_view stmt_sql_;
 
 public:
-    prepare_statement_algo(diagnostics& diag, prepare_statement_algo_params params) noexcept
-        : read_response_st_(diag, 0u), stmt_sql_(params.stmt_sql)
+    prepare_statement_algo(prepare_statement_algo_params params) noexcept
+        : read_response_st_(0u), stmt_sql_(params.stmt_sql)
     {
     }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         next_action act;
 
         switch (resume_point_)
         {
         case 0:
-
-            // Clear diagnostics
-            read_response_st_.diag().clear();
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
 
             // Send request
             BOOST_MYSQL_YIELD(
@@ -115,7 +109,7 @@ public:
                 return ec;
 
             // Read response
-            while (!(act = read_response_st_.resume(st, ec)).is_done())
+            while (!(act = read_response_st_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
             return act;
         }

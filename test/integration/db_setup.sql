@@ -1,5 +1,5 @@
 --
--- Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+-- Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 --
 -- Distributed under the Boost Software License, Version 1.0. (See accompanying
 -- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -508,19 +508,8 @@ INSERT INTO types_flags VALUES
 
 -- Users
 DROP USER IF EXISTS 'integ_user'@'%';
-CREATE USER 'integ_user'@'%' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'integ_user'@'%' IDENTIFIED BY 'integ_password';
+CREATE USER 'integ_user'@'%' IDENTIFIED BY 'integ_password';
 GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'integ_user'@'%';
-
-DROP USER IF EXISTS 'mysqlnp_user'@'%';
-CREATE USER 'mysqlnp_user'@'%' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'mysqlnp_user'@'%' IDENTIFIED BY 'mysqlnp_password';
-GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_user'@'%';
-
-DROP USER IF EXISTS 'mysqlnp_empty_password_user'@'%';
-CREATE USER 'mysqlnp_empty_password_user'@'%' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'mysqlnp_empty_password_user'@'%' IDENTIFIED BY '';
-GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_empty_password_user'@'%';
 
 -- Some containers don't allow remote root access. Enable it.
 CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY ''; 
@@ -528,6 +517,22 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
 
 -- Stored procedures
 DELIMITER //
+
+CREATE PROCEDURE get_lock_checked(
+    IN lock_name VARCHAR(255),
+    IN timeout_seconds INT
+)
+BEGIN
+    DECLARE lock_status INT;
+    
+    -- Attempt to acquire the lock
+    SELECT GET_LOCK(lock_name, timeout_seconds) INTO lock_status;
+    
+    -- Check if the lock was acquired
+    IF lock_status <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Failed to acquire lock';
+    END IF;
+END //
 
 CREATE PROCEDURE sp_insert(IN pin VARCHAR(255))
 BEGIN
@@ -559,12 +564,6 @@ END //
 CREATE PROCEDURE sp_signal()
 BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1002;
-END //
-
-CREATE PROCEDURE sp_spotchecks()
-BEGIN
-    SELECT * FROM multifield_table WHERE id = 1;
-    SELECT * FROM one_row_table;
 END //
 
 DELIMITER ;

@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -34,7 +34,7 @@ There are two separate cases:
 
 * If your query retrieved at least one column (even if no rows were generated), we're in ['case 1]. The server sends:
     * An initial packet informing that the query executed correctly, and that we're in ['case 1].
-    * Some matadata packets describing the columns that the query retrieved. These become available
+    * Some metadata packets describing the columns that the query retrieved. These become available
       to the user and are necessary to parse the rows.
     * The actual rows.
     * An OK packet, which marks the end of the resultset and contains information like `last_insert_id` and
@@ -128,7 +128,7 @@ Some remarks:
 [heading Accessing metadata and OK packet data]
 
 You can access metadata at any point, using [refmem execution_state meta] or [refmem static_execution_state meta].
-This function returns a collection of [reflink metadata] objects. For more information, plase refer to [link mysql.meta this section].
+This function returns a collection of [reflink metadata] objects. For more information, please refer to [link mysql.meta this section].
 
 You can access OK packet data using functions like [refmemunq execution_state last_insert_id]
 and [refmemunq execution_state affected_rows] in both `execution_state` and `static_execution_state`.

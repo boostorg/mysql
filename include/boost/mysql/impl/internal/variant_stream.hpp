@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,6 +19,7 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/associated_immediate_executor.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -116,11 +117,22 @@ public:
     asio::ip::tcp::resolver& resolver() { return *resolv_; }
     asio::generic::stream_protocol::socket& socket() { return st_->sock; }
 
-    vsconnect_action resume(error_code ec, const asio::ip::tcp::resolver::results_type* resolver_results)
+    vsconnect_action resume(
+        error_code ec,
+        const asio::ip::tcp::resolver::results_type* resolver_results,
+        asio::cancellation_type_t cancel_state
+    )
     {
         // All errors are considered fatal
         if (ec)
             return ec;
+
+        // If we received a terminal cancellation signal, exit with the appropriate error code.
+        // In composed async operations, if the cancellation arrives after an intermediate operation
+        // has completed, but before the handler is called, the operation finishes successfully,
+        // but the cancellation state is set. This check covers this case.
+        if (!!(cancel_state & asio::cancellation_type_t::terminal))
+            return error_code(asio::error::operation_aborted);
 
         switch (resume_point_)
         {
@@ -182,8 +194,6 @@ public:
     variant_stream(asio::any_io_executor ex, asio::ssl::context* ctx) : st_(std::move(ex), ctx) {}
 
     bool supports_ssl() const { return true; }
-
-    void set_endpoint(const void* value) { address_ = static_cast<const any_address*>(value); }
 
     // Executor
     using executor_type = asio::any_io_executor;
@@ -272,17 +282,18 @@ public:
     }
 
     // Connect and close
-    void connect(error_code& output_ec)
+    void connect(const void* server_address, error_code& output_ec)
     {
         // Setup
-        variant_stream_connect_algo algo(st_, *address_);
+        variant_stream_connect_algo algo(st_, *static_cast<const any_address*>(server_address));
         error_code ec;
         asio::ip::tcp::resolver::results_type resolver_results;
 
         // Run until complete
         while (true)
         {
-            auto act = algo.resume(ec, &resolver_results);
+            // The sync algorithm doesn't support cancellation
+            auto act = algo.resume(ec, &resolver_results, asio::cancellation_type_t::none);
             switch (act.type)
             {
             case vsconnect_action_type::connect: asio::connect(st_.sock, act.data.connect, ec); break;
@@ -298,9 +309,13 @@ public:
     }
 
     template <class CompletionToken>
-    void async_connect(CompletionToken&& token)
+    void async_connect(const void* server_address, CompletionToken&& token)
     {
-        asio::async_compose<CompletionToken, void(error_code)>(connect_op(*this), token, get_executor());
+        asio::async_compose<CompletionToken, void(error_code)>(
+            connect_op(*this, *static_cast<const any_address*>(server_address)),
+            token,
+            get_executor()
+        );
     }
 
     void close(error_code& ec)
@@ -313,15 +328,14 @@ public:
     const asio::generic::stream_protocol::socket& socket() const { return st_.sock; }
 
 private:
-    const any_address* address_{};
     variant_stream_state st_;
 
     struct connect_op
     {
         std::unique_ptr<variant_stream_connect_algo> algo_;
 
-        connect_op(variant_stream& this_obj)
-            : algo_(new variant_stream_connect_algo(this_obj.st_, *this_obj.address_))
+        connect_op(variant_stream& this_obj, const any_address& server_address)
+            : algo_(new variant_stream_connect_algo(this_obj.st_, server_address))
         {
         }
 
@@ -332,7 +346,7 @@ private:
             const asio::ip::tcp::resolver::results_type& resolver_results = {}
         )
         {
-            auto act = algo_->resume(ec, &resolver_results);
+            auto act = algo_->resume(ec, &resolver_results, self.cancelled());
             switch (act.type)
             {
             case vsconnect_action_type::connect:

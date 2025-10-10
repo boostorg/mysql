@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -36,6 +36,8 @@ struct pipeline_request_stage;
 
 struct connect_algo_params
 {
+    const void* server_address;  // Points to an any_address or an endpoint for the corresponding stream. For
+                                 // the templated connection, only valid until the first yield!
     handshake_params hparams;
     bool secure_channel;  // Are we using UNIX sockets or any other secure channel?
 

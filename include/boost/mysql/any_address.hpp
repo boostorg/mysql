@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -70,7 +70,7 @@ struct unix_path
  * regardless of the transport type being used. It can contain either a host
  * and port (to connect using TCP) or a UNIX path (to connect using UNIX domain sockets).
  * \n
- * This class may be extended in the future to accomodate Windows named pipes.
+ * This class may be extended in the future to accommodate Windows named pipes.
  * \n
  * This type has value semantics: it is owning and regular.
  */

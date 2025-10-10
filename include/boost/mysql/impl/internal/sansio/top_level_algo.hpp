@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -9,12 +9,14 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_TOP_LEVEL_ALGO_HPP
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
 
 #include <boost/core/span.hpp>
 
@@ -48,12 +50,14 @@ class top_level_algo
 {
     int resume_point_{0};
     connection_state_data* st_;
+    diagnostics* diag_;
     InnerAlgo algo_;
     span<const std::uint8_t> bytes_to_write_;
 
 public:
     template <class... Args>
-    top_level_algo(connection_state_data& st, Args&&... args) : st_(&st), algo_(std::forward<Args>(args)...)
+    top_level_algo(connection_state_data& st, diagnostics& diag, Args&&... args)
+        : st_(&st), diag_(&diag), algo_(std::forward<Args>(args)...)
     {
     }
 
@@ -66,16 +70,25 @@ public:
         switch (resume_point_)
         {
         case 0:
+            // We shouldn't be running another operation if we get here
+            // (caught by setup).
+            // Record that we're running an operation
+            BOOST_ASSERT(!st_->op_in_progress);
+            st_->op_in_progress = true;
 
             // Run until completion
             while (true)
             {
                 // Run the op
-                act = algo_.resume(*st_, ec);
+                act = algo_.resume(*st_, *diag_, ec);
 
                 // Check next action
                 if (act.is_done())
                 {
+                    // Record that we're no longer running an operation
+                    st_->op_in_progress = false;
+
+                    // Done
                     return act;
                 }
                 else if (act.type() == next_action_type::read)
@@ -90,7 +103,7 @@ public:
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             1,
-                            next_action::read({st_->reader.buffer(), st_->ssl_active()})
+                            next_action::read({st_->reader.buffer(), st_->tls_active})
                         )
                         valgrind_make_mem_defined(st_->reader.buffer().data(), bytes_transferred);
                         st_->reader.resume(bytes_transferred);
@@ -112,7 +125,7 @@ public:
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             2,
-                            next_action::write({bytes_to_write_, st_->ssl_active()})
+                            next_action::write({bytes_to_write_, st_->tls_active})
                         )
                         bytes_to_write_ = bytes_to_write_.subspan(bytes_transferred);
                     }

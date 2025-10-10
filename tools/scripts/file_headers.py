@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -44,7 +44,7 @@ BASE_FILES = [
 HTML_GEN_PATH = path.join(REPO_BASE, 'doc', 'html')
 
 HEADER_TEMPLATE = '''{begin}
-{linesym} Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+{linesym} Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 {linesym}
 {linesym} Distributed under the Boost Software License, Version 1.0. (See accompanying
 {linesym} file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -236,6 +236,8 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('.json', IgnoreProcessor()),
     ('.txt', IgnoreProcessor()),
     ('.pyc', IgnoreProcessor()),
+    ('.ipynb', IgnoreProcessor()),
+    ('.png', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):
@@ -275,7 +277,7 @@ def verify_test_consistency():
     for test_type in ('unit', 'integration'):
         for ftocheck in ('Jamfile', 'CMakeLists.txt'):
             base_path = path.join(REPO_BASE, 'test', test_type)
-            tests = glob.glob(base_path + '/**/*.cpp', recursive=True)
+            tests = glob.glob(base_path + '/test/**/*.cpp', recursive=True)
             tests = [elm.replace(base_path + '/', '') for elm in tests]
 
             with open(path.join(REPO_BASE, 'test', test_type, ftocheck), 'rt') as f:

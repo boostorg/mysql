@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -15,7 +15,10 @@
 #include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/flags.hpp>
 
-#include <string>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -97,7 +100,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view database() const noexcept { return schema_; }
+    string_view database() const noexcept { return substring(0, table_offset_); }
 
     /**
      * \brief Returns the name of the virtual table the column belongs to.
@@ -114,7 +117,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view table() const noexcept { return table_; }
+    string_view table() const noexcept { return substring(table_offset_, org_table_offset_); }
 
     /**
      * \brief Returns the name of the physical table the column belongs to.
@@ -131,7 +134,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view original_table() const noexcept { return org_table_; }
+    string_view original_table() const noexcept { return substring(org_table_offset_, name_offset_); }
 
     /**
      * \brief Returns the actual name of the column.
@@ -149,7 +152,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view column_name() const noexcept { return name_; }
+    string_view column_name() const noexcept { return substring(name_offset_, org_name_offset_); }
 
     /**
      * \brief Returns the original (physical) name of the column.
@@ -166,7 +169,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view original_column_name() const noexcept { return org_name_; }
+    string_view original_column_name() const noexcept { return substring(org_name_offset_, strings_.size()); }
 
     /**
      * \brief Returns the ID of the collation that fields belonging to this column use.
@@ -265,33 +268,66 @@ public:
     bool is_set_to_now_on_update() const noexcept { return flag_set(detail::column_flags::on_update_now); }
 
 private:
-    std::string schema_;
-    std::string table_;      // virtual table
-    std::string org_table_;  // physical table
-    std::string name_;       // virtual column name
-    std::string org_name_;   // physical column name
-    std::uint16_t character_set_;
-    std::uint32_t column_length_;  // maximum length of the field
-    column_type type_;             // type of the column
-    std::uint16_t flags_;          // Flags as defined in Column Definition Flags
-    std::uint8_t decimals_;        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
-                                   // dynamic strings, double, float
+    // All strings together: schema, table, org table, name, org name
+    std::vector<char> strings_;
+    std::size_t table_offset_{};      // virtual table
+    std::size_t org_table_offset_{};  // physical table
+    std::size_t name_offset_{};       // virtual column name
+    std::size_t org_name_offset_{};   // physical column name
+    std::uint16_t character_set_{};
+    std::uint32_t column_length_{};  // maximum length of the field
+    column_type type_{};             // type of the column
+    std::uint16_t flags_{};          // Flags as defined in Column Definition Flags
+    std::uint8_t decimals_{};        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
+                                     // dynamic strings, double, float
+
+    static std::size_t total_string_size(const detail::coldef_view& coldef)
+    {
+        return coldef.database.size() + coldef.table.size() + coldef.org_table.size() + coldef.name.size() +
+               coldef.org_name.size();
+    }
+
+    static char* copy_string(string_view from, char* to)
+    {
+        if (!from.empty())
+            std::memcpy(to, from.data(), from.size());
+        return to + from.size();
+    }
 
     metadata(const detail::coldef_view& coldef, bool copy_strings)
-        : schema_(copy_strings ? coldef.database : string_view()),
-          table_(copy_strings ? coldef.table : string_view()),
-          org_table_(copy_strings ? coldef.org_table : string_view()),
-          name_(copy_strings ? coldef.name : string_view()),
-          org_name_(copy_strings ? coldef.org_name : string_view()),
+        : strings_(copy_strings ? total_string_size(coldef) : 0u, '\0'),
           character_set_(coldef.collation_id),
           column_length_(coldef.column_length),
           type_(coldef.type),
           flags_(coldef.flags),
           decimals_(coldef.decimals)
     {
+        if (copy_strings)
+        {
+            // Offsets
+            table_offset_ = coldef.database.size();
+            org_table_offset_ = table_offset_ + coldef.table.size();
+            name_offset_ = org_table_offset_ + coldef.org_table.size();
+            org_name_offset_ = name_offset_ + coldef.name.size();
+
+            // Values. The packet points into a network packet, so it's guaranteed to
+            // not overlap with
+            char* it = strings_.data();
+            it = copy_string(coldef.database, it);
+            it = copy_string(coldef.table, it);
+            it = copy_string(coldef.org_table, it);
+            it = copy_string(coldef.name, it);
+            it = copy_string(coldef.org_name, it);
+            BOOST_ASSERT(it == strings_.data() + strings_.size());
+        }
     }
 
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
+
+    string_view substring(std::size_t first, std::size_t last) const
+    {
+        return {strings_.data() + first, static_cast<std::size_t>(last - first)};
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;

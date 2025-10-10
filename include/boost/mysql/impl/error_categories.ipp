@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -86,7 +86,25 @@ inline const char* error_to_string(client_errc error)
     case client_errc::max_buffer_size_exceeded:
         return "An operation attempted to read or write a packet larger than the maximum buffer size. "
                "Try increasing any_connection_params::max_buffer_size.";
-
+    case client_errc::operation_in_progress:
+        return "Another operation is currently in progress for this connection. Make sure that a single "
+               "connection does not run two asynchronous operations in parallel.";
+    case client_errc::not_connected:
+        return "The requested operation requires an established session. Call async_connect before invoking "
+               "other operations.";
+    case client_errc::engaged_in_multi_function:
+        return "The connection is currently engaged in a multi-function operation."
+               "Finish the current operation by calling async_read_some_rows and async_read_resultset_head "
+               "before "
+               "starting any other operation.";
+    case client_errc::not_engaged_in_multi_function:
+        return "The operation requires the connection to be engaged in a multi-function operation. "
+               "Use async_start_execution to start one.";
+    case client_errc::bad_handshake_packet_type:
+        return "During handshake, the server sent a packet type that is not allowed in the current state "
+               "(protocol violation).";
+    case client_errc::unknown_openssl_error:
+        return "An OpenSSL function failed and did not provide any extra diagnostics.";
     default: return "<unknown MySQL client error>";
     }
 }

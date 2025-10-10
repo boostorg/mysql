@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -277,6 +277,11 @@ public:
  * concurrently with other functions. Other objects,
  * like \ref pooled_connection, have their own state handle,
  * and thus interact only with the pool state.
+ *
+ * If configured to be thread-safe, the protection applies only to the pool's state.
+ * In particular, be careful when using `asio::cancel_after` and similar tokens.
+ * Please read
+ * <a href="../connection_pool.html#mysql.connection_pool.thread_safe">this page</a> for more info.
  *
  * In summary:
  *
@@ -661,6 +666,11 @@ public:
      * completion handlers are executed using an internal strand that wraps `this->get_executor()`.
      * Otherwise, intermediate handlers are executed using
      * `token`'s associated executor if it has one, or `this->get_executor()` if it hasn't.
+     *
+     * **Caution**: be careful when using thread-safety and `asio::cancel_after`, as it
+     * can result in inadvertent race conditions. Please refer to
+     * <a href="../../../connection_pool.html#mysql.connection_pool.thread_safe">this
+     * page</a> for more info.
      *
      * \par Per-operation cancellation
      * This operation supports per-operation cancellation.

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -13,12 +13,14 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_prepare_statement_response.hpp"
 #include "test_unit/create_query_frame.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -30,10 +32,7 @@ BOOST_AUTO_TEST_SUITE(test_prepare_statement)
 //
 struct read_response_fixture : algo_fixture_base
 {
-    detail::read_prepare_statement_response_algo algo{diag, 19};
-
-    // Clearing diagnostics is not this algorithm's responsibility
-    read_response_fixture() : algo_fixture_base(diagnostics()) {}
+    detail::read_prepare_statement_response_algo algo{19};
 
     statement result() const { return algo.result(st); }
 };
@@ -156,7 +155,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 //
 struct prepare_fixture : algo_fixture_base
 {
-    detail::prepare_statement_algo algo{diag, {"SELECT 1"}};
+    detail::prepare_statement_algo algo{{"SELECT 1"}};
 
     prepare_fixture() = default;
     prepare_fixture(std::size_t max_bufsize) : algo_fixture_base(max_bufsize) {}
@@ -217,6 +216,32 @@ BOOST_AUTO_TEST_CASE(prepare_error_max_buffer_size)
 
     // Run the algo
     algo_test().check(fix, client_errc::max_buffer_size_exceeded);
+}
+
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(prepare_error_invalid_connection_status)
+{
+    struct
+    {
+        detail::connection_status status;
+        error_code expected_err;
+    } test_cases[] = {
+        {detail::connection_status::not_connected,             client_errc::not_connected            },
+        {detail::connection_status::engaged_in_multi_function, client_errc::engaged_in_multi_function},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.status)
+        {
+            // Setup
+            prepare_fixture fix;
+            fix.st.status = tc.status;
+
+            // Run the algo
+            algo_test().check(fix, tc.expected_err);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

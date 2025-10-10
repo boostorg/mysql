@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -10,8 +10,9 @@ from pathlib import Path
 import os
 from typing import Optional, Dict
 from .common import run, BOOST_ROOT, IS_WINDOWS, mkdir_and_cd
-from .db_setup import db_setup
+from .db_setup import db_setup, db_setup_bench
 from .install_boost import install_boost
+from .bench import run_benchmarks
 
 
 def _cmake_prefix_path(extra_path: Optional[Path] = None) -> str:
@@ -250,3 +251,42 @@ def find_package_b2_test(
     runner.build_all()
     runner.ctest()
 
+
+def bench_build(
+    source_dir: Path,
+    boost_branch: str,
+    connection_pool_iters: int,
+    protocol_iters: int,
+    server_host: str,
+) -> None:
+    # Get Boost
+    install_boost(
+        source_dir=source_dir,
+        boost_branch=boost_branch,
+    )
+
+    # Setup DB
+    db_setup_bench(source_dir)
+
+    # Build the benchmark code
+    runner = _CMakeRunner(generator='Ninja', build_type='Release')
+    bin_dir = BOOST_ROOT.joinpath('__build')
+    runner.configure(
+        source_dir=BOOST_ROOT,
+        binary_dir=bin_dir,
+        variables={
+            'CMAKE_PREFIX_PATH': '/opt/mysql-8.4.4', # Container's location
+            'BOOST_INCLUDE_LIBRARIES': 'mysql',
+            'BOOST_MYSQL_BENCH': 'ON',
+            'CMAKE_CXX_STANDARD': '23',
+        }
+    )
+    runner.build(target='boost_mysql_bench')
+
+    # Run the benchmarks
+    run_benchmarks(
+        exe_dir=bin_dir.joinpath('stage', 'bin'),
+        server_host=server_host,
+        connection_pool_iters=connection_pool_iters,
+        protocol_iters=protocol_iters,
+    )

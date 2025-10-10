@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,6 +17,7 @@
 #include <boost/mysql/detail/connection_impl.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/throw_exception.hpp>
 
@@ -70,7 +71,7 @@ boost::mysql::metadata_mode boost::mysql::detail::connection_impl::meta_mode() c
 
 void boost::mysql::detail::connection_impl::set_meta_mode(metadata_mode v) { st_->data().meta_mode = v; }
 
-bool boost::mysql::detail::connection_impl::ssl_active() const { return st_->data().ssl_active(); }
+bool boost::mysql::detail::connection_impl::ssl_active() const { return st_->data().tls_active; }
 
 bool boost::mysql::detail::connection_impl::backslash_escapes() const
 {
@@ -89,6 +90,15 @@ boost::system::result<boost::mysql::character_set> boost::mysql::detail::connect
     if (charset.name == nullptr)
         return client_errc::unknown_character_set;
     return charset;
+}
+
+boost::optional<std::uint32_t> boost::mysql::detail::connection_impl::connection_id() const
+{
+    const auto& data = st_->data();
+    if (data.status == connection_status::not_connected)
+        return {};
+    else
+        return data.connection_id;
 }
 
 boost::mysql::detail::run_pipeline_algo_params boost::mysql::detail::connection_impl::make_params_pipeline(

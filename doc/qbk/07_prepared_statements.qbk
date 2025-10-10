@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,14 +8,23 @@
 [section:prepared_statements Prepared statements]
 
 This section covers using [mysqllink sql-prepared-statements.html
-server-side prepared statements]. You should use them whenever a query
-contains parameters not known at compile-time.
+server-side prepared statements], an alternative to [reflink with_params].
+In general, prepared statements are more complex and less flexible than `with_params`,
+but might provide more efficiency under certain circumstances. Prefer
+`with_params` if you're not sure. See [link mysql.text_queries.comparison this section]
+for a comparison between `with_params` and prepared statements.
+
+Working with statements involves three networking operations:
+
+* Preparing a statement: [refmem any_connection async_prepare_statement].
+* Executing a statement: [refmem any_connection async_execute] or [refmem any_connection async_start_execution].
+* Closing a statement (optional): [refmem any_connection async_close_statement].
+
+The [reflink statement] class holds a server-supplied handle to an open prepared statement.
 
 [heading Preparing a statement]
 
-To prepare a statement, call [refmem connection prepare_statement]
-or [refmem connection async_prepare_statement], passing your statement
-as a string. This yields a [reflink statement] object:
+Calling [refmemunq any_connection async_prepare_statement] yields a [reflink statement] object:
 
 [prepared_statements_prepare]
 
@@ -27,16 +36,13 @@ will use these values to run the statement.
 
 [heading Executing a statement]
 
-To execute a statement, use any of the following functions:
-
-* [refmem connection execute] or [refmem connection async_execute],
-  which execute the statement and read the generated rows.
-* [refmem connection start_execution] and [refmem connection async_start_execution], which initiate a
-  statement execution as a multi-function operation.
-
-For example:
+Before executing a statement, you must specify its actual parameters by calling [refmem statement bind].
+Binding happens client-side: the statement handle and the passed parameters are packed into an object
+that can be passed to [refmemunq any_connection async_execute], without any communication with the server.
+The object returned by `bind` can be passed to `async_execute`:
 
 [prepared_statements_execute]
+
 
 Some observations:
 
@@ -47,59 +53,73 @@ Some observations:
 * You can pass types like built-in integers, `float`, [reflink date] or `std::string`,
   with the expected effects. [link mysql.prepared_statements.writable_field_reference This table]
   contains a reference with all the allowed types.
-* You can also use the static interface to execute statements by replacing [reflink results]
+* You can also use [link mysql.static_interface the static interface] to execute statements by replacing [reflink results]
   by [reflink static_results].
 
-You can pass `std::optional` and `boost::optional` for parameters that may be `NULL`.
-If the optional doesn't have a value, `NULL` will be sent to the server. For example:
-
-[prepared_statements_execute_null]
-
-[heading Type casting with statement parameters]
-
-MySQL is quite permissive with the type of statement parameters. In most cases,
-it will perform the required casts for you. For example, given this table definition:
-
-[prepared_statements_casting_table]
-
-We can write:
-
-[prepared_statements_casting_execute]
-
-MySQL expects a `TINYINT`, but we're sending an `int`, which is bigger.
-As long as the value is in range, this won't cause any trouble.
-If the value is out-of-range, `execute` will fail with an error.
-
-[heading Executing a statement with a variable number of parameters]
-
-The above approach works when you know at compile time how many parameters the statement has.
-In some scenarios (e.g. a graphical interface), this may not be the case. For these cases, you can
-`bind` a statement to a `field` or `field_view` iterator range:
-
-[prepared_statements_execute_iterator_range]
 
 [heading Closing a statement]
 
-Prepared statements are created server-side, and thus consume server resources. If you don't need a 
-[reflink statement] anymore, you can call [refmem connection close_statement] or
-[refmem connection async_close_statement] to instruct the server to deallocate it.
+Prepared statements are created server-side, and thus consume server resources.
+You can deallocate statements that you don't need anymore by calling [refmemunq any_connection async_close_statement]:
 
-Prepared statements are managed by the server on a per-connection basis. Once you close your connection
-with the server, all prepared statements you have created using this connection will be automatically
-deallocated.
+[prepared_statements_close]
 
-If you are creating your prepared statements at the beginning
-of your program and keeping them alive until the connection
-is closed, then there is no need to call `close_statement()`,
-as closing the connection will do the cleanup
-for you. If you are creating and destroying prepared statements
-dynamically, then it is advised to use `close_statement()` to prevent excessive
-resource usage in the server.
+Prepared statements are managed by the server on a per-session basis.
+This is, once you close your connection with the server, any allocated prepared statements
+will be automatically closed for you. Calling [refmem any_connection async_reset_connection]
+will also close all the statements prepared by the current session. This is used by
+[reflink connection_pool] to clean up sessions.
 
-Finally, note that [reflink statement]'s destructor
-does not perform any server-side deallocation of the statement.
-This is because closing a statement involves a network
-operation that may block or fail.
+In general, avoid closing statements explicitly if you're using `async_reset_connection` or
+`connection_pool`, or if you're preparing a fixed number of statements at program startup.
+Closing statements involves network traffic that can be avoided.
+On the other hand, if you are creating and destroying prepared statements
+dynamically without using the aforementioned techniques, consider closing
+statement explicitly to limit server resource consumption.
+
+[note
+    [reflink statement]'s destructor [*does not deallocate the statement from the server].
+    This is intentional, as closing a statement involves a network
+    operation that may block or fail, and is not required by strategies
+    involving `async_reset_connection`.
+]
+
+
+
+[heading NULLs and optionals]
+
+You can pass `std::optional` and `boost::optional` for parameters that may be `NULL`:
+
+[prepared_statements_execute_null]
+
+
+
+[heading Parameter server-side type casting]
+
+MySQL is quite permissive with the type of statement parameters. In most cases,
+it will perform the required casts for you. For example, the following will work:
+
+[prepared_statements_casting]
+
+
+
+
+[heading Executing a statement with a variable number of parameters]
+
+[refmem statement bind] has two forms:
+
+* A variadic form, where each statement argument is passed as a C++ argument.
+  This is what we've been using until now. It can only be used if the number
+  of arguments a statement has is known at compile time.
+* A range form, where arguments are passed as a range of variants.
+  This one should only be used if the number of arguments is unknown at compile time.
+
+The range should contain [reflink field] or [reflink field_view] elements, which
+can represent any MySQL type. For example:
+
+[prepared_statements_iterator_range]
+
+
 
 
 [heading Type mapping reference for prepared statement parameters]
@@ -107,7 +127,7 @@ operation that may block or fail.
 The following table contains a reference of the types that can be used when binding a statement.
 If a type can be used this way, we say to satisfy the `WritableField` concept.
 The table shows how a parameter `v` in a expression `conn.execute(stmt.bind(v), result)`
-is interpreted by MySQL, depeding on `v`'s type.
+is interpreted by MySQL, depending on `v`'s type.
 
 
 [table:writable_field_reference

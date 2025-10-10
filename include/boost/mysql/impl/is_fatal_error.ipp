@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -83,7 +83,9 @@ bool boost::mysql::is_fatal_error(error_code ec) noexcept
         case client_errc::server_doesnt_support_ssl:
         case client_errc::unknown_auth_plugin:
         case client_errc::server_unsupported:
-        case client_errc::auth_plugin_requires_ssl: return true;
+        case client_errc::auth_plugin_requires_ssl:
+        case client_errc::bad_handshake_packet_type:
+        case client_errc::unknown_openssl_error: return true;
 
         default: return false;
         }

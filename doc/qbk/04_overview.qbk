@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -89,7 +89,7 @@ Boost.MySQL provides two interfaces to run queries with parameters:
     ]
     [
         [
-            [link mysql.sql_formatting Client-side SQL formatting]:
+            [link mysql.text_queries Client-side SQL formatting]:
 
             * Securely expands queries client-side.
             * Text-based protocol.
@@ -116,7 +116,7 @@ Boost.MySQL provides two interfaces to run queries with parameters:
 
 By default, we recommend using [reflink with_params] because it's
 simpler and entails less round-trips to the server.
-See [link mysql.sql_formatting.comparison the comparison section] for more info.
+See [link mysql.text_queries.comparison the comparison section] for more info.
 
 Client-side SQL formatting can also be used to
 [link mysql.sql_formatting_advanced.expand expand queries]
@@ -224,17 +224,15 @@ for more info.
 
 [section:async Single outstanding async operation per connection]
 
-At any given point in time, a `any_connection` may only have a single async operation outstanding.
-Because MySQL sessions are stateful, and to keep the implementation simple, messages
-are written to the underlying transport without any locking or queueing.
-If you perform several async operations concurrently on a single connection without any
-serialization, messages from different operations will be interleaved, leading to undefined behavior.
+At any given point in time, an `any_connection` can only have a single async operation outstanding.
+In other words, connections implement no asynchronous locking or queueing, which
+keeps code simple and efficient. If you need to perform several operations in parallel,
+you can open more connections or use [reflink connection_pool].
 
-For example, doing the following is illegal and should be avoided:
+Trying to run operations concurrently on a single connection is detected at
+runtime and generates a `client_errc::operation_in_progress` error:
 
-[overview_async_dont]
-
-If you need to perform queries in parallel, open more connections to the server.
+[overview_async_parallel]
 
 [endsect]
 
@@ -289,10 +287,11 @@ table in batches, which can be the case in an ETL process:
 
 [overview_multifn]
 
-[warning
+[note
     Once you start a multi-function operation with [refmemunq any_connection async_start_execution],
     the server immediately sends all rows to the client. [*You must read all rows] before engaging in further operations.
-    Otherwise, you will encounter packet mismatches, which can lead to bugs and vulnerabilities!
+    If you try to initiate an unrelated operation before reading all rows, you will get a
+    `client_errc::engaged_in_multi_function` error.
 ]
 
 Multi-function operations are powerful but complex. Only use them when there is a strong reason to do so.

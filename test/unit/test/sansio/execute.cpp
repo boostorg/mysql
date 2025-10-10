@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -42,7 +42,7 @@ static constexpr std::uint8_t serialized_select_1[] = {0x03, 0x53, 0x45, 0x4c, 0
 struct read_response_fixture : algo_fixture_base
 {
     mock_execution_processor proc;
-    detail::read_execute_response_algo algo{diag, &proc};
+    detail::read_execute_response_algo algo{&proc};
 
     read_response_fixture() { proc.sequence_number() = 42; }
 };
@@ -179,7 +179,7 @@ struct execute_fixture : algo_fixture_base
     mock_execution_processor proc;
     detail::execute_algo algo;
 
-    execute_fixture(any_execution_request req = {"SELECT 1"}) : algo(diag, {req, &proc}) {}
+    execute_fixture(any_execution_request req = {"SELECT 1"}) : algo({req, &proc}) {}
 };
 
 BOOST_AUTO_TEST_CASE(execute_success_eof)
@@ -256,6 +256,32 @@ BOOST_AUTO_TEST_CASE(execute_error_network_error)
         .expect_read(create_text_row_message(4, 43))
         .expect_read(create_eof_frame(5, ok_builder().affected_rows(10u).info("1st").build()))
         .check_network_errors<execute_fixture>();
+}
+
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(execute_error_invalid_connection_status)
+{
+    struct
+    {
+        detail::connection_status status;
+        error_code expected_err;
+    } test_cases[] = {
+        {detail::connection_status::not_connected,             client_errc::not_connected            },
+        {detail::connection_status::engaged_in_multi_function, client_errc::engaged_in_multi_function},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.status)
+        {
+            // Setup
+            execute_fixture fix;
+            fix.st.status = tc.status;
+
+            // Run the algo
+            algo_test().check(fix, tc.expected_err);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

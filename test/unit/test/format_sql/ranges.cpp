@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -25,10 +25,10 @@
 #include "test_common/has_ranges.hpp"
 #include "test_common/printing.hpp"
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 #include <string_view>
 #endif
-#ifdef __cpp_lib_optional
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
 #endif
 #ifdef BOOST_MYSQL_HAS_RANGES
@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(elm_string)
     BOOST_TEST(
         format_sql(opts, single_fmt, std::vector<string_view>{"abc", "buf"}) == "SELECT 'abc', 'buf';"
     );
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
     BOOST_TEST(
         format_sql(opts, single_fmt, std::vector<std::string_view>{"abc", "buf"}) == "SELECT 'abc', 'buf';"
     );
@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(elm_boost_optional)
     BOOST_TEST(format_sql(opts, single_fmt, optionals) == "SELECT 42, 10, NULL;");
 }
 
-#ifdef __cpp_lib_optional
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 BOOST_AUTO_TEST_CASE(elm_std_optional)
 {
     std::vector<std::optional<std::string>> optionals{"abc", {}, "d"};

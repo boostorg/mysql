@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -62,10 +62,10 @@ class start_execution_algo
     int resume_point_{0};
     read_resultset_head_algo read_head_st_;
     any_execution_request req_;
+    bool is_top_level_;
 
     std::uint8_t& seqnum() { return processor().sequence_number(); }
     execution_processor& processor() { return read_head_st_.processor(); }
-    diagnostics& diag() { return read_head_st_.diag(); }
 
     static resultset_encoding get_encoding(any_execution_request::type_t type)
     {
@@ -114,21 +114,27 @@ class start_execution_algo
     }
 
 public:
-    start_execution_algo(diagnostics& diag, start_execution_algo_params params) noexcept
-        : read_head_st_(diag, {params.proc}), req_(params.req)
+    // We pass false to the read head algo's constructor because it's a subordinate algos.
+    // This suppresses state checks.
+    start_execution_algo(start_execution_algo_params params, bool is_top_level = true) noexcept
+        : read_head_st_({params.proc}, false), req_(params.req), is_top_level_(is_top_level)
     {
     }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         next_action act;
 
         switch (resume_point_)
         {
         case 0:
-
-            // Clear diagnostics
-            diag().clear();
+            // Check connection status. The check is only correct if we're the top-level algorithm
+            if (is_top_level_)
+            {
+                ec = st.check_status_ready();
+                if (ec)
+                    return ec;
+            }
 
             // Reset the processor
             processor().reset(get_encoding(req_.type), st.meta_mode);
@@ -138,10 +144,27 @@ public:
             if (ec)
                 return ec;
 
+            // If the request was sent successfully, and we're the top-level algorithm,
+            // we're now running a multi-function operation. The status flag is cleared
+            // by the other algorithms on error or when an OK packet is received
+            if (is_top_level_)
+                st.status = connection_status::engaged_in_multi_function;
+
             // Read the first resultset's head and return its result
-            while (!(act = read_head_st_.resume(st, ec)).is_done())
+            while (!(act = read_head_st_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
-            return act;
+
+            // If there was an error, we're no longer running a multi-function operation
+            if (act.error())
+            {
+                if (is_top_level_)
+                    st.status = connection_status::ready;
+                return act;
+            }
+
+            // If we received the final OK packet, we're no longer running a multi-function operation
+            if (processor().is_complete() && is_top_level_)
+                st.status = connection_status::ready;
         }
 
         return next_action();

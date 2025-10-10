@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -41,25 +41,6 @@ BOOST_FIXTURE_TEST_CASE(query_empty_select, any_connection_fixture)
     BOOST_TEST(result.warning_count() == 0u);
     BOOST_TEST(result.last_insert_id() == 0u);
     BOOST_TEST(result.info() == "");
-}
-
-BOOST_FIXTURE_TEST_CASE(query_empty_select_multifn, any_connection_fixture)
-{
-    connect();
-
-    // Issue query
-    execution_state st;
-    conn.async_start_execution("SELECT * FROM empty_table", st, as_netresult).validate_no_error();
-    BOOST_TEST_REQUIRE(st.should_read_rows());
-    validate_2fields_meta(st.meta(), "empty_table");
-
-    // Read eof
-    auto rv = conn.async_read_some_rows(st, as_netresult).get();
-    BOOST_TEST(rv == rows_view(), per_element());
-    BOOST_TEST(st.affected_rows() == 0u);
-    BOOST_TEST(st.warning_count() == 0u);
-    BOOST_TEST(st.last_insert_id() == 0u);
-    BOOST_TEST(st.info() == "");
 }
 
 BOOST_FIXTURE_TEST_CASE(query_insert, any_connection_fixture)

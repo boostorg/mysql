@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -260,16 +260,16 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
 void boost::mysql::detail::login_request::serialize(serialization_context& ctx) const
 {
     ctx.serialize_fixed(
-        int4{negotiated_capabilities.get()},           // client_flag
-        int4{max_packet_size},                         // max_packet_size
-        int1{get_collation_first_byte(collation_id)},  //  character_set
-        string_fixed<23>{}                             // filler (all zeros)
+        int4{static_cast<std::uint32_t>(negotiated_capabilities)},  // client_flag
+        int4{max_packet_size},                                      // max_packet_size
+        int1{get_collation_first_byte(collation_id)},               //  character_set
+        string_fixed<23>{}                                          // filler (all zeros)
     );
     ctx.serialize(
         string_null{username},
         string_lenenc{to_string(auth_response)}  // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
     );
-    if (negotiated_capabilities.has(CLIENT_CONNECT_WITH_DB))
+    if (has_capabilities(negotiated_capabilities, capabilities::connect_with_db))
     {
         string_null{database}.serialize(ctx);  // database
     }
@@ -279,10 +279,10 @@ void boost::mysql::detail::login_request::serialize(serialization_context& ctx) 
 void boost::mysql::detail::ssl_request::serialize(serialization_context& ctx) const
 {
     ctx.serialize_fixed(
-        int4{negotiated_capabilities.get()},           // client_flag
-        int4{max_packet_size},                         // max_packet_size
-        int1{get_collation_first_byte(collation_id)},  // character_set,
-        string_fixed<23>{}                             // filler, all zeros
+        int4{static_cast<std::uint32_t>(negotiated_capabilities)},  // client_flag
+        int4{max_packet_size},                                      // max_packet_size
+        int1{get_collation_first_byte(collation_id)},               // character_set,
+        string_fixed<23>{}                                          // filler, all zeros
     );
 }
 

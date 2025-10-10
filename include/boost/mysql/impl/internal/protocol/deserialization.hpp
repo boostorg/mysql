@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,7 +21,6 @@
 
 #include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/make_string_view.hpp>
 #include <boost/mysql/detail/ok_view.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
@@ -169,6 +168,7 @@ struct server_hello
 {
     using auth_buffer_type = static_buffer<8 + 0xff>;
     db_flavor server;
+    std::uint32_t connection_id{};
     auth_buffer_type auth_plugin_data;
     capabilities server_capabilities{};
     string_view auth_plugin_name;
@@ -195,17 +195,12 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_auth_switch(
 );  // exposed for testing
 
 // Handshake server response
-struct handhake_server_response
+struct handshake_server_response
 {
-    struct ok_follows_t
-    {
-    };
-
     enum class type_t
     {
         ok,
         error,
-        ok_follows,
         auth_switch,
         auth_more_data
     } type;
@@ -214,29 +209,26 @@ struct handhake_server_response
     {
         ok_view ok;
         error_code err;
-        ok_follows_t ok_follows;
         auth_switch auth_sw;
         span<const std::uint8_t> more_data;
 
         data_t(const ok_view& ok) noexcept : ok(ok) {}
         data_t(error_code err) noexcept : err(err) {}
-        data_t(ok_follows_t) noexcept : ok_follows({}) {}
         data_t(auth_switch msg) noexcept : auth_sw(msg) {}
         data_t(span<const std::uint8_t> more_data) noexcept : more_data(more_data) {}
     } data;
 
-    handhake_server_response(const ok_view& ok) noexcept : type(type_t::ok), data(ok) {}
-    handhake_server_response(error_code err) noexcept : type(type_t::error), data(err) {}
-    handhake_server_response(ok_follows_t) noexcept : type(type_t::ok_follows), data(ok_follows_t{}) {}
-    handhake_server_response(auth_switch auth_switch) noexcept : type(type_t::auth_switch), data(auth_switch)
+    handshake_server_response(const ok_view& ok) noexcept : type(type_t::ok), data(ok) {}
+    handshake_server_response(error_code err) noexcept : type(type_t::error), data(err) {}
+    handshake_server_response(auth_switch auth_switch) noexcept : type(type_t::auth_switch), data(auth_switch)
     {
     }
-    handhake_server_response(span<const std::uint8_t> more_data) noexcept
+    handshake_server_response(span<const std::uint8_t> more_data) noexcept
         : type(type_t::auth_more_data), data(more_data)
     {
     }
 };
-inline handhake_server_response deserialize_handshake_server_response(
+inline handshake_server_response deserialize_handshake_server_response(
     span<const std::uint8_t> buff,
     db_flavor flavor,
     diagnostics& diag
@@ -757,7 +749,7 @@ inline capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> hi
     auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&res);
     memcpy(capabilities_begin, low.value.data(), 2);
     memcpy(capabilities_begin + 2, high.value.data(), 2);
-    return capabilities(boost::endian::little_to_native(res));
+    return static_cast<capabilities>(boost::endian::little_to_native(res));
 }
 
 inline db_flavor parse_db_version(string_view version_string)
@@ -810,7 +802,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
     auto cap = compose_capabilities(pack.capability_flags_low, pack.capability_flags_high);
 
     // Check minimum server capabilities to deserialize this frame
-    if (!cap.has(CLIENT_PLUGIN_AUTH))
+    if (!has_capabilities(cap, capabilities::plugin_auth))
         return client_errc::server_unsupported;
 
     // Deserialize next fields
@@ -823,7 +815,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
         static_cast<std::size_t>(13u),
         static_cast<std::size_t>(pack.auth_plugin_data_len.value - pack.auth_plugin_data_part_1.value.size())
     ));
-    const void* auth2_data = ctx.first();
+    const std::uint8_t* auth2_data = ctx.first();
     if (!ctx.enough_size(auth2_length))
         return client_errc::incomplete_message;
     ctx.advance(auth2_length);
@@ -834,18 +826,20 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
         return to_error_code(err);
 
     // Compose output
+    output.connection_id = pack.connection_id.value;
     output.server = parse_db_version(pack.server_version.value);
     output.server_capabilities = cap;
     output.auth_plugin_name = pack.auth_plugin_name.value;
 
     // Compose auth_plugin_data
     output.auth_plugin_data.clear();
-    output.auth_plugin_data.append(
-        pack.auth_plugin_data_part_1.value.data(),
+    output.auth_plugin_data.append(span<const std::uint8_t>(
+        reinterpret_cast<const std::uint8_t*>(pack.auth_plugin_data_part_1.value.data()),
         pack.auth_plugin_data_part_1.value.size()
-    );
-    output.auth_plugin_data.append(auth2_data,
-                                   auth2_length - 1);  // discard an extra trailing NULL byte
+    ));
+
+    // discard an extra trailing NULL byte
+    output.auth_plugin_data.append(span<const std::uint8_t>(auth2_data, auth2_length - 1));
 
     return ctx.check_extra_bytes();
 }
@@ -921,7 +915,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_auth_switch(
     return ctx.check_extra_bytes();
 }
 
-boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize_handshake_server_response(
+boost::mysql::detail::handshake_server_response boost::mysql::detail::deserialize_handshake_server_response(
     span<const std::uint8_t> buff,
     db_flavor flavor,
     diagnostics& diag
@@ -929,7 +923,6 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
 {
     constexpr std::uint8_t auth_switch_request_header = 0xfe;
     constexpr std::uint8_t auth_more_data_header = 0x01;
-    constexpr string_view fast_auth_complete_challenge = make_string_view("\3");
 
     deserialization_context ctx(buff);
     int1 msg_type{};
@@ -966,19 +959,7 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
         auto ec = auth_more_data.deserialize(ctx);
         BOOST_ASSERT(ec == deserialize_errc::ok);
         boost::ignore_unused(ec);
-
-        // If the special value fast_auth_complete_challenge
-        // is received as auth data, it means that the auth is complete
-        // but we must wait for another OK message. We consider this
-        // a special type of message
-        string_view challenge = auth_more_data.value;
-        if (challenge == fast_auth_complete_challenge)
-        {
-            return handhake_server_response::ok_follows_t();
-        }
-
-        // Otherwise, just return the normal data
-        return handhake_server_response(to_span(challenge));
+        return handshake_server_response(to_span(auth_more_data.value));
     }
     else
     {

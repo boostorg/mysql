@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -71,6 +71,7 @@ BOOST_AUTO_TEST_CASE(test_is_fatal_error)
         {"unknown_auth_plugin",             client_errc::unknown_auth_plugin,                               true },
         {"auth_plugin_requires_ssl",        client_errc::auth_plugin_requires_ssl,                          true },
         {"server_doesnt_support_ssl",       client_errc::server_doesnt_support_ssl,                         true },
+        {"bad_handshake_packet_type",       client_errc::bad_handshake_packet_type,                         true },
 
         // Other client errors
         {"wrong_num_params",                client_errc::wrong_num_params,                                  false},
@@ -83,6 +84,7 @@ BOOST_AUTO_TEST_CASE(test_is_fatal_error)
         {"format_string_invalid_specifier", client_errc::format_string_invalid_specifier,                   false},
         {"format_arg_not_found",            client_errc::format_arg_not_found,                              false},
         {"unknown_character_set",           client_errc::unknown_character_set,                             false},
+        {"operation_in_progress",           client_errc::operation_in_progress,                             false},
 
         // Fatal server errors
         {"ER_UNKNOWN_COM_ERROR",            common_server_errc::er_unknown_com_error,                       true },

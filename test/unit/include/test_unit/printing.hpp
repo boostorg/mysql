@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_PRINTING_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_PRINTING_HPP
 
+#include <cstdint>
 #include <iosfwd>
 
 namespace boost {
@@ -20,8 +21,8 @@ std::ostream& operator<<(std::ostream& os, address_type value);
 namespace detail {
 
 // capabilities
-class capabilities;
-std::ostream& operator<<(std::ostream& os, const capabilities& caps);
+enum class capabilities : std::uint32_t;
+std::ostream& operator<<(std::ostream& os, capabilities caps);
 
 // db_flavor
 enum class db_flavor;
@@ -30,6 +31,10 @@ std::ostream& operator<<(std::ostream& os, db_flavor value);
 // resultset_encoding
 enum class resultset_encoding;
 std::ostream& operator<<(std::ostream& os, resultset_encoding t);
+
+// connection_status
+enum class connection_status;
+std::ostream& operator<<(std::ostream& os, connection_status t);
 
 // results_iterator
 class results_iterator;
@@ -48,9 +53,9 @@ struct pipeline_request_stage;
 bool operator==(const pipeline_request_stage& lhs, const pipeline_request_stage& rhs);
 std::ostream& operator<<(std::ostream& os, pipeline_request_stage v);
 
-// connection_status (pool)
-enum class connection_status;
-std::ostream& operator<<(std::ostream& os, connection_status v);
+// node_status (pool)
+enum class node_status;
+std::ostream& operator<<(std::ostream& os, node_status v);
 
 // collection_state (pool)
 enum class collection_state;

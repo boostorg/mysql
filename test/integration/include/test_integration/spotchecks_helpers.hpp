@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -34,8 +34,7 @@ namespace mysql {
 namespace test {
 
 #ifdef BOOST_MYSQL_CXX14
-using static_results_t = static_results<row_multifield, row_2fields, empty>;
-using static_state_t = static_execution_state<row_multifield, row_2fields, empty>;
+using static_state_t = static_execution_state<row_multifield>;
 #endif
 
 // Netmakers
@@ -58,19 +57,12 @@ struct netmakers_common
     using close = netfun_maker<void, Conn>;
 
 #ifdef BOOST_MYSQL_CXX14
-    using execute_static = netfun_maker<void, Conn, const string_view&, static_results_t&>;
     using start_execution_static = netfun_maker<void, Conn, const string_view&, static_state_t&>;
-    using read_resultset_head_static = netfun_maker<void, Conn, static_state_t&>;
-    using read_some_rows_static_1 = netfun_maker<
+    using read_some_rows_static = netfun_maker<
         std::size_t,
         Conn,
         static_state_t&,
         boost::span<row_multifield>>;
-    using read_some_rows_static_2 = netfun_maker<
-        std::size_t,
-        Conn,
-        static_state_t&,
-        boost::span<row_2fields>>;
 #endif
 };
 
@@ -113,11 +105,8 @@ struct network_functions_connection
     netmakers::reset_connection::signature reset_connection;
     netmakers::close::signature close;
 #ifdef BOOST_MYSQL_CXX14
-    netmakers::execute_static::signature execute_static;
     netmakers::start_execution_static::signature start_execution_static;
-    netmakers::read_resultset_head_static::signature read_resultset_head_static;
-    netmakers::read_some_rows_static_1::signature read_some_rows_static_1;
-    netmakers::read_some_rows_static_2::signature read_some_rows_static_2;
+    netmakers::read_some_rows_static::signature read_some_rows_static;
 #endif
     netmakers::connect_stream::signature connect_stream;
     netmakers::handshake::signature handshake;
@@ -145,11 +134,8 @@ struct network_functions_any
     netmakers::reset_connection::signature reset_connection;
     netmakers::close::signature close;
 #ifdef BOOST_MYSQL_CXX14
-    netmakers::execute_static::signature execute_static;
     netmakers::start_execution_static::signature start_execution_static;
-    netmakers::read_resultset_head_static::signature read_resultset_head_static;
-    netmakers::read_some_rows_static_1::signature read_some_rows_static_1;
-    netmakers::read_some_rows_static_2::signature read_some_rows_static_2;
+    netmakers::read_some_rows_static::signature read_some_rows_static;
 #endif
     netmakers::connect::signature connect;
     netmakers::set_character_set::signature set_character_set;
