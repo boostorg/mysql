@@ -25,6 +25,7 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/days.hpp>
+#include <boost/mysql/decimal.hpp>
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_categories.hpp>
