@@ -469,11 +469,11 @@ INSERT INTO types_binary VALUES
 CREATE TABLE types_decimal(
     id VARCHAR(50) NOT NULL PRIMARY KEY,
     field_4  DECIMAL(4),      -- no scale
-    field_7  DECIMAL(7, 7),   -- scale == precision, max precision supported by decimal32
+    field_7  DECIMAL(7, 7),   -- scale == precision, max precision supported by decimal32_t
     field_10 DECIMAL,         -- default precision, should be (10, 0)
-    field_16 DECIMAL(16, 4),  -- max precision supported by decimal64
+    field_16 DECIMAL(16, 4),  -- max precision supported by decimal64_t
     field_20 DECIMAL(20, 2) UNSIGNED, -- unsigned
-    field_34 DECIMAL(34, 30)  -- max precision supported by decimal128, max supported scale
+    field_34 DECIMAL(34, 30)  -- max precision supported by decimal128_t, max supported scale
 );
 INSERT INTO types_decimal VALUES
     ("regular",   213,   0.1214295,  9000,        20.1234,           121.20,                 1234.567890123456789012345678901234),

@@ -182,12 +182,12 @@ BOOST_MYSQL_CHECK_FORMATTABLE(format_seq_t, true)
 
 // decimals are formattable
 #ifdef BOOST_MYSQL_CXX14
-BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal32, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal32_fast, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal64, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal64_fast, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal128, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal128_fast, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal32_t, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal_fast32_t, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal64_t, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal_fast64_t, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal128_t, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal_fast128_t, true);
 #endif
 
 // other stuff not accepted

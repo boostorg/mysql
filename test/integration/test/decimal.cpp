@@ -13,6 +13,8 @@
 #include <boost/mysql/decimal.hpp>
 #include <boost/mysql/static_results.hpp>
 
+#include <boost/decimal/iostream.hpp>
+#include <boost/decimal/literals.hpp>
 #include <boost/describe/operators.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/optional/optional_io.hpp>
@@ -31,18 +33,19 @@ using boost::test_tools::per_element;
 using boost::describe::operators::operator==;
 using boost::describe::operators::operator<<;
 namespace decimal = boost::decimal;
+using namespace decimal::literals;
 
 // For now, we don't support decimals as statement parameters
 // (only when reading rows)
 struct decimal_row
 {
     std::string id;
-    optional<decimal::decimal32> field_4;
-    optional<decimal::decimal32_fast> field_7;
-    optional<decimal::decimal64> field_10;
-    optional<decimal::decimal64_fast> field_16;
-    optional<decimal::decimal128> field_20;
-    optional<decimal::decimal128_fast> field_34;
+    optional<decimal::decimal32_t> field_4;
+    optional<decimal::decimal_fast32_t> field_7;
+    optional<decimal::decimal64_t> field_10;
+    optional<decimal::decimal_fast64_t> field_16;
+    optional<decimal::decimal128_t> field_20;
+    optional<decimal::decimal_fast128_t> field_34;
 };
 BOOST_DESCRIBE_STRUCT(decimal_row, (), (id, field_4, field_7, field_10, field_16, field_20, field_34))
 
@@ -52,8 +55,6 @@ BOOST_AUTO_TEST_SUITE(test_decimal)
 
 BOOST_FIXTURE_TEST_CASE(select, any_connection_fixture)
 {
-    using namespace boost::decimal;
-
     // Setup
     connect();
 

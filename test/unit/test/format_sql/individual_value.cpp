@@ -19,6 +19,7 @@
 
 #include <boost/config.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <boost/decimal/literals.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -506,7 +507,7 @@ BOOST_AUTO_TEST_CASE(std_optional)
 #ifdef BOOST_MYSQL_CXX14
 BOOST_AUTO_TEST_CASE(decimal32_)
 {
-    using namespace boost::decimal;
+    using namespace boost::decimal::literals;
     BOOST_TEST(format_sql(opts, single_fmt, 200_df) == "SELECT 200;");
     BOOST_TEST(format_sql(opts, single_fmt, 1.56789_df) == "SELECT 1.56789;");
     BOOST_TEST(format_sql(opts, single_fmt, 1.142099e5_df) == "SELECT 114209.9;");
@@ -522,7 +523,7 @@ BOOST_AUTO_TEST_CASE(decimal32_)
 
 BOOST_AUTO_TEST_CASE(decimal64_)
 {
-    using namespace boost::decimal;
+    using namespace boost::decimal::literals;
     BOOST_TEST(format_sql(opts, single_fmt, 200_dd) == "SELECT 200;");
     BOOST_TEST(format_sql(opts, single_fmt, 1.56789_dd) == "SELECT 1.56789;");
     BOOST_TEST(format_sql(opts, single_fmt, 1.142099e5_dd) == "SELECT 114209.9;");
@@ -535,7 +536,7 @@ BOOST_AUTO_TEST_CASE(decimal64_)
 
 BOOST_AUTO_TEST_CASE(decimal128_)
 {
-    using namespace boost::decimal;
+    using namespace boost::decimal::literals;
     BOOST_TEST(format_sql(opts, single_fmt, 200_dl) == "SELECT 200;");
     BOOST_TEST(format_sql(opts, single_fmt, 1.56789_dl) == "SELECT 1.56789;");
     BOOST_TEST(format_sql(opts, single_fmt, 1.142099e5_dl) == "SELECT 114209.9;");
@@ -561,7 +562,7 @@ BOOST_AUTO_TEST_CASE(decimal128_)
 BOOST_AUTO_TEST_CASE(decimal_fast)
 {
     // Spotcheck: fast decimals are also formattable
-    using namespace boost::decimal;
+    using namespace boost::decimal::literals;
     BOOST_TEST(format_sql(opts, single_fmt, 1.56789_dff) == "SELECT 1.56789;");
     BOOST_TEST(format_sql(opts, single_fmt, 1.5678912345678_ddf) == "SELECT 1.5678912345678;");
     BOOST_TEST(
@@ -757,10 +758,10 @@ BOOST_AUTO_TEST_CASE(std_optional_error) { optional_error_test<std::optional>();
 #ifdef BOOST_MYSQL_CXX14
 BOOST_AUTO_TEST_CASE(decimal_error)
 {
-    using namespace boost::decimal;
+    using namespace boost::decimal::literals;
 
     // NaN and Inf
-    using lims32 = std::numeric_limits<decimal32>;
+    using lims32 = std::numeric_limits<boost::decimal::decimal32_t>;
     BOOST_TEST(format_single_error("{}", lims32::infinity()) == client_errc::unformattable_value);
     BOOST_TEST(format_single_error("{}", -lims32::infinity()) == client_errc::unformattable_value);
     BOOST_TEST(format_single_error("{}", lims32::quiet_NaN()) == client_errc::unformattable_value);

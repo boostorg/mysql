@@ -21,7 +21,13 @@
 
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 
-#include <boost/decimal.hpp>
+#include <boost/decimal/charconv.hpp>
+#include <boost/decimal/decimal128_t.hpp>
+#include <boost/decimal/decimal32_t.hpp>
+#include <boost/decimal/decimal64_t.hpp>
+#include <boost/decimal/decimal_fast128_t.hpp>
+#include <boost/decimal/decimal_fast32_t.hpp>
+#include <boost/decimal/decimal_fast64_t.hpp>
 
 #include <system_error>
 
@@ -68,20 +74,20 @@ inline bool meta_check_decimal_impl(meta_check_context& ctx, int cpp_precision, 
 }
 
 // type names for decimals
-constexpr const char* decimal_type_name(decimal::decimal32) { return "decimal32"; }
-constexpr const char* decimal_type_name(decimal::decimal64) { return "decimal64"; }
-constexpr const char* decimal_type_name(decimal::decimal128) { return "decimal128"; }
-constexpr const char* decimal_type_name(decimal::decimal32_fast) { return "decimal32_fast"; }
-constexpr const char* decimal_type_name(decimal::decimal64_fast) { return "decimal64_fast"; }
-constexpr const char* decimal_type_name(decimal::decimal128_fast) { return "decimal128_fast"; }
+constexpr const char* decimal_type_name(decimal::decimal32_t) { return "decimal32_t"; }
+constexpr const char* decimal_type_name(decimal::decimal64_t) { return "decimal64_t"; }
+constexpr const char* decimal_type_name(decimal::decimal128_t) { return "decimal128_t"; }
+constexpr const char* decimal_type_name(decimal::decimal_fast32_t) { return "decimal_fast32_t"; }
+constexpr const char* decimal_type_name(decimal::decimal_fast64_t) { return "decimal_fast64_t"; }
+constexpr const char* decimal_type_name(decimal::decimal_fast128_t) { return "decimal_fast128_t"; }
 
 // precisions for decimals
-constexpr int decimal_precision(decimal::decimal32) { return 7; }
-constexpr int decimal_precision(decimal::decimal64) { return 16; }
-constexpr int decimal_precision(decimal::decimal128) { return 34; }
-constexpr int decimal_precision(decimal::decimal32_fast) { return 7; }
-constexpr int decimal_precision(decimal::decimal64_fast) { return 16; }
-constexpr int decimal_precision(decimal::decimal128_fast) { return 34; }
+constexpr int decimal_precision(decimal::decimal32_t) { return 7; }
+constexpr int decimal_precision(decimal::decimal64_t) { return 16; }
+constexpr int decimal_precision(decimal::decimal128_t) { return 34; }
+constexpr int decimal_precision(decimal::decimal_fast32_t) { return 7; }
+constexpr int decimal_precision(decimal::decimal_fast64_t) { return 16; }
+constexpr int decimal_precision(decimal::decimal_fast128_t) { return 34; }
 
 template <class Decimal>
 struct decimal_readable_field_traits
@@ -110,12 +116,12 @@ struct decimal_readable_field_traits
 };
 
 // clang-format off
-template <> struct readable_field_traits<decimal::decimal32, void> : decimal_readable_field_traits<decimal::decimal32> {};
-template <> struct readable_field_traits<decimal::decimal32_fast, void> : decimal_readable_field_traits<decimal::decimal32_fast> {};
-template <> struct readable_field_traits<decimal::decimal64, void> : decimal_readable_field_traits<decimal::decimal64> {};
-template <> struct readable_field_traits<decimal::decimal64_fast, void> : decimal_readable_field_traits<decimal::decimal64_fast> {};
-template <> struct readable_field_traits<decimal::decimal128, void> : decimal_readable_field_traits<decimal::decimal128> {};
-template <> struct readable_field_traits<decimal::decimal128_fast, void> : decimal_readable_field_traits<decimal::decimal128_fast> {};
+template <> struct readable_field_traits<decimal::decimal32_t, void> : decimal_readable_field_traits<decimal::decimal32_t> {};
+template <> struct readable_field_traits<decimal::decimal_fast32_t, void> : decimal_readable_field_traits<decimal::decimal_fast32_t> {};
+template <> struct readable_field_traits<decimal::decimal64_t, void> : decimal_readable_field_traits<decimal::decimal64_t> {};
+template <> struct readable_field_traits<decimal::decimal_fast64_t, void> : decimal_readable_field_traits<decimal::decimal_fast64_t> {};
+template <> struct readable_field_traits<decimal::decimal128_t, void> : decimal_readable_field_traits<decimal::decimal128_t> {};
+template <> struct readable_field_traits<decimal::decimal_fast128_t, void> : decimal_readable_field_traits<decimal::decimal_fast128_t> {};
 // clang-format on
 
 // format_sql support
@@ -153,12 +159,12 @@ struct decimal_formatter
 }  // namespace detail
 
 // clang-format off
-template <> struct formatter<decimal::decimal32> : detail::decimal_formatter<decimal::decimal32> {};
-template <> struct formatter<decimal::decimal32_fast> : detail::decimal_formatter<decimal::decimal32_fast> {};
-template <> struct formatter<decimal::decimal64> : detail::decimal_formatter<decimal::decimal64> {};
-template <> struct formatter<decimal::decimal64_fast> : detail::decimal_formatter<decimal::decimal64_fast> {};
-template <> struct formatter<decimal::decimal128> : detail::decimal_formatter<decimal::decimal128> {};
-template <> struct formatter<decimal::decimal128_fast> : detail::decimal_formatter<decimal::decimal128_fast> {};
+template <> struct formatter<decimal::decimal32_t> : detail::decimal_formatter<decimal::decimal32_t> {};
+template <> struct formatter<decimal::decimal_fast32_t> : detail::decimal_formatter<decimal::decimal_fast32_t> {};
+template <> struct formatter<decimal::decimal64_t> : detail::decimal_formatter<decimal::decimal64_t> {};
+template <> struct formatter<decimal::decimal_fast64_t> : detail::decimal_formatter<decimal::decimal_fast64_t> {};
+template <> struct formatter<decimal::decimal128_t> : detail::decimal_formatter<decimal::decimal128_t> {};
+template <> struct formatter<decimal::decimal_fast128_t> : detail::decimal_formatter<decimal::decimal_fast128_t> {};
 // clang-format on
 
 }  // namespace mysql
