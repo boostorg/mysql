@@ -37,7 +37,6 @@ else()
         align
         context
         date_time
-        static_assert
         container_hash
         move
         detail
