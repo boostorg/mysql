@@ -466,6 +466,22 @@ INSERT INTO types_binary VALUES
     ("empty",   "",          "",             "",            "",        "",              "")
 ;
 
+CREATE TABLE types_decimal(
+    id VARCHAR(50) NOT NULL PRIMARY KEY,
+    field_4  DECIMAL(4),      -- no scale
+    field_7  DECIMAL(7, 7),   -- scale == precision, max precision supported by decimal32_t
+    field_10 DECIMAL,         -- default precision, should be (10, 0)
+    field_16 DECIMAL(16, 4),  -- max precision supported by decimal64_t
+    field_20 DECIMAL(20, 2) UNSIGNED, -- unsigned
+    field_34 DECIMAL(34, 30)  -- max precision supported by decimal128_t, max supported scale
+);
+INSERT INTO types_decimal VALUES
+    ("regular",   213,   0.1214295,  9000,        20.1234,           121.20,                 1234.567890123456789012345678901234),
+    ("negative", -213,  -0.1214295, -9000,       -20.1234,           NULL,                  -1234.567890123456789012345678901234),
+    ("min",      -9999, -0.9999999, -9999999999, -999999999999.9999, 0,                     -9999.999999999999999999999999999999),
+    ("max",       9999,  0.9999999,  9999999999,  999999999999.9999, 999999999999999999.99, -9999.999999999999999999999999999999)
+;
+
 CREATE TABLE types_not_implemented(
     id VARCHAR(50) NOT NULL PRIMARY KEY,
     field_decimal DECIMAL,
