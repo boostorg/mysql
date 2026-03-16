@@ -45,7 +45,7 @@ public:
     )
         : buffer_(initial_buffer_size, max_buffer_size),
         max_frame_size_(max_frame_size),
-        avg_msg_size_calculator_(0)
+        avg_msg_size_calculator_(initial_buffer_size)
     {
     }
 
