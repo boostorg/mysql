@@ -99,7 +99,7 @@ public:
         auto avg_msg_size = avg_msg_size_calculator_.get_average();
         // Clear reserved area if predicted message size is
         // bigger than free space (including pending)
-        if (avg_msg_size >= buffer_.free_size() + buffer_.pending_size())
+        if (avg_msg_size >= buffer_.free_size() + buffer_.pending_size() || avg_msg_size > buffer_.max_size())
             buffer_.remove_reserved();
         auto ec = buffer_.grow_to_fit(state_.required_size);
         if (ec)
