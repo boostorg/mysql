@@ -44,7 +44,7 @@ class ema_calculator
     IntType average_;
 
 public:
-    ema_calculator(IntType initial_value) : average_(initial_value)
+    ema_calculator(IntType initial_value) : average_(initial_value << Shift)
     {
         BOOST_ASSERT(initial_value <= max_value);
     }
