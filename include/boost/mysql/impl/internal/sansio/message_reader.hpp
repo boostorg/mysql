@@ -15,7 +15,6 @@
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 #include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
-#include <boost/mysql/impl/internal/ema_calculator.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
@@ -43,9 +42,7 @@ public:
         std::size_t max_buffer_size = static_cast<std::size_t>(-1),
         std::size_t max_frame_size = max_packet_size
     )
-        : buffer_(initial_buffer_size, max_buffer_size),
-        max_frame_size_(max_frame_size),
-        avg_msg_size_calculator_(initial_buffer_size)
+        : buffer_(initial_buffer_size, max_buffer_size), max_frame_size_(max_frame_size)
     {
     }
 
@@ -96,11 +93,17 @@ public:
     BOOST_ATTRIBUTE_NODISCARD
     error_code prepare_buffer()
     {
-        auto avg_msg_size = avg_msg_size_calculator_.get_average();
-        // Clear reserved area if predicted message size is
-        // bigger than free space (including pending)
-        if (avg_msg_size >= buffer_.free_size() + buffer_.pending_size())
+        constexpr std::size_t small_move_threshold = 1024;
+        const std::size_t occupied_space = buffer_.pending_size() + buffer_.current_message_size();
+        // Compact the buffer (remove reserved area) if one of the following holds:
+        // 1. The cost of memmove is low: active data (current_message + pending)
+        // is small enough to make the copy cheap.
+        // 2. Compaction could prevent a reallocation.
+        if (occupied_space <= small_move_threshold ||
+            (state_.required_size > buffer_.free_size()))
+        {
             buffer_.remove_reserved();
+        }
         auto ec = buffer_.grow_to_fit(state_.required_size);
         if (ec)
             return ec;
@@ -174,8 +177,6 @@ public:
                 // Check if we're done
                 if (!state_.more_frames_follow)
                 {
-                    // Update average message size calculator
-                    avg_msg_size_calculator_.update(buffer_.current_message_size());
                     state_.resume_point = -1;
                     return;
                 }
@@ -189,7 +190,6 @@ public:
 private:
     read_buffer buffer_;
     std::size_t max_frame_size_;
-    ema_calculator<4> avg_msg_size_calculator_;
 
     struct parse_state
     {
