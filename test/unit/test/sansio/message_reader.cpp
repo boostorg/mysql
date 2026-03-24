@@ -384,7 +384,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_not_enough_space)
     ec = fix.reader.prepare_buffer();
     BOOST_TEST(ec == error_code());
     fix.record_buffer_first();
-    BOOST_TEST(fix.buffsize() == 50u);
+    BOOST_TEST(fix.buffsize() == 64u);
 
     // Finish reading
     fix.read_bytes(50);
@@ -406,7 +406,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_old_messages_removed)
     fix.check_message(u8vec(60, 0x04));
 
     // Record size, as this should not increase
-    BOOST_TEST(fix.buffsize() == 60u);
+    BOOST_TEST(fix.buffsize() == 64u);
 
     // Parse new messages
     for (std::uint8_t i = 0u; i < 100u; ++i)
@@ -429,7 +429,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_old_messages_removed)
     }
 
     // Buffer size should be the same
-    BOOST_TEST(fix.buffsize() == 60u);
+    BOOST_TEST(fix.buffsize() == 64u);
 }
 
 BOOST_AUTO_TEST_CASE(buffer_resizing_size_eq_max_size)
