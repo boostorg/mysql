@@ -686,7 +686,7 @@ BOOST_AUTO_TEST_CASE(memmove_avoided)
     std::size_t free_bytes = fix.reader.buffer().size();
     BOOST_TEST(free_bytes == 4096u);
 
-    // Small messages (<1024 bytes): memmove is expected
+    // Small messages (<=1024 bytes): memmove is expected
     {
         constexpr std::size_t small_msg_size = 200;
         // First frame and second frame header expected to
@@ -707,7 +707,7 @@ BOOST_AUTO_TEST_CASE(memmove_avoided)
         BOOST_TEST(free_bytes == expected);
     }
 
-    // Large messages (>=1024 bytes): memmove is avoided if free space is big enough
+    // Large messages (>1024 bytes): memmove is avoided if free space is big enough
     {
         constexpr std::size_t large_msg_size = 1025;
         // First frame expected not to be memmoved,
