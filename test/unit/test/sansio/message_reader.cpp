@@ -525,7 +525,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_size_power_of_two)
     {
         // Setup
         u8vec msg_body(test_sizes[i], 0x04);
-        fix.seqnum = i;
+        fix.seqnum = static_cast<uint8_t>(i);
         fix.set_contents(create_frame(i, msg_body));
         std::size_t next_power_of_two = 1;
         while (next_power_of_two < test_sizes[i])
