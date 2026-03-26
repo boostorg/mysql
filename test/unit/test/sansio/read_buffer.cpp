@@ -584,6 +584,34 @@ BOOST_AUTO_TEST_CASE(several_grows)
     check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c}, 4);
 }
 
+BOOST_AUTO_TEST_CASE(is_power_of_two)
+{
+    read_buffer buff(8);
+
+    std::size_t test_sizes[] = {
+        5, 7, 8,
+        9, 15, 16,
+        17, 31, 32,
+        33, 63, 64,
+        65, 127, 128,
+        129, 255, 256,
+        257, 511, 512, 513
+    };
+    constexpr std::size_t num_tests = sizeof(test_sizes) / sizeof(test_sizes[0]);
+
+    // Test that buffer capacity grows to powers of two
+    for (std::size_t i = 0; i < num_tests; ++i)
+    {
+        std::size_t next_power_of_two = 1;
+        while (next_power_of_two < test_sizes[i])
+            next_power_of_two *= 2;
+        auto ec = buff.grow_to_fit(test_sizes[i]);
+        BOOST_TEST(ec == error_code());
+        BOOST_TEST(buff.size() == next_power_of_two);
+    }
+    BOOST_TEST(buff.size() == 1024);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(reset)
