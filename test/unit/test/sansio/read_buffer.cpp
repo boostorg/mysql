@@ -609,7 +609,7 @@ BOOST_AUTO_TEST_CASE(is_power_of_two)
         BOOST_TEST(ec == error_code());
         BOOST_TEST(buff.size() == next_power_of_two);
     }
-    BOOST_TEST(buff.size() == 1024);
+    BOOST_TEST(buff.size() == 1024u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

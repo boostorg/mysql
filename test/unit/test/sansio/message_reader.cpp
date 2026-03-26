@@ -684,7 +684,7 @@ BOOST_AUTO_TEST_CASE(memmove_avoided)
 
     // Buffer is free
     std::size_t free_bytes = fix.reader.buffer().size();
-    BOOST_TEST(free_bytes == 4096);
+    BOOST_TEST(free_bytes == 4096u);
 
     // Small messages (<1024 bytes): memmove is expected
     {
