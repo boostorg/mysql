@@ -78,8 +78,8 @@ add_executable(
 
     test/impl/dt_to_string.cpp
     test/impl/ssl_context_with_default.cpp
-    test/impl/variant_stream.cpp
     test/impl/next_power_of_two.cpp
+    test/impl/variant_stream.cpp
 
     test/spotchecks/connection_use_after_move.cpp
     test/spotchecks/default_completion_tokens.cpp
