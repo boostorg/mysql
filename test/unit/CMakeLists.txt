@@ -104,6 +104,7 @@ add_executable(
     test/resultset_view.cpp
     test/resultset.cpp
     test/client_errc.cpp
+    test/column_type.cpp
     test/common_server_errc.cpp
     test/mysql_server_errc.cpp
     test/mariadb_server_errc.cpp
