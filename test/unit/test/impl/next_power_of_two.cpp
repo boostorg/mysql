@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(different_types)
     
     // uint32_t
     BOOST_TEST(next_power_of_two<std::uint32_t>(0u) == 1u);
-    BOOST_TEST(next_power_of_two<std::uint32_t>(100000) == 131072);
+    BOOST_TEST(next_power_of_two<std::uint32_t>(100000) == 131072u);
     BOOST_TEST(next_power_of_two<std::uint32_t>(1u << 30) == 1u << 30);
     BOOST_TEST(next_power_of_two<std::uint32_t>((1u << 30) + 1) == 1u << 31);
     
