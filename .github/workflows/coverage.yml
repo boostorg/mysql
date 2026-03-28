@@ -10,7 +10,7 @@ name: coverage
 on:
   push:
     branches: [develop, master]
-    tags: ['*']
+    tags: ["*"]
   pull_request:
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/anarthal/cpp-ci-containers/build-gcc14:1
+      image: ghcr.io/anarthal/cpp-ci-containers/build-gcc14-lcov:1
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
@@ -29,13 +29,9 @@ jobs:
         volumes:
           - /var/run/mysqld:/var/run/mysqld
     steps:
-      - name: Install coverage packages
-        run: |
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends lcov
-
       - name: Fetch code
         uses: actions/checkout@v4
-      
+
       - name: Build code
         run: |
           python tools/ci/main.py \
@@ -47,7 +43,7 @@ jobs:
             --variant=debug \
             --disable-local-sockets=off,on \
             --coverage=1
-      
+
       - name: Generate coverage reports
         shell: bash
         run: |
@@ -65,7 +61,7 @@ jobs:
             --output-file coverage.info \
             --extract all.info '*/boost/mysql*'
           sed "s|^SF:$HOME/boost-root/|SF:include/|g" coverage.info > $GITHUB_WORKSPACE/coverage.info
-      
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
