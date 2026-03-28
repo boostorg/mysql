@@ -509,6 +509,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_size_power_of_two)
     fix.reader.prepare_read(fix.seqnum);
     fix.read_until_completion();
     BOOST_TEST(fix.buffsize() == 4u);
+    
     std::size_t test_sizes[] = {
         5, 7, 8,
         9, 15, 16,
@@ -518,30 +519,32 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_size_power_of_two)
         129, 255, 256,
         257, 511, 512, 513
     };
-    constexpr std::size_t num_tests = sizeof(test_sizes) / sizeof(test_sizes[0]);
 
     // Test that buffer capacity grows to powers of two for various payload sizes
-    for (std::size_t i = 0; i < num_tests; ++i)
+    for (auto new_size : test_sizes)
     {
-        // Setup
-        u8vec msg_body(test_sizes[i], 0x04);
-        fix.seqnum = static_cast<std::uint8_t>(i);
-        fix.set_contents(create_frame(fix.seqnum, msg_body));
-        std::size_t next_power_of_two = 1;
-        while (next_power_of_two < test_sizes[i])
-            next_power_of_two *= 2;
+        BOOST_TEST_CONTEXT(new_size)
+        {
+            // Setup
+            u8vec msg_body(new_size, 0x04);
+            fix.seqnum = static_cast<std::uint8_t>(new_size);
+            fix.set_contents(create_frame(fix.seqnum, msg_body));
+            std::size_t next_power_of_two = 1;
+            while (next_power_of_two < new_size)
+                next_power_of_two *= 2;
 
-        // Prepare read
-        fix.reader.prepare_read(fix.seqnum);
+            // Prepare read
+            fix.reader.prepare_read(fix.seqnum);
 
-        // Read the message into the buffer and trigger the op until completion.
-        // This will call prepare_buffer() internally
-        fix.read_until_completion();
+            // Read the message into the buffer and trigger the op until completion.
+            // This will call prepare_buffer() internally
+            fix.read_until_completion();
 
-        // Check results
-        BOOST_TEST_REQUIRE(fix.reader.error() == error_code());
-        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.reader.message(), msg_body);
-        BOOST_TEST(fix.buffsize() == next_power_of_two);
+            // Check results
+            BOOST_TEST_REQUIRE(fix.reader.error() == error_code());
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.reader.message(), msg_body);
+            BOOST_TEST(fix.buffsize() == next_power_of_two);
+        }
     }
 }
 

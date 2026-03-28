@@ -45,6 +45,18 @@ BOOST_AUTO_TEST_CASE(basic)
     BOOST_TEST(next_power_of_two<std::size_t>(33u) == 64u);
     BOOST_TEST(next_power_of_two<std::size_t>(65u) == 128u);
     BOOST_TEST(next_power_of_two<std::size_t>(129u) == 256u);
+
+    // n is random value
+    BOOST_TEST(next_power_of_two<std::size_t>(6u) == 8u);
+    BOOST_TEST(next_power_of_two<std::size_t>(13u) == 16u);
+    BOOST_TEST(next_power_of_two<std::size_t>(21u) == 32u);
+    BOOST_TEST(next_power_of_two<std::size_t>(45u) == 64u);
+    BOOST_TEST(next_power_of_two<std::size_t>(89u) == 128u);
+    BOOST_TEST(next_power_of_two<std::size_t>(200u) == 256u);
+    BOOST_TEST(next_power_of_two<std::size_t>(300u) == 512u);
+    BOOST_TEST(next_power_of_two<std::size_t>(400u) == 512u);
+    BOOST_TEST(next_power_of_two<std::size_t>(505u) == 512u);
+    BOOST_TEST(next_power_of_two<std::size_t>(888u) == 1024u);
 }
 
 BOOST_AUTO_TEST_CASE(different_types)
@@ -63,7 +75,7 @@ BOOST_AUTO_TEST_CASE(different_types)
     
     // uint32_t
     BOOST_TEST(next_power_of_two<std::uint32_t>(0u) == 1u);
-    BOOST_TEST(next_power_of_two<std::uint32_t>(100000) == 131072u);
+    BOOST_TEST(next_power_of_two<std::uint32_t>(100000u) == 131072u);
     BOOST_TEST(next_power_of_two<std::uint32_t>(1u << 30) == 1u << 30);
     BOOST_TEST(next_power_of_two<std::uint32_t>((1u << 30) + 1) == 1u << 31);
     
