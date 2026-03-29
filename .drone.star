@@ -86,6 +86,18 @@ def _pipeline(
 ):
     steps = []
 
+    # Volumes, common to all steps
+    volumes = [
+        {
+            "name": "mysql-socket",
+            "path": "/var/run/mysqld"
+        },
+        {
+            "name": "tls-certificates",
+            "path": "/tls"
+        }
+    ]
+
     # Disable ASLR
     if disable_aslr:
         steps.append({
@@ -102,8 +114,9 @@ def _pipeline(
             "name": "Generate certificates",
             "image": image,
             "pull": "if-not-exists",
+            "volumes": volumes,
             "commands": [
-                "python tools/ci/gen-certificates.py"
+                "python tools/ci/gen-certificates.py /tls"
             ]
         })
     
@@ -127,16 +140,7 @@ def _pipeline(
                     --ssl-cert=/tls/server-cert.pem \
                     --ssl-key=/tls/server-key.pem"
             ],
-            "volumes": [
-                {
-                    "name": "mysql-socket",
-                    "path": "/var/run/mysqld"
-                },
-                {
-                    "name": "tls-certificates",
-                    "path": "/opt/ci-tls-mysql:/tls"
-                }
-            ]
+            "volumes": volumes
         })
     
     # Run the build
@@ -145,10 +149,7 @@ def _pipeline(
         "image": image,
         "pull": "if-not-exists",
         "privileged": arch == "arm64", # TSAN tests fail otherwise (personality syscall)
-        "volumes":[{
-            "name": "mysql-socket",
-            "path": "/var/run/mysqld"
-        }] if db != None else [],
+        "volumes": volumes,
         "commands": [command]
     })
 
@@ -175,7 +176,7 @@ def _pipeline(
                 "name": "tls-certificates",
                 "temp": {}
             }
-        ] if db != None else []
+        ]
     }
 
 
