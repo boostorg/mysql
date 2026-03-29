@@ -75,6 +75,27 @@ def _find_package_b2_command(source_dir, generator):
                 '--generator="{}" '.format(generator)
 
 
+def _make_entrypoint(db):
+    if db.startswith('mysql:'):
+        # MySQL generic. Sanitize UNIX socket permissions and launch the server with the adequate TLS files
+        res = "chown -R mysql:mysql /var/run/mysqld && /usr/local/bin/docker-entrypoint.sh mysqld " \
+                    "--ssl-ca=/tls/ca-cert.pem "\
+                    "--ssl-cert=/tls/server-cert.pem " \
+                    "--ssl-key=/tls/server-key.pem "
+        if db.startswith('mysql:8.'):
+            # v8.x needs this flag to enable mysql_native_password
+            res += "--mysql-native-password=ON"
+    else:
+        # MariaDB changed the default socket path, so we provide it explicitly
+        res = "chown -R mysql:mysql /var/run/mysqld && /usr/local/bin/docker-entrypoint.sh mariadbd " \
+                    "--ssl-ca=/tls/ca-cert.pem "\
+                    "--ssl-cert=/tls/server-cert.pem " \
+                    "--ssl-key=/tls/server-key.pem " \
+                    "--socket=/var/run/mysqld/mysqld.sock"
+
+    return res
+
+
 def _pipeline(
     name,
     image,
@@ -124,7 +145,7 @@ def _pipeline(
     if db != None:
         steps.append({
             "name": "mysql",
-            "image": db.replace('-', ':'),
+            "image": db,
             "pull": "if-not-exists",
             "detach": True,
             "environment": {
@@ -134,11 +155,7 @@ def _pipeline(
             "entrypoint": [
                 "/bin/bash",
                 "-c",
-                "chown -R mysql:mysql /var/run/mysqld /usr/local/bin/docker-entrypoint.sh mysqld " \
-                    "--ssl-ca=/tls/ca-cert.pem "\
-                    "--ssl-cert=/tls/server-cert.pem " \
-                    "--ssl-key=/tls/server-key.pem " \
-                    "--mysql-native-password=ON"
+                _make_entrypoint(db)
             ],
             "volumes": volumes
         })
@@ -195,7 +212,7 @@ def linux_b2(
     valgrind=0,
     arch='amd64',
     fail_if_no_openssl=1,
-    db='mysql-8.4.1',
+    db='mysql:8.4.1',
 ):
     command = _b2_command(
         source_dir='$(pwd)',
@@ -247,7 +264,7 @@ def windows_b2(
 def linux_cmake(
     name,
     image,
-    db='mysql-8.4.1',
+    db='mysql:8.4.1',
     build_shared_libs=0,
     cmake_build_type='Debug',
     cxxstd='20',
@@ -316,7 +333,7 @@ def bench(name):
                 '--server-host=mysql ' + \
                 '--connection-pool-iters=1 ' + \
                 '--protocol-iters=1 '
-    return _pipeline(name=name, image=_image('build-bench:1'), os='linux', command=command, db='mysql-8.4.1')
+    return _pipeline(name=name, image=_image('build-bench:1'), os='linux', command=command, db='mysql:8.4.1')
 
 
 def docs(name):
