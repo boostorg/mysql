@@ -349,8 +349,8 @@ def docs(name):
 def main(ctx):
     return [
         # CMake Linux
-        linux_cmake('Linux CMake MySQL 5.x',      _image('build-gcc14:1'), db='mysql-5_7_41:1',   build_shared_libs=0),
-        linux_cmake('Linux CMake MariaDB',        _image('build-gcc14:1'), db='mariadb-11_4_2:1', build_shared_libs=1),
+        linux_cmake('Linux CMake MySQL 5.x',      _image('build-gcc14:1'), db='mysql:5.7.41',   build_shared_libs=0),
+        linux_cmake('Linux CMake MariaDB',        _image('build-gcc14:1'), db='mariadb:11.4.2', build_shared_libs=1),
         linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8:3'), cxxstd='11', install_test=0),
         linux_cmake('Linux CMake gcc Release',    _image('build-gcc14:1'), cmake_build_type='Release'),
         linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc14:1'), cmake_build_type='MinSizeRel'),
@@ -381,7 +381,7 @@ def main(ctx):
         linux_b2('Linux B2 clang-10',             _image('build-clang10:2'),       toolset='clang-10',  cxxstd='17,20', variant='debug'),
         linux_b2('Linux B2 clang-11',             _image('build-clang11:2'),       toolset='clang-11',  cxxstd='20'),
         linux_b2('Linux B2 clang-12',             _image('build-clang12:2'),       toolset='clang-12',  cxxstd='20', variant='debug', stdlib='libc++', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-13',             _image('build-clang13:1'),       toolset='clang-13',  cxxstd='20', db='mysql-9_4_0:1'),
+        linux_b2('Linux B2 clang-13',             _image('build-clang13:1'),       toolset='clang-13',  cxxstd='20', db='mysql:9.4.0'),
         linux_b2('Linux B2 clang-14',             _image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', variant='debug'),
         linux_b2('Linux B2 clang-15',             _image('build-clang15:1'),       toolset='clang-15',  cxxstd='20', variant='debug'),
         linux_b2('Linux B2 clang-16',             _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
@@ -401,7 +401,7 @@ def main(ctx):
         linux_b2('Linux B2 gcc-10',               _image('build-gcc10:1'),         toolset='gcc-10',    cxxstd='17'),
         linux_b2('Linux B2 gcc-11',               _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20'),
         linux_b2('Linux B2 gcc-12',               _image('build-gcc12:1'),         toolset='gcc-12',    cxxstd='20,23', variant='debug'),
-        linux_b2('Linux B2 gcc-13',               _image('build-gcc13:1'),         toolset='gcc-13',    cxxstd='20', db='mysql-9_4_0:1'),
+        linux_b2('Linux B2 gcc-13',               _image('build-gcc13:1'),         toolset='gcc-13',    cxxstd='20', db='mysql:9.4.0'),
         linux_b2('Linux B2 gcc-14',               _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23'),
         linux_b2('Linux B2 gcc-15',               _image('build-gcc15:1'),         toolset='gcc-15',    cxxstd='23'),
         linux_b2('Linux B2 gcc-sanit',            _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
