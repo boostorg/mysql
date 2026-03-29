@@ -134,11 +134,7 @@ def _pipeline(
             "entrypoint": [
                 "/bin/bash",
                 "-c",
-                r"chown -R mysql:mysql /var/run/mysqld && \
-                    /usr/local/bin/docker-entrypoint.sh mysqld \
-                    --ssl-ca=/tls/ca-cert.pem \
-                    --ssl-cert=/tls/server-cert.pem \
-                    --ssl-key=/tls/server-key.pem"
+                "chown -R mysql:mysql /var/run/mysqld && /usr/local/bin/docker-entrypoint.sh mysqld --ssl-ca=/tls/ca-cert.pem --ssl-cert=/tls/server-cert.pem --ssl-key=/tls/server-key.pem"
             ],
             "volumes": volumes
         })
