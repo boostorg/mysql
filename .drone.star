@@ -78,19 +78,19 @@ def _find_package_b2_command(source_dir, generator):
 def _make_entrypoint(db):
     if db.startswith('mysql:'):
         # MySQL generic. Sanitize UNIX socket permissions and launch the server with the adequate TLS files
-        res = "chown -R mysql:mysql /var/run/mysqld && /usr/local/bin/docker-entrypoint.sh mysqld " \
-                    "--ssl-ca=/tls/ca-cert.pem "\
-                    "--ssl-cert=/tls/server-cert.pem " \
+        res = "chown -R mysql:mysql /var/run/mysqld && /usr/local/bin/docker-entrypoint.sh mysqld " + \
+                    "--ssl-ca=/tls/ca-cert.pem " + \
+                    "--ssl-cert=/tls/server-cert.pem " + \
                     "--ssl-key=/tls/server-key.pem "
         if db.startswith('mysql:8.'):
             # v8.x needs this flag to enable mysql_native_password
             res += "--mysql-native-password=ON"
     else:
         # MariaDB changed the default socket path, so we provide it explicitly
-        res = "chown -R mysql:mysql /var/run/mysqld && /usr/local/bin/docker-entrypoint.sh mariadbd " \
-                    "--ssl-ca=/tls/ca-cert.pem "\
-                    "--ssl-cert=/tls/server-cert.pem " \
-                    "--ssl-key=/tls/server-key.pem " \
+        res = "chown -R mysql:mysql /var/run/mysqld && /usr/local/bin/docker-entrypoint.sh mariadbd " + \
+                    "--ssl-ca=/tls/ca-cert.pem " + \
+                    "--ssl-cert=/tls/server-cert.pem " + \
+                    "--ssl-key=/tls/server-key.pem " + \
                     "--socket=/var/run/mysqld/mysqld.sock"
 
     return res
