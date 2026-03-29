@@ -1,0 +1,27 @@
+services:
+  mysql:
+    image: mysql:8.4.1
+    network_mode: host
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "1"
+      MYSQL_ROOT_PASSWORD: ""
+    volumes:
+      - /opt/ci-tls-mysql:/tls
+      - /var/run/mysqld:/var/run/mysqld
+    command: >
+      /bin/bash -c 'chown -R mysql:mysql /var/run/mysqld && \
+        /usr/local/bin/docker-entrypoint.sh mysqld \
+          --mysql-native-password=ON \
+          --ssl-ca=/tls/ca-cert.pem \
+          --ssl-cert=/tls/server-cert.pem \
+          --ssl-key=/tls/server-key.pem
+        '
+  builder:
+    container_name: builder
+    image: ghcr.io/anarthal/cpp-ci-containers/build-gcc14-lcov:1
+    network_mode: host
+    tty: true
+    volumes:
+      - ./:/boost-mysql
+      - /opt/ci-tls-mysql:/tls
+      - /var/run/mysqld:/var/run/mysqld
