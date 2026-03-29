@@ -85,6 +85,8 @@ def _pipeline(
     disable_aslr=False
 ):
     steps = []
+
+    # Disable ASLR
     if disable_aslr:
         steps.append({
             "name": "Disable ASLR",
@@ -93,6 +95,51 @@ def _pipeline(
             "privileged": True,
             "commands": ["echo 0 | tee /proc/sys/kernel/randomize_va_space"]
         })
+    
+    # Generate certificates
+    if db != None:
+        steps.append({
+            "name": "Generate certificates",
+            "image": image,
+            "pull": "if-not-exists",
+            "commands": [
+                "python tools/ci/gen-certificates.py"
+            ]
+        })
+    
+    # Start the database
+    if db != None:
+        steps.append({
+            "name": "mysql",
+            "image": db.replace('-', ':'),
+            "pull": "if-not-exists",
+            "detached": True,
+            "environment": {
+                "MYSQL_ALLOW_EMPTY_PASSWORD": "1",
+                "MYSQL_ROOT_PASSWORD": ""
+            },
+            "entrypoint": [
+                "/bin/bash",
+                "-c",
+                r"chown -R mysql:mysql /var/run/mysqld && \
+                    /usr/local/bin/docker-entrypoint.sh mysqld \
+                    --ssl-ca=/tls/ca-cert.pem \
+                    --ssl-cert=/tls/server-cert.pem \
+                    --ssl-key=/tls/server-key.pem"
+            ],
+            "volumes": [
+                {
+                    "name": "mysql-socket",
+                    "path": "/var/run/mysqld"
+                },
+                {
+                    "name": "tls-certificates",
+                    "path": "/opt/ci-tls-mysql:/tls"
+                }
+            ]
+        })
+    
+    # Run the build
     steps.append({
         "name": "Build and run",
         "image": image,
@@ -119,18 +166,16 @@ def _pipeline(
         },
         "node": {},
         "steps": steps,
-        "services": [{
-            "name": "mysql",
-            "image": "ghcr.io/anarthal/cpp-ci-containers/{}".format(db),
-            "volumes": [{
+        "volumes": [
+            {
                 "name": "mysql-socket",
-                "path": "/var/run/mysqld"
-            }]
-        }] if db != None else [],
-        "volumes": [{
-            "name": "mysql-socket",
-            "temp": {}
-        }] if db != None else []
+                "temp": {}
+            },
+            {
+                "name": "tls-certificates",
+                "temp": {}
+            }
+        ] if db != None else []
     }
 
 
@@ -149,7 +194,7 @@ def linux_b2(
     valgrind=0,
     arch='amd64',
     fail_if_no_openssl=1,
-    db='mysql-8_4_1:1',
+    db='mysql-8.4.1',
 ):
     command = _b2_command(
         source_dir='$(pwd)',
@@ -201,7 +246,7 @@ def windows_b2(
 def linux_cmake(
     name,
     image,
-    db='mysql-8_4_1:1',
+    db='mysql-8.4.1',
     build_shared_libs=0,
     cmake_build_type='Debug',
     cxxstd='20',
@@ -270,7 +315,7 @@ def bench(name):
                 '--server-host=mysql ' + \
                 '--connection-pool-iters=1 ' + \
                 '--protocol-iters=1 '
-    return _pipeline(name=name, image=_image('build-bench:1'), os='linux', command=command, db='mysql-8_4_1:1')
+    return _pipeline(name=name, image=_image('build-bench:1'), os='linux', command=command, db='mysql-8.4.1')
 
 
 def docs(name):
@@ -285,79 +330,79 @@ def docs(name):
 
 def main(ctx):
     return [
-        # CMake Linux
-        linux_cmake('Linux CMake MySQL 5.x',      _image('build-gcc14:1'), db='mysql-5_7_41:1',   build_shared_libs=0),
-        linux_cmake('Linux CMake MariaDB',        _image('build-gcc14:1'), db='mariadb-11_4_2:1', build_shared_libs=1),
-        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8:3'), cxxstd='11', install_test=0),
-        linux_cmake('Linux CMake gcc Release',    _image('build-gcc14:1'), cmake_build_type='Release'),
-        linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc14:1'), cmake_build_type='MinSizeRel'),
-        linux_cmake_noopenssl('Linux CMake no OpenSSL'),
-        linux_cmake_nointeg('Linux CMake without integration tests'),
+        # # CMake Linux
+        # linux_cmake('Linux CMake MySQL 5.x',      _image('build-gcc14:1'), db='mysql-5_7_41:1',   build_shared_libs=0),
+        # linux_cmake('Linux CMake MariaDB',        _image('build-gcc14:1'), db='mariadb-11_4_2:1', build_shared_libs=1),
+        # linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8:3'), cxxstd='11', install_test=0),
+        # linux_cmake('Linux CMake gcc Release',    _image('build-gcc14:1'), cmake_build_type='Release'),
+        # linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc14:1'), cmake_build_type='MinSizeRel'),
+        # linux_cmake_noopenssl('Linux CMake no OpenSSL'),
+        # linux_cmake_nointeg('Linux CMake without integration tests'),
 
-        # CMake Windows
-        windows_cmake('Windows CMake static', build_shared_libs=0),
-        windows_cmake('Windows CMake shared', build_shared_libs=1),
+        # # CMake Windows
+        # windows_cmake('Windows CMake static', build_shared_libs=0),
+        # windows_cmake('Windows CMake shared', build_shared_libs=1),
 
-        # find_package with B2 distribution
-        find_package_b2_linux('Linux find_package b2 distribution'),
-        find_package_b2_windows('Windows find_package b2 distribution'),
+        # # find_package with B2 distribution
+        # find_package_b2_linux('Linux find_package b2 distribution'),
+        # find_package_b2_windows('Windows find_package b2 distribution'),
 
-        # B2 Linux. Please try to keep this below 3 configurations per build so CI doesn't take forever
-        # Default Ubuntu compilers:
-        #   Ubuntu 16.04: gcc5,  clang 3.8
-        #   Ubuntu 18.04: gcc7,  clang 7
-        #   Ubuntu 20.04: gcc9,  clang 10
-        #   Ubuntu 22.04: gcc11, clang 14
-        #   Ubuntu 24.04: gcc13, clang 18
-        linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
-        linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14', separate_compilation=0),
-        linux_b2('Linux B2 clang-6',              _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14'),
-        linux_b2('Linux B2 clang-7',              _image('build-clang7:2'),        toolset='clang-7',   cxxstd='14,17'),
-        linux_b2('Linux B2 clang-8',              _image('build-clang8:2'),        toolset='clang-8',   cxxstd='14', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-9',              _image('build-clang9:2'),        toolset='clang-9',   cxxstd='17', variant='release'),
-        linux_b2('Linux B2 clang-10',             _image('build-clang10:2'),       toolset='clang-10',  cxxstd='17,20', variant='debug'),
-        linux_b2('Linux B2 clang-11',             _image('build-clang11:2'),       toolset='clang-11',  cxxstd='20'),
-        linux_b2('Linux B2 clang-12',             _image('build-clang12:2'),       toolset='clang-12',  cxxstd='20', variant='debug', stdlib='libc++', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-13',             _image('build-clang13:1'),       toolset='clang-13',  cxxstd='20', db='mysql-9_4_0:1'),
-        linux_b2('Linux B2 clang-14',             _image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', variant='debug'),
-        linux_b2('Linux B2 clang-15',             _image('build-clang15:1'),       toolset='clang-15',  cxxstd='20', variant='debug'),
-        linux_b2('Linux B2 clang-16',             _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-17-honly-rls',   _image('build-clang17:1'),       toolset='clang-17',  cxxstd='20', variant='release', separate_compilation=0),
-        linux_b2('Linux B2 clang-18-honly-dbg',   _image('build-clang18:1'),       toolset='clang-18',  cxxstd='20', variant='debug', separate_compilation=0),
-        linux_b2('Linux B2 clang-19-libc++',      _image('build-clang19:1'),       toolset='clang-19',  cxxstd='23', stdlib='libc++'),
+        # # B2 Linux. Please try to keep this below 3 configurations per build so CI doesn't take forever
+        # # Default Ubuntu compilers:
+        # #   Ubuntu 16.04: gcc5,  clang 3.8
+        # #   Ubuntu 18.04: gcc7,  clang 7
+        # #   Ubuntu 20.04: gcc9,  clang 10
+        # #   Ubuntu 22.04: gcc11, clang 14
+        # #   Ubuntu 24.04: gcc13, clang 18
+        # linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
+        # linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14', separate_compilation=0),
+        # linux_b2('Linux B2 clang-6',              _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14'),
+        # linux_b2('Linux B2 clang-7',              _image('build-clang7:2'),        toolset='clang-7',   cxxstd='14,17'),
+        # linux_b2('Linux B2 clang-8',              _image('build-clang8:2'),        toolset='clang-8',   cxxstd='14', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        # linux_b2('Linux B2 clang-9',              _image('build-clang9:2'),        toolset='clang-9',   cxxstd='17', variant='release'),
+        # linux_b2('Linux B2 clang-10',             _image('build-clang10:2'),       toolset='clang-10',  cxxstd='17,20', variant='debug'),
+        # linux_b2('Linux B2 clang-11',             _image('build-clang11:2'),       toolset='clang-11',  cxxstd='20'),
+        # linux_b2('Linux B2 clang-12',             _image('build-clang12:2'),       toolset='clang-12',  cxxstd='20', variant='debug', stdlib='libc++', address_sanitizer=1, undefined_sanitizer=1),
+        # linux_b2('Linux B2 clang-13',             _image('build-clang13:1'),       toolset='clang-13',  cxxstd='20', db='mysql-9_4_0:1'),
+        # linux_b2('Linux B2 clang-14',             _image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', variant='debug'),
+        # linux_b2('Linux B2 clang-15',             _image('build-clang15:1'),       toolset='clang-15',  cxxstd='20', variant='debug'),
+        # linux_b2('Linux B2 clang-16',             _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        # linux_b2('Linux B2 clang-17-honly-rls',   _image('build-clang17:1'),       toolset='clang-17',  cxxstd='20', variant='release', separate_compilation=0),
+        # linux_b2('Linux B2 clang-18-honly-dbg',   _image('build-clang18:1'),       toolset='clang-18',  cxxstd='20', variant='debug', separate_compilation=0),
+        # linux_b2('Linux B2 clang-19-libc++',      _image('build-clang19:1'),       toolset='clang-19',  cxxstd='23', stdlib='libc++'),
         linux_b2('Linux B2 clang-20',             _image('build-clang20:1'),       toolset='clang-20',  cxxstd='23'),
-        linux_b2('Linux B2 clang-sanit',          _image('build-clang20:1'),       toolset='clang-20',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
+        # linux_b2('Linux B2 clang-sanit',          _image('build-clang20:1'),       toolset='clang-20',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        # linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
 
-        linux_b2('Linux B2 gcc-5',                _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
-        linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
-        linux_b2('Linux B2 gcc-6-honly-dbg',      _image('build-gcc6:1'),          toolset='gcc-6',     cxxstd='14', variant='debug', separate_compilation=0),
-        linux_b2('Linux B2 gcc-7',                _image('build-gcc7:1'),          toolset='gcc-7',     cxxstd='14,17', variant='debug'),
-        linux_b2('Linux B2 gcc-8',                _image('build-gcc8:1'),          toolset='gcc-8',     cxxstd='17'),
-        linux_b2('Linux B2 gcc-9',                _image('build-gcc9:1'),          toolset='gcc-9',     cxxstd='14,17', variant='debug'),
-        linux_b2('Linux B2 gcc-10',               _image('build-gcc10:1'),         toolset='gcc-10',    cxxstd='17'),
-        linux_b2('Linux B2 gcc-11',               _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20'),
-        linux_b2('Linux B2 gcc-12',               _image('build-gcc12:1'),         toolset='gcc-12',    cxxstd='20,23', variant='debug'),
-        linux_b2('Linux B2 gcc-13',               _image('build-gcc13:1'),         toolset='gcc-13',    cxxstd='20', db='mysql-9_4_0:1'),
-        linux_b2('Linux B2 gcc-14',               _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23'),
-        linux_b2('Linux B2 gcc-15',               _image('build-gcc15:1'),         toolset='gcc-15',    cxxstd='23'),
-        linux_b2('Linux B2 gcc-sanit',            _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 gcc-valgrind',         _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', valgrind=1),
-        linux_b2('Linux B2 gcc-11-arm64',         _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20', arch='arm64', variant='release'),
-        linux_b2('Linux B2 gcc-11-arm64-sanit',   _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20', arch='arm64', variant='debug'),
-        linux_b2('Linux B2 noopenssl',            _image('build-noopenssl:1'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
+        # linux_b2('Linux B2 gcc-5',                _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
+        # linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
+        # linux_b2('Linux B2 gcc-6-honly-dbg',      _image('build-gcc6:1'),          toolset='gcc-6',     cxxstd='14', variant='debug', separate_compilation=0),
+        # linux_b2('Linux B2 gcc-7',                _image('build-gcc7:1'),          toolset='gcc-7',     cxxstd='14,17', variant='debug'),
+        # linux_b2('Linux B2 gcc-8',                _image('build-gcc8:1'),          toolset='gcc-8',     cxxstd='17'),
+        # linux_b2('Linux B2 gcc-9',                _image('build-gcc9:1'),          toolset='gcc-9',     cxxstd='14,17', variant='debug'),
+        # linux_b2('Linux B2 gcc-10',               _image('build-gcc10:1'),         toolset='gcc-10',    cxxstd='17'),
+        # linux_b2('Linux B2 gcc-11',               _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20'),
+        # linux_b2('Linux B2 gcc-12',               _image('build-gcc12:1'),         toolset='gcc-12',    cxxstd='20,23', variant='debug'),
+        # linux_b2('Linux B2 gcc-13',               _image('build-gcc13:1'),         toolset='gcc-13',    cxxstd='20', db='mysql-9_4_0:1'),
+        # linux_b2('Linux B2 gcc-14',               _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23'),
+        # linux_b2('Linux B2 gcc-15',               _image('build-gcc15:1'),         toolset='gcc-15',    cxxstd='23'),
+        # linux_b2('Linux B2 gcc-sanit',            _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        # linux_b2('Linux B2 gcc-valgrind',         _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', valgrind=1),
+        # linux_b2('Linux B2 gcc-11-arm64',         _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20', arch='arm64', variant='release'),
+        # linux_b2('Linux B2 gcc-11-arm64-sanit',   _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20', arch='arm64', variant='debug'),
+        # linux_b2('Linux B2 noopenssl',            _image('build-noopenssl:1'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
 
-        # B2 Windows
-        windows_b2('Windows B2 msvc14.1 32-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
-        windows_b2('Windows B2 msvc14.1 64-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='14,17',    variant='release'),
-        windows_b2('Windows B2 msvc14.2',             _win_image('build-msvc14_2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release'),
-        windows_b2('Windows B2 msvc14.3',             _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release'),
-        windows_b2('Windows B2 msvc14.3-ts-executor', _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
+        # # B2 Windows
+        # windows_b2('Windows B2 msvc14.1 32-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
+        # windows_b2('Windows B2 msvc14.1 64-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='14,17',    variant='release'),
+        # windows_b2('Windows B2 msvc14.2',             _win_image('build-msvc14_2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release'),
+        # windows_b2('Windows B2 msvc14.3',             _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release'),
+        # windows_b2('Windows B2 msvc14.3-ts-executor', _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
 
-        # Benchmarks
-        bench('Benchmarks'),
+        # # Benchmarks
+        # bench('Benchmarks'),
 
-        # Docs
-        docs('Linux docs')
+        # # Docs
+        # docs('Linux docs')
     ]
 
