@@ -448,7 +448,7 @@ BOOST_AUTO_TEST_CASE(not_enough_space)
     auto ec = buff.grow_to_fit(100);
 
     BOOST_TEST(ec == error_code());
-    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 100);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 120);
     checker.check_reallocation();
 }
 
@@ -463,7 +463,7 @@ BOOST_AUTO_TEST_CASE(one_missing_byte)
     auto ec = buff.grow_to_fit(9);
 
     BOOST_TEST(ec == error_code());
-    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 9);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 24);
     checker.check_reallocation();
 }
 
@@ -518,7 +518,7 @@ BOOST_AUTO_TEST_CASE(lt_max_size)
     auto ec = buff.grow_to_fit(7);
     BOOST_TEST(ec == error_code());
 
-    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 7);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 8);
     checker.check_reallocation();
 }
 
@@ -563,25 +563,55 @@ BOOST_AUTO_TEST_CASE(several_grows)
     // Grow with reallocation
     auto ec = buff.grow_to_fit(4);
     BOOST_TEST(ec == error_code());
-    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 4);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 8);
 
     // Place some more bytes in the buffer
     copy_to_free_area(buff, {0x09, 0x0a});
     buff.move_to_pending(2);
-    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a}, 2);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a}, 6);
 
     // Grow without reallocation
     ec = buff.grow_to_fit(2);
     BOOST_TEST(ec == error_code());
-    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a}, 2);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a}, 6);
     copy_to_free_area(buff, {0x0b, 0x0c});
     buff.move_to_pending(2);
-    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c}, 0);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c}, 4);
 
     // Fail when attempting to grow past max size
     ec = buff.grow_to_fit(5);
     BOOST_TEST(ec == client_errc::max_buffer_size_exceeded);
-    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c}, 0);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c}, 4);
+}
+
+BOOST_AUTO_TEST_CASE(is_power_of_two)
+{
+    read_buffer buff(8);
+
+    std::size_t test_sizes[] = {
+        5, 7, 8,
+        9, 15, 16,
+        17, 31, 32,
+        33, 63, 64,
+        65, 127, 128,
+        129, 255, 256,
+        257, 511, 512, 513
+    };
+
+    // Test that buffer capacity grows to powers of two
+    for (auto new_size : test_sizes)
+    {
+        BOOST_TEST_CONTEXT(new_size)
+        {
+            std::size_t next_power_of_two = 1;
+            while (next_power_of_two < new_size)
+                next_power_of_two *= 2;
+            auto ec = buff.grow_to_fit(new_size);
+            BOOST_TEST(ec == error_code());
+            BOOST_TEST(buff.size() == next_power_of_two);
+        }
+    }
+    BOOST_TEST(buff.size() == 1024u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
