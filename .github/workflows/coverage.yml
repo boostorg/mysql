@@ -24,7 +24,9 @@ jobs:
       - name: Start containers
         uses: hoverkraft-tech/compose-action@v2.5.0
         with:
-          compose-file: ./tools/ci/docker-compose-coverage.yml
+          compose-file: ./tools/ci/docker-compose.yml
+        env:
+          BUILDER_IMAGE: ghcr.io/anarthal/cpp-ci-containers/build-gcc14-lcov:1
 
       - name: Build code
         run: |

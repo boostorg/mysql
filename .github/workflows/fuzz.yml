@@ -26,7 +26,9 @@ jobs:
       - name: Start containers
         uses: hoverkraft-tech/compose-action@v2.5.0
         with:
-          compose-file: ./tools/ci/docker-compose-fuzz.yml
+          compose-file: ./tools/ci/docker-compose.yml
+        env:
+          BUILDER_IMAGE: ghcr.io/anarthal/cpp-ci-containers/build-clang18:1
 
       - name: Restore corpus
         uses: actions/cache@v4

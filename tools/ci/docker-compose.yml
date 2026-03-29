@@ -18,7 +18,7 @@ services:
         '
   builder:
     container_name: builder
-    image: ghcr.io/anarthal/cpp-ci-containers/build-gcc14-lcov:1
+    image: ${BUILDER_IMAGE}
     network_mode: host
     tty: true
     volumes:
