@@ -22,6 +22,6 @@ services:
     network_mode: host
     tty: true
     volumes:
-      - ./:/boost-mysql
+      - ../../:/boost-mysql
       - /opt/ci-tls-mysql:/tls
       - /var/run/mysqld:/var/run/mysqld
