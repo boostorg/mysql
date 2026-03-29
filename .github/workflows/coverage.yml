@@ -28,7 +28,7 @@ jobs:
 
       - name: Build code
         run: |
-          docker exec builder python tools/ci/main.py \
+          docker exec builder python /boost-mysql/tools/ci/main.py \
             --source-dir=/boost-mysql \
             b2 \
             --server-host=localhost \
