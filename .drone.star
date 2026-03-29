@@ -126,7 +126,7 @@ def _pipeline(
             "name": "mysql",
             "image": db.replace('-', ':'),
             "pull": "if-not-exists",
-            "detached": True,
+            "detach": True,
             "environment": {
                 "MYSQL_ALLOW_EMPTY_PASSWORD": "1",
                 "MYSQL_ROOT_PASSWORD": ""
