@@ -117,7 +117,7 @@ def _pipeline(
             "name": "tls-certificates",
             "path": "/tls"
         }
-    ]
+    ] if db != None else []
 
     # Disable ASLR
     if disable_aslr:
@@ -130,14 +130,17 @@ def _pipeline(
         })
     
     # Generate certificates
-    if db != None:
+    gen_certificates = db != None or os == "windows"
+    cert_path = "C:\\ssl\\" if os == "windows" else "/tls/"
+    ca_path = cert_path + "ca-cert.pem"
+    if gen_certificates:
         steps.append({
             "name": "Generate certificates",
             "image": image,
             "pull": "if-not-exists",
             "volumes": volumes,
             "commands": [
-                "python tools/ci/gen-certificates.py /tls"
+                "python tools/ci/gen-certificates.py {}".format(cert_path)
             ]
         })
     
@@ -159,6 +162,15 @@ def _pipeline(
             ],
             "volumes": volumes
         })
+    elif os == "windows":
+        steps.append({
+            "name": "Restart MySQL",
+            "commands": [
+                "net stop MySQL",
+                "net start MySQL"
+            ]
+        })
+
     
     # Run the build
     steps.append({
@@ -167,6 +179,9 @@ def _pipeline(
         "pull": "if-not-exists",
         "privileged": arch == "arm64", # TSAN tests fail otherwise (personality syscall)
         "volumes": volumes,
+        "environment": {
+            "BOOST_MYSQL_CA_CERTIFICATE": ca_path
+        },
         "commands": [command]
     })
 
