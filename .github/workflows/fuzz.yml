@@ -47,7 +47,7 @@ jobs:
       - name: Copy crashes from container
         if: always()
         run: |
-          docker exec builder bash -c 'cp /root/boost-root/crash-* /root/boost-root/leak-* /root/boost-root/timeout-* /boost-mysql/'
+          docker exec builder bash -c 'cp /root/boost-root/crash-* /root/boost-root/leak-* /root/boost-root/timeout-* /boost-mysql/ || true'
 
       - name: Archive any crashes as an artifact
         uses: actions/upload-artifact@v4
