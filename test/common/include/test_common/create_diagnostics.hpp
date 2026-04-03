@@ -18,17 +18,17 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-inline diagnostics create_server_diag(string_view s)
+inline diagnostics create_server_diag(std::string_view s)
 {
     diagnostics res;
-    detail::access::get_impl(res).assign_server(s);
+    detail::access::get_impl(res).assign_server(std::string(s));
     return res;
 }
 
-inline diagnostics create_client_diag(string_view s)
+inline diagnostics create_client_diag(std::string_view s)
 {
     diagnostics res;
-    detail::access::get_impl(res).assign_client(s);
+    detail::access::get_impl(res).assign_client(std::string(s));
     return res;
 }
 

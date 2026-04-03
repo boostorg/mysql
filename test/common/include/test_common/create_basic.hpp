@@ -17,8 +17,6 @@
 
 #include <boost/mysql/detail/access.hpp>
 
-#include <boost/test/unit_test.hpp>
-
 #include <cstddef>
 #include <vector>
 
@@ -27,7 +25,7 @@ namespace mysql {
 namespace test {
 
 template <class... Types>
-BOOST_CXX14_CONSTEXPR std::array<field_view, sizeof...(Types)> make_fv_arr(Types&&... args)
+constexpr std::array<field_view, sizeof...(Types)> make_fv_arr(Types&&... args)
 {
     return std::array<field_view, sizeof...(Types)>{{field_view(std::forward<Types>(args))...}};
 }
@@ -69,21 +67,21 @@ constexpr time maket(int hours, int mins, int secs, int micros = 0)
 }
 
 template <std::size_t N>
-constexpr string_view makesv(const char (&value)[N])
+constexpr std::string_view makesv(const char (&value)[N])
 {
     static_assert(N >= 1, "Expected a C-array literal");
     return string_view(value, N - 1);  // discard null terminator
 }
 
 template <std::size_t N>
-inline string_view makesv(const std::uint8_t (&value)[N])
+inline std::string_view makesv(const std::uint8_t (&value)[N])
 {
-    return string_view(reinterpret_cast<const char*>(value), N);
+    return std::string_view(reinterpret_cast<const char*>(value), N);
 }
 
-inline string_view makesv(const std::uint8_t* value, std::size_t size)
+inline std::string_view makesv(const std::uint8_t* value, std::size_t size)
 {
-    return string_view(reinterpret_cast<const char*>(value), size);
+    return std::string_view(reinterpret_cast<const char*>(value), size);
 }
 
 template <std::size_t N>

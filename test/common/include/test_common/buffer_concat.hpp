@@ -8,9 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_BUFFER_CONCAT_HPP
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_BUFFER_CONCAT_HPP
 
-#include <boost/core/span.hpp>
-
 #include <cstdint>
+#include <span>
 #include <vector>
 
 namespace boost {
@@ -29,14 +28,14 @@ class buffer_builder
 
 public:
     buffer_builder() = default;
-    buffer_builder& add(span<const std::uint8_t> value)
+    buffer_builder& add(std::span<const std::uint8_t> value)
     {
         buff_.insert(buff_.end(), value.begin(), value.end());
         return *this;
     }
     buffer_builder& add(const std::vector<std::uint8_t>& value)
     {
-        return add(span<const std::uint8_t>(value));
+        return add(std::span<const std::uint8_t>(value));
     }
     std::vector<std::uint8_t> build() { return std::move(buff_); }
 };

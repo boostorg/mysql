@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_IO_CONTEXT_FIXTURE_HPP
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_IO_CONTEXT_FIXTURE_HPP
 
-#include <boost/asio/io_context.hpp>
+#include <boost/corosio/io_context.hpp>
 
 namespace boost {
 namespace mysql {
@@ -16,7 +16,7 @@ namespace test {
 
 struct io_context_fixture
 {
-    asio::io_context ctx;
+    corosio::io_context ctx;
 
     // Checks that we effectively run out of work
     ~io_context_fixture();
