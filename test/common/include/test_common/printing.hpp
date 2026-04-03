@@ -28,6 +28,9 @@ std::ostream& operator<<(std::ostream& os, const row_view& v);
 class row;
 std::ostream& operator<<(std::ostream& os, const row& v);
 
+class metadata;
+std::ostream& operator<<(std::ostream& os, const metadata& v);
+
 enum class metadata_mode;
 std::ostream& operator<<(std::ostream& os, metadata_mode v);
 

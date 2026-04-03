@@ -42,7 +42,6 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/check_meta.hpp"
-#include "test_common/io_context_fixture.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/run_coro.hpp"
 #include "test_common/validate_string_contains.hpp"
@@ -97,6 +96,32 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, const diagnostics& diag
     const auto& impl = detail::access::get_impl(diag);
     return os << "diagnostics{ " << (impl.is_server ? ".server_message" : ".client_message") << " = \""
               << impl.msg << "\" }";
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, const metadata& value)
+{
+    // clang-format off
+    return os << "metadata{ "
+              << ".database = \"" << value.database()
+              << "\", .table = \"" << value.table()
+              << "\", .original_table = \"" << value.original_table()
+              << "\", .column_name = \"" << value.column_name()
+              << "\", .original_column_name = \"" << value.original_column_name()
+              << "\", .type = " << value.type()
+              << ", .decimals = " << value.decimals()
+              << ", .column_collation = " << value.column_collation()
+              << ", .column_length = " << value.column_length()
+              << ", .is_not_null = " << value.is_not_null()
+              << ", .is_primary_key = " << value.is_primary_key()
+              << ", .is_unique_key = " << value.is_unique_key()
+              << ", .is_multiple_key = " << value.is_multiple_key()
+              << ", .is_unsigned = " << value.is_unsigned()
+              << ", .is_zerofill = " << value.is_zerofill()
+              << ", .is_auto_increment = " << value.is_auto_increment()
+              << ", .has_no_default_value = " << value.has_no_default_value()
+              << ", .is_set_to_now_on_update = " << value.is_set_to_now_on_update()
+              << " }";
+    // clang-format on
 }
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, const row_view& value)
@@ -209,16 +234,6 @@ void boost::mysql::test::validate_string_contains(
                       << "   Called from " << loc << "\n";
         }
     }
-}
-
-//
-// io_context_fixture.hpp
-//
-boost::mysql::test::io_context_fixture::~io_context_fixture()
-{
-    // Verify that our tests don't leave unfinished work
-    ctx.poll();
-    BOOST_TEST(ctx.stopped());
 }
 
 //
