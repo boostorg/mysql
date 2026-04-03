@@ -7,12 +7,12 @@
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/column_type.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
@@ -25,6 +25,9 @@
 #include <boost/mysql/detail/access.hpp>
 
 #include <boost/assert/source_location.hpp>
+#include <boost/capy/ex/run_async.hpp>
+#include <boost/capy/task.hpp>
+#include <boost/corosio/io_context.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -41,10 +44,12 @@
 #include "test_common/check_meta.hpp"
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/run_coro.hpp"
 #include "test_common/validate_string_contains.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using namespace std::chrono_literals;
 
 //
 // assert_buffer_equals.hpp
@@ -155,7 +160,10 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, const character_set& v)
 //
 // check_meta.hpp
 //
-void boost::mysql::test::check_meta(metadata_collection_view meta, const std::vector<column_type>& expected_types)
+void boost::mysql::test::check_meta(
+    metadata_collection_view meta,
+    const std::vector<column_type>& expected_types
+)
 {
     auto types = meta | std::ranges::views::transform([](const metadata& m) { return m.type(); });
     BOOST_TEST_ALL_EQ(types.begin(), types.end(), expected_types.begin(), expected_types.end());
@@ -211,4 +219,21 @@ boost::mysql::test::io_context_fixture::~io_context_fixture()
     // Verify that our tests don't leave unfinished work
     ctx.poll();
     BOOST_TEST(ctx.stopped());
+}
+
+//
+// run_coro.hpp
+//
+static constexpr auto test_timeout = 10s;
+
+void boost::mysql::test::run_coro(capy::task<void> task, source_location loc)
+{
+    // Run the task with a timeout
+    corosio::io_context ctx;
+    capy::run_async(ctx.get_executor())(std::move(task));
+    ctx.run_for(test_timeout);
+
+    // Check that we finished the job (as opposed to timeout)
+    if (!BOOST_TEST(ctx.stopped()))
+        std::cerr << "  Called from " << loc << std::endl;
 }

@@ -9,24 +9,13 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_RUN_CORO_HPP
 
 #include <boost/assert/source_location.hpp>
-#include <boost/capy/ex/execution_context.hpp>
 #include <boost/capy/task.hpp>
-#include <boost/compat/function_ref.hpp>
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-void run_coro(
-    capy::execution_context& ctx,
-    compat::function_ref<capy::task<void>(void)> fn,
-    boost::source_location loc = BOOST_CURRENT_LOCATION
-);
-
-void run_coro(
-    compat::function_ref<capy::task<void>(void)> fn,
-    boost::source_location loc = BOOST_CURRENT_LOCATION
-);
+void run_coro(capy::task<void> fn, boost::source_location loc = BOOST_CURRENT_LOCATION);
 
 }  // namespace test
 }  // namespace mysql
