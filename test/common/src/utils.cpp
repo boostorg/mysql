@@ -12,6 +12,9 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/column_type.hpp>
+#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/row.hpp>
@@ -23,13 +26,19 @@
 
 #include <boost/assert/source_location.hpp>
 
+#include <algorithm>
 #include <cstring>
 #include <iomanip>
+#include <iostream>
 #include <ostream>
+#include <ranges>
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/check_meta.hpp"
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/validate_string_contains.hpp"
@@ -141,6 +150,57 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, const character_set& v)
     else
         return os << "character_set(\"" << v.name << "\", .next_char? = " << static_cast<bool>(v.next_char)
                   << ")";
+}
+
+//
+// check_meta.hpp
+//
+void boost::mysql::test::check_meta(metadata_collection_view meta, const std::vector<column_type>& expected_types)
+{
+    auto types = meta | std::ranges::views::transform([](const metadata& m) { return m.type(); });
+    BOOST_TEST_ALL_EQ(types.begin(), types.end(), expected_types.begin(), expected_types.end());
+}
+
+void boost::mysql::test::check_meta(
+    metadata_collection_view meta,
+    const std::vector<std::pair<column_type, std::string_view>>& expected
+)
+{
+    auto types = meta | std::ranges::views::transform([](const metadata& m) { return m.type(); });
+    auto expected_types = expected |
+                          std::ranges::views::transform(
+                              [](const std::pair<column_type, std::string_view>& p) { return p.first; }
+                          );
+    BOOST_TEST_ALL_EQ(types.begin(), types.end(), expected_types.begin(), expected_types.end());
+
+    auto names = meta | std::ranges::views::transform([](const metadata& m) { return m.column_name(); });
+    auto expected_names = expected |
+                          std::ranges::views::transform(
+                              [](const std::pair<column_type, std::string_view>& p) { return p.second; }
+                          );
+    BOOST_TEST_ALL_EQ(names.begin(), names.end(), expected_names.begin(), expected_names.end());
+}
+
+//
+// validate_string_contains.hpp
+//
+void boost::mysql::test::validate_string_contains(
+    std::string value,
+    const std::vector<std::string>& to_check,
+    boost::source_location loc
+)
+{
+    std::transform(value.begin(), value.end(), value.begin(), [](char c) {
+        return static_cast<char>(tolower(c));
+    });
+    for (const auto& elm : to_check)
+    {
+        if (!BOOST_TEST(value.find(elm) != std::string::npos))
+        {
+            std::cerr << "   Substring '" << elm << "' not found in '" << value << "'\n"
+                      << "   Called from " << loc << "\n";
+        }
+    }
 }
 
 //
