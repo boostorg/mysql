@@ -5,11 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/string_view.hpp>
-
 #include <boost/core/span.hpp>
-#include <boost/test/framework.hpp>
-#include <boost/test/tools/assertion_result.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -21,13 +17,13 @@
 
 using namespace boost::mysql;
 
-static std::vector<string_view> split_list(string_view s)
+static std::vector<std::string_view> split_list(std::string_view s)
 {
-    std::vector<string_view> res;
+    std::vector<std::string_view> res;
     std::size_t pos = 0;
     if (!s.empty())
     {
-        while ((pos = s.find(' ')) != string_view::npos)
+        while ((pos = s.find(' ')) != std::string_view::npos)
         {
             res.push_back(s.substr(0, pos));
             s = s.substr(pos + 1);
@@ -48,7 +44,7 @@ static test::server_features do_get_server_features()
     // The list of possible features
     const struct possible_feature_t
     {
-        string_view name;
+        std::string_view name;
         test::server_feature_t ptr;
     } possible_features[]{
         {"unix-sockets",          &test::server_features::unix_sockets         },
@@ -92,22 +88,4 @@ boost::mysql::test::server_features boost::mysql::test::get_server_features()
 {
     static server_features res = do_get_server_features();
     return res;
-}
-
-boost::unit_test::precondition boost::mysql::test::run_if(server_feature_t feature)
-{
-    return unit_test::precondition([feature](unit_test::test_unit_id) {
-        return get_server_features().*feature;
-    });
-}
-
-boost::unit_test::precondition boost::mysql::test::run_if(
-    server_feature_t feature1,
-    server_feature_t feature2
-)
-{
-    return unit_test::precondition([=](unit_test::test_unit_id) {
-        const auto supported = get_server_features();
-        return supported.*feature1 && supported.*feature2;
-    });
 }

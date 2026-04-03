@@ -44,14 +44,14 @@ public:
         return *this;
     }
 
-    connect_params_builder& credentials(string_view username, string_view passwd)
+    connect_params_builder& credentials(std::string_view username, std::string_view passwd)
     {
         res_.set_username(username);
         res_.set_password(passwd);
         return *this;
     }
 
-    connect_params_builder& database(string_view db)
+    connect_params_builder& database(std::string_view db)
     {
         res_.set_database(db);
         return *this;

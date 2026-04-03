@@ -74,7 +74,7 @@ private:
 };
 
 void validate_meta(const metadata_collection_view& actual, const std::vector<meta_validator>& expected);
-void validate_2fields_meta(metadata_collection_view fields, string_view table);
+void validate_2fields_meta(metadata_collection_view fields, std::string_view table);
 
 }  // namespace test
 }  // namespace mysql

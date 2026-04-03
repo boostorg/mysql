@@ -45,10 +45,8 @@ BOOST_DESCRIBE_STRUCT(row_2fields, (), (id, field_varchar))
 
 using empty = std::tuple<>;
 
-#ifdef BOOST_DESCRIBE_CXX14
 using boost::describe::operators::operator==;
 using boost::describe::operators::operator<<;
-#endif
 
 }  // namespace test
 }  // namespace mysql

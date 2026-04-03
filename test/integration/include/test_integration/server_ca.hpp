@@ -13,7 +13,7 @@ namespace mysql {
 namespace test {
 
 // The CA file that signed the server's certificate
-constexpr const char CA_PEM[] = R"%(-----BEGIN CERTIFICATE-----
+inline constexpr const char CA_PEM[] = R"%(-----BEGIN CERTIFICATE-----
 MIIDZzCCAk+gAwIBAgIUWznm2UoxXw3j7HCcp9PpiayTvFQwDQYJKoZIhvcNAQEL
 BQAwQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAMBgNVBAoM
 BW15c3FsMQ4wDAYDVQQDDAVteXNxbDAgFw0yMDA0MDQxNDMwMjNaGA8zMDE5MDgw
