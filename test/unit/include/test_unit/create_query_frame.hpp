@@ -8,9 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_QUERY_FRAME_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_QUERY_FRAME_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <cstdint>
+#include <string_view>
 #include <vector>
 
 #include "test_unit/create_frame.hpp"

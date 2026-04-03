@@ -5,14 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
-
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
 #include <memory>
 
+#include "mycosql_internal/protocol/frame_header.hpp"
 #include "serialization_test.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 

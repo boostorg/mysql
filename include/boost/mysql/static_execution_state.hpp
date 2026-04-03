@@ -14,10 +14,11 @@
 
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
+
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -210,7 +211,7 @@ public:
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
      */
-    string_view info() const noexcept { return impl_.get_interface().get_info(); }
+    std::string_view info() const noexcept { return impl_.get_interface().get_info(); }
 
     /**
      * \brief Returns whether the current resultset represents a procedure OUT params.

@@ -14,7 +14,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Represents a string_view using offsets into a buffer.
+// Represents a std::string_view using offsets into a buffer.
 // Useful during deserialization, for buffers that may reallocate.
 struct string_view_offset
 {

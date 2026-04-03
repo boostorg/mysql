@@ -10,10 +10,9 @@
 
 #include <boost/mysql/any_connection.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-
 #include <boost/asio/io_context.hpp>
 
+#include "mycosql_internal/sansio/connection_state_data.hpp"
 #include "test_unit/test_stream.hpp"
 
 namespace boost {

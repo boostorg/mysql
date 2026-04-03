@@ -13,10 +13,10 @@
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/ssl_mode.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "test_common/ci_server.hpp"
 

@@ -8,12 +8,11 @@
 #ifndef BOOST_MYSQL_CONSTANT_STRING_VIEW_HPP
 #define BOOST_MYSQL_CONSTANT_STRING_VIEW_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/config.hpp>
 
+#include <string_view>
 #include <type_traits>
 
 namespace boost {
@@ -31,11 +30,11 @@ namespace mysql {
  */
 class constant_string_view
 {
-    string_view impl_;
+    std::string_view impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    constexpr constant_string_view(string_view value, int) noexcept : impl_(value) {}
-    friend constexpr constant_string_view runtime(string_view) noexcept;
+    constexpr constant_string_view(std::string_view value, int) noexcept : impl_(value) {}
+    friend constexpr constant_string_view runtime(std::string_view) noexcept;
 #endif
 
 public:
@@ -56,14 +55,14 @@ public:
      * No-throw guarantee.
      *
      * \par Object lifetimes
-     * Ownership is not transferred to the constructed object. As with `string_view`,
+     * Ownership is not transferred to the constructed object. As with `std::string_view`,
      * the user is responsible for keeping the original character buffer alive.
      */
     template <
         class T
 #ifndef BOOST_MYSQL_DOXYGEN
         ,
-        class = typename std::enable_if<std::is_convertible<const T&, string_view>::value>::type
+        class = typename std::enable_if<std::is_convertible<const T&, std::string_view>::value>::type
 #endif
         >
     BOOST_MYSQL_CONSTEVAL constant_string_view(const T& value) noexcept : impl_(value)
@@ -79,7 +78,7 @@ public:
      * \par Object lifetimes
      * The returned view has the same lifetime rules as `*this`.
      */
-    constexpr string_view get() const noexcept { return impl_; }
+    constexpr std::string_view get() const noexcept { return impl_; }
 };
 
 /**
@@ -97,7 +96,10 @@ public:
  * \par Object lifetimes
  * The returned value has the same lifetime semantics as the passed view.
  */
-constexpr constant_string_view runtime(string_view value) noexcept { return constant_string_view(value, 0); }
+constexpr constant_string_view runtime(std::string_view value) noexcept
+{
+    return constant_string_view(value, 0);
+}
 
 }  // namespace mysql
 }  // namespace boost

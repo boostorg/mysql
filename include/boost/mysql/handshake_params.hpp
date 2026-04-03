@@ -10,9 +10,9 @@
 
 #include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <cstdint>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -31,9 +31,9 @@ namespace mysql {
  */
 class handshake_params
 {
-    string_view username_;
-    string_view password_;
-    string_view database_;
+    std::string_view username_;
+    std::string_view password_;
+    std::string_view database_;
     std::uint16_t connection_collation_;
     ssl_mode ssl_;
     bool multi_queries_;
@@ -59,9 +59,9 @@ public:
      * queries using \ref connection::execute and \ref connection::start_execution. Disabled by default.
      */
     handshake_params(
-        string_view username,
-        string_view password,
-        string_view db = "",
+        std::string_view username,
+        std::string_view password,
+        std::string_view db = "",
         std::uint16_t connection_col = default_collation,
         ssl_mode mode = ssl_mode::require,
         bool multi_queries = false
@@ -80,42 +80,42 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    string_view username() const noexcept { return username_; }
+    std::string_view username() const noexcept { return username_; }
 
     /**
      * \brief Sets the username.
      * \par Exception safety
      * No-throw guarantee.
      */
-    void set_username(string_view value) noexcept { username_ = value; }
+    void set_username(std::string_view value) noexcept { username_ = value; }
 
     /**
      * \brief Retrieves the password.
      * \par Exception safety
      * No-throw guarantee.
      */
-    string_view password() const noexcept { return password_; }
+    std::string_view password() const noexcept { return password_; }
 
     /**
      * \brief Sets the password.
      * \par Exception safety
      * No-throw guarantee.
      */
-    void set_password(string_view value) noexcept { password_ = value; }
+    void set_password(std::string_view value) noexcept { password_ = value; }
 
     /**
      * \brief Retrieves the database name to use when connecting.
      * \par Exception safety
      * No-throw guarantee.
      */
-    string_view database() const noexcept { return database_; }
+    std::string_view database() const noexcept { return database_; }
 
     /**
      * \brief Sets the database name to use when connecting.
      * \par Exception safety
      * No-throw guarantee.
      */
-    void set_database(string_view value) noexcept { database_ = value; }
+    void set_database(std::string_view value) noexcept { database_ = value; }
 
     /**
      * \brief Retrieves the connection collation.

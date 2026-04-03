@@ -10,10 +10,10 @@
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/ssl_mode.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace boost {
 namespace mysql {

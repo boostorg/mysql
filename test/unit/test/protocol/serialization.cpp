@@ -12,9 +12,6 @@
 #include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
-
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -22,6 +19,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "mycosql_internal/protocol/capabilities.hpp"
+#include "mycosql_internal/protocol/serialization.hpp"
 #include "serialization_test.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"

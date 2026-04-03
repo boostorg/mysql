@@ -8,11 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_OUTPUT_STRING_HPP
 #define BOOST_MYSQL_DETAIL_OUTPUT_STRING_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <boost/mysql/detail/config.hpp>
 
 #include <cstddef>
+#include <string_view>
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 #include <concepts>
@@ -63,7 +62,7 @@ public:
         return output_string_ref(&do_append<T>, &obj);
     }
 
-    void append(string_view data)
+    void append(std::string_view data)
     {
         if (data.size() > 0u)
             append_fn_(container_, data.data(), data.size());

@@ -16,15 +16,14 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/start_execution.hpp>
-
 #include <boost/asio/error.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <string>
 
+#include "mycosql_internal/sansio/connection_state_data.hpp"
+#include "mycosql_internal/sansio/start_execution.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
@@ -164,11 +163,13 @@ BOOST_AUTO_TEST_CASE(error_read_resultset_head)
             // Otherwise, the operation is started and finished straight away
             algo_test()
                 .expect_write(create_query_frame(0, "SELECT 1"))
-                .expect_read(err_builder()
-                                 .seqnum(1)
-                                 .code(common_server_errc::er_syntax_error)
-                                 .message("Some error")
-                                 .build_frame())
+                .expect_read(
+                    err_builder()
+                        .seqnum(1)
+                        .code(common_server_errc::er_syntax_error)
+                        .message("Some error")
+                        .build_frame()
+                )
                 .check(fix, common_server_errc::er_syntax_error, create_server_diag("Some error"));
         }
     }

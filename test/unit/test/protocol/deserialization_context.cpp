@@ -8,14 +8,13 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <cstdint>
 #include <limits>
 
+#include "mycosql_internal/protocol/impl/deserialization_context.hpp"
 #include "operators.hpp"
 
 using namespace boost::mysql::detail;

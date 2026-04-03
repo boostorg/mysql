@@ -59,7 +59,6 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/static_results.hpp>
-#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 #include <boost/mysql/throw_on_error.hpp>

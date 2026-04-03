@@ -12,7 +12,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -21,6 +20,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
+#include <string_view>
 
 #include "test_unit/fail_count.hpp"
 
@@ -192,8 +192,11 @@ protected:
     }
     void on_row_batch_start_impl() override { ++num_calls_.on_row_batch_start; }
     void on_row_batch_finish_impl() override { ++num_calls_.on_row_batch_finish; }
-    error_code on_row_impl(span<const std::uint8_t>, const detail::output_ref& ref, std::vector<field_view>&)
-        override
+    error_code on_row_impl(
+        span<const std::uint8_t>,
+        const detail::output_ref& ref,
+        std::vector<field_view>&
+    ) override
     {
         ++num_calls_.on_row;
         refs_.push_back(ref);

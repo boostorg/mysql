@@ -10,11 +10,12 @@
 
 #include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <iterator>
+#include <span>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -149,7 +150,11 @@ template <class T>
 formattable_ref_impl make_formattable_ref(T&& v);
 
 BOOST_MYSQL_DECL
-void vformat_sql_to(format_context_base& ctx, constant_string_view format_str, span<const format_arg> args);
+void vformat_sql_to(
+    format_context_base& ctx,
+    constant_string_view format_str,
+    std::span<const format_arg> args
+);
 
 }  // namespace detail
 }  // namespace mysql

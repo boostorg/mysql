@@ -12,14 +12,13 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/mysql_server_errc.hpp>
 
-#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
-
 #include <boost/asio/error.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 #include <string>
 
+#include "mycosql_internal/connection_pool/sansio_connection_node.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/printing.hpp"
@@ -344,37 +343,46 @@ BOOST_AUTO_TEST_CASE(create_connect_diagnostics_)
         {"server_error_diag",
          common_server_errc::er_no_such_table,
          create_server_diag("Table 'abc' does not exist"),
-         create_server_diag("Last connection attempt failed with: er_no_such_table "
-                            "[mysql.common-server:1146]: Table 'abc' does not exist")},
+         create_server_diag(
+             "Last connection attempt failed with: er_no_such_table "
+             "[mysql.common-server:1146]: Table 'abc' does not exist"
+         )},
 
         // Common server, without diagnostics. Results in a client message, because it contains no server
         // output
         {"server_error_nodiag",
          common_server_errc::er_no_such_table,
          create_server_diag(""),
-         create_client_diag("Last connection attempt failed with: er_no_such_table [mysql.common-server:1146]"
+         create_client_diag(
+             "Last connection attempt failed with: er_no_such_table [mysql.common-server:1146]"
          )},
 
         // MySQL/MariaDB specific errors
         {"specific_server_error",
          error_code(mysql_server_errc::er_binlog_fatal_error, get_mysql_server_category()),
          create_server_diag("something failed"),
-         create_server_diag("Last connection attempt failed with: er_binlog_fatal_error "
-                            "[mysql.mysql-server:1593]: something failed")},
+         create_server_diag(
+             "Last connection attempt failed with: er_binlog_fatal_error "
+             "[mysql.mysql-server:1593]: something failed"
+         )},
 
         // A client error with diagnostics
         {"client_error_diag",
          client_errc::auth_plugin_requires_ssl,
          create_client_diag("Something client-side failed"),
-         create_client_diag("Last connection attempt failed with: The authentication plugin requires the "
-                            "connection to use SSL [mysql.client:7]: Something client-side failed")},
+         create_client_diag(
+             "Last connection attempt failed with: The authentication plugin requires the "
+             "connection to use SSL [mysql.client:7]: Something client-side failed"
+         )},
 
         // A client error, no diagnostics
         {"client_error_nodiag",
          client_errc::auth_plugin_requires_ssl,
          diagnostics(),
-         create_client_diag("Last connection attempt failed with: The authentication plugin requires the "
-                            "connection to use SSL [mysql.client:7]")},
+         create_client_diag(
+             "Last connection attempt failed with: The authentication plugin requires the "
+             "connection to use SSL [mysql.client:7]"
+         )},
     };
 
     for (const auto& tc : test_cases)

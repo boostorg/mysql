@@ -11,13 +11,13 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
-#include <boost/core/span.hpp>
 
 #include <cstddef>
+#include <span>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -26,21 +26,21 @@ namespace detail {
 // These functions map C++ type positions to positions to positions in the DB query
 
 BOOST_INLINE_CONSTEXPR std::size_t pos_absent = static_cast<std::size_t>(-1);
-using name_table_t = boost::span<const string_view>;
+using name_table_t = std::span<const std::string_view>;
 
 inline bool has_field_names(name_table_t name_table) noexcept { return !name_table.empty(); }
 
-inline void pos_map_reset(span<std::size_t> self) noexcept
+inline void pos_map_reset(std::span<std::size_t> self) noexcept
 {
     for (std::size_t i = 0; i < self.size(); ++i)
         self.data()[i] = pos_absent;
 }
 
 inline void pos_map_add_field(
-    span<std::size_t> self,
+    std::span<std::size_t> self,
     name_table_t name_table,
     std::size_t db_index,
-    string_view field_name
+    std::string_view field_name
 ) noexcept
 {
     if (has_field_names(name_table))
@@ -67,9 +67,9 @@ inline void pos_map_add_field(
 }
 
 inline field_view map_field_view(
-    span<const std::size_t> self,
+    std::span<const std::size_t> self,
     std::size_t cpp_index,
-    span<const field_view> array
+    std::span<const field_view> array
 ) noexcept
 {
     BOOST_ASSERT(cpp_index < self.size());
@@ -77,7 +77,7 @@ inline field_view map_field_view(
 }
 
 inline const metadata& map_metadata(
-    span<const std::size_t> self,
+    std::span<const std::size_t> self,
     std::size_t cpp_index,
     metadata_collection_view meta
 ) noexcept

@@ -11,7 +11,6 @@
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/field_impl.hpp>
@@ -22,6 +21,7 @@
 #include <cstddef>
 #include <iosfwd>
 #include <string>
+#include <string_view>
 #ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 #include <string_view>
 #endif
@@ -102,7 +102,7 @@ public:
      * \brief Constructs a `field` holding NULL.
      * \details
      * Caution: `field(NULL)` will __NOT__ match this overload. It will try to construct
-     * a `string_view` from a NULL C string, causing undefined behavior.
+     * a `std::string_view` from a NULL C string, causing undefined behavior.
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -169,13 +169,6 @@ public:
 
     /**
      * \brief Constructs a `field` holding a string.
-     * \par Exception safety
-     * Strong guarantee. Internal allocations may throw.
-     */
-    explicit field(const std::string& v) : repr_(v) {}
-
-    /**
-     * \brief Constructs a `field` holding a string.
      * \details v is moved into an internal `std::string` object.
      * \par Exception safety
      * No-throw guarantee.
@@ -183,15 +176,7 @@ public:
     explicit field(std::string&& v) noexcept : repr_(std::move(v)) {}
 
     /// \copydoc field(const std::string&)
-    explicit field(const char* v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
-
-    /// \copydoc field(const std::string&)
-    explicit field(string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
-
-#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
-    /// \copydoc field(const std::string&)
     explicit field(std::string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
-#endif
 
     /**
      * \brief Constructs a `field` holding a `blob`.
@@ -386,13 +371,6 @@ public:
      * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
-    field& operator=(const std::string& v)
-    {
-        repr_.data.emplace<std::string>(v);
-        return *this;
-    }
-
-    /// \copydoc operator=(const std::string&)
     field& operator=(std::string&& v)
     {
         repr_.data.emplace<std::string>(std::move(v));
@@ -400,27 +378,11 @@ public:
     }
 
     /// \copydoc operator=(const std::string&)
-    field& operator=(const char* v)
-    {
-        repr_.data.emplace<std::string>(v);
-        return *this;
-    }
-
-    /// \copydoc operator=(const std::string&)
-    field& operator=(string_view v)
-    {
-        repr_.data.emplace<std::string>(v);
-        return *this;
-    }
-
-#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
-    /// \copydoc operator=(const std::string&)
     field& operator=(std::string_view v)
     {
         repr_.data.emplace<std::string>(v);
         return *this;
     }
-#endif
 
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `blob` and destroying any
@@ -993,8 +955,5 @@ std::ostream& operator<<(std::ostream& os, const field& v);
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/field.ipp>
-#endif
 
 #endif

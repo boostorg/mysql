@@ -7,8 +7,7 @@
 
 #include <boost/mysql/client_errc.hpp>
 
-#include <boost/mysql/impl/internal/sansio/mysql_native_password.hpp>
-
+#include "mycosql_internal/sansio/mysql_native_password.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 
 using namespace boost::mysql;

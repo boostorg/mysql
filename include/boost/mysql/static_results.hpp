@@ -13,13 +13,14 @@
 #ifdef BOOST_MYSQL_CXX14
 
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/underlying_row.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
 
 #include <boost/assert.hpp>
+
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -132,7 +133,7 @@ public:
      */
     template <std::size_t I = 0>
 #ifdef BOOST_MYSQL_DOXYGEN
-    boost::span<const StaticRow... [I]>
+    std::span<const StaticRow... [I]>
 #else
     detail::rows_span_t<I, StaticRow...>
 #endif
@@ -278,7 +279,7 @@ public:
      * Constant.
      */
     template <std::size_t I = 0>
-    string_view info() const noexcept
+    std::string_view info() const noexcept
     {
         static_assert(I < sizeof...(StaticRow), "I index out of range");
         BOOST_ASSERT(has_value());

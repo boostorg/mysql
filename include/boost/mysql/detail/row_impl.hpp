@@ -12,7 +12,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include <boost/core/span.hpp>
+#include <span>
 
 #include <cstddef>
 #include <vector>
@@ -23,11 +23,11 @@ namespace detail {
 
 // Adds num_fields default-constructed fields to the vector, return pointer to the first
 // allocated value. Used to allocate fields before deserialization
-inline span<field_view> add_fields(std::vector<field_view>& storage, std::size_t num_fields)
+inline std::span<field_view> add_fields(std::vector<field_view>& storage, std::size_t num_fields)
 {
     std::size_t old_size = storage.size();
     storage.resize(old_size + num_fields);
-    return span<field_view>(storage.data() + old_size, num_fields);
+    return std::span<field_view>(storage.data() + old_size, num_fields);
 }
 
 // A field_view vector with strings pointing into a
@@ -58,7 +58,7 @@ public:
     void assign(const field_view* fields, std::size_t size);
 
     // Adds new default constructed fields to provide storage to deserialization
-    span<field_view> add_fields(std::size_t num_fields)
+    std::span<field_view> add_fields(std::size_t num_fields)
     {
         return ::boost::mysql::detail::add_fields(fields_, num_fields);
     }
@@ -88,8 +88,5 @@ private:
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/row_impl.ipp>
-#endif
 
 #endif

@@ -12,12 +12,11 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/text_protocol.hpp>
-
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/protocol/impl/text_protocol.hpp"
 #include "operators.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_unit/create_meta.hpp"

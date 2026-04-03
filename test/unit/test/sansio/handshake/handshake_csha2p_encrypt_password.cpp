@@ -9,8 +9,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/sansio/csha2p_encrypt_password.hpp>
-
 #include <boost/asio/ssl/error.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
@@ -23,6 +21,7 @@
 #include <vector>
 
 #include "handshake_csha2p_keys.hpp"
+#include "mycosql_internal/sansio/csha2p_encrypt_password.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/printing.hpp"
 

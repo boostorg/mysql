@@ -8,9 +8,6 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/sansio/message_reader.hpp>
-#include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <algorithm>
@@ -19,6 +16,8 @@
 #include <cstring>
 #include <vector>
 
+#include "mycosql_internal/sansio/message_reader.hpp"
+#include "mycosql_internal/sansio/read_buffer.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/printing.hpp"
@@ -44,7 +43,7 @@ public:
         std::vector<std::uint8_t> contents,
         std::size_t buffsize = 512,
         std::size_t max_size = static_cast<std::size_t>(-1),
-        std::size_t max_frame_size = 64 // max frame size is 64
+        std::size_t max_frame_size = 64  // max frame size is 64
     )
         : reader(buffsize, max_size, max_frame_size),
           contents_(std::move(contents)),
@@ -509,16 +508,9 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_size_power_of_two)
     fix.reader.prepare_read(fix.seqnum);
     fix.read_until_completion();
     BOOST_TEST(fix.buffsize() == 4u);
-    
-    std::size_t test_sizes[] = {
-        5, 7, 8,
-        9, 15, 16,
-        17, 31, 32,
-        33, 63, 64,
-        65, 127, 128,
-        129, 255, 256,
-        257, 511, 512, 513
-    };
+
+    std::size_t test_sizes[] = {5,  7,  8,   9,   15,  16,  17,  31,  32,  33,  63,
+                                64, 65, 127, 128, 129, 255, 256, 257, 511, 512, 513};
 
     // Test that buffer capacity grows to powers of two for various payload sizes
     for (auto new_size : test_sizes)

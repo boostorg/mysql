@@ -9,11 +9,13 @@
 #define BOOST_MYSQL_ANY_ADDRESS_HPP
 
 #include <boost/mysql/defaults.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 
+#include <boost/assert.hpp>
+
 #include <string>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -187,7 +189,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    string_view hostname() const noexcept
+    std::string_view hostname() const noexcept
     {
         BOOST_ASSERT(type() == address_type::host_and_port);
         return impl_.address;
@@ -219,7 +221,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    string_view unix_socket_path() const noexcept
+    std::string_view unix_socket_path() const noexcept
     {
         BOOST_ASSERT(type() == address_type::unix_path);
         return impl_.address;

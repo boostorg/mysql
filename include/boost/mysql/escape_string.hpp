@@ -9,12 +9,13 @@
 #define BOOST_MYSQL_ESCAPE_STRING_HPP
 
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/escape_string.hpp>
 #include <boost/mysql/detail/output_string.hpp>
 
 #include <boost/config.hpp>
+
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -89,8 +90,12 @@ enum class quoting_context : char
  *      that is not valid according to `opts.charset`.
  */
 template <BOOST_MYSQL_OUTPUT_STRING OutputString>
-BOOST_ATTRIBUTE_NODISCARD error_code
-escape_string(string_view input, const format_options& opts, quoting_context quot_ctx, OutputString& output)
+BOOST_ATTRIBUTE_NODISCARD error_code escape_string(
+    std::string_view input,
+    const format_options& opts,
+    quoting_context quot_ctx,
+    OutputString& output
+)
 {
     output.clear();
     return detail::escape_string(

@@ -8,14 +8,14 @@
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
-
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
 #include <stdexcept>
+
+#include "mycosql_internal/connection_pool/internal_pool_params.hpp"
 
 using namespace boost::mysql;
 namespace asio = boost::asio;

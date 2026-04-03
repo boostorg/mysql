@@ -8,11 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_MOCK_MESSAGE_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_MOCK_MESSAGE_HPP
 
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-
 #include <boost/core/span.hpp>
 
 #include <cstdint>
+
+#include "mycosql_internal/protocol/impl/serialization_context.hpp"
 
 namespace boost {
 namespace mysql {

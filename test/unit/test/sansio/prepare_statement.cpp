@@ -7,12 +7,11 @@
 
 #include <boost/mysql/statement.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-#include <boost/mysql/impl/internal/sansio/prepare_statement.hpp>
-
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/protocol/impl/protocol_types.hpp"
+#include "mycosql_internal/protocol/impl/serialization_context.hpp"
+#include "mycosql_internal/sansio/prepare_statement.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
@@ -142,11 +141,13 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 
     // Run the algo
     algo_test()
-        .expect_read(err_builder()
-                         .seqnum(19)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(19)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 
@@ -191,11 +192,13 @@ BOOST_AUTO_TEST_CASE(prepare_error_packet)
     // Run the algo
     algo_test()
         .expect_write(create_prepare_statement_frame(0, "SELECT 1"))
-        .expect_read(err_builder()
-                         .seqnum(1)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(1)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 

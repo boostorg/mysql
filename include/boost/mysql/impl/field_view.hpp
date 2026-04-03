@@ -70,7 +70,7 @@ BOOST_CXX14_CONSTEXPR std::uint64_t boost::mysql::field_view::as_uint64() const
     return impl_.repr.uint64;
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::string_view boost::mysql::field_view::as_string() const
+BOOST_CXX14_CONSTEXPR std::string_view boost::mysql::field_view::as_string() const
 {
     if (is_field_ptr())
         return impl_.repr.field_ptr->as<std::string>();

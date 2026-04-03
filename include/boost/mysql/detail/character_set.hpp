@@ -10,7 +10,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include <boost/core/span.hpp>
+#include <span>
 
 #include <cstddef>
 
@@ -18,8 +18,8 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline std::size_t next_char_ascii(span<const unsigned char> input) { return input[0] <= 0x7f ? 1 : 0; }
-BOOST_MYSQL_DECL std::size_t next_char_utf8mb4(span<const unsigned char> input);
+inline std::size_t next_char_ascii(std::span<const unsigned char> input) { return input[0] <= 0x7f ? 1 : 0; }
+BOOST_MYSQL_DECL std::size_t next_char_utf8mb4(std::span<const unsigned char> input);
 
 }  // namespace detail
 }  // namespace mysql

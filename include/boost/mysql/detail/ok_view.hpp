@@ -8,11 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_OK_VIEW_HPP
 #define BOOST_MYSQL_DETAIL_OK_VIEW_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <boost/mysql/detail/flags.hpp>
 
 #include <cstdint>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -24,7 +23,7 @@ struct ok_view
     std::uint64_t last_insert_id;
     std::uint16_t status_flags;
     std::uint16_t warnings;
-    string_view info;
+    std::string_view info;
 
     bool more_results() const noexcept { return status_flags & status_flags::more_results; }
     bool backslash_escapes() const noexcept { return !(status_flags & status_flags::no_backslash_escapes); }

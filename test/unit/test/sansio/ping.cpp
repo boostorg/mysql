@@ -9,12 +9,11 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/ping.hpp>
-#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
-
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/sansio/connection_state_data.hpp"
+#include "mycosql_internal/sansio/ping.hpp"
+#include "mycosql_internal/sansio/run_pipeline.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
@@ -73,11 +72,13 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 
     // Run the test
     algo_test()
-        .expect_read(err_builder()
-                         .seqnum(57)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())  // Error response
+        .expect_read(
+            err_builder()
+                .seqnum(57)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )  // Error response
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 
@@ -120,11 +121,13 @@ BOOST_AUTO_TEST_CASE(ping_error_response)
     // Run the test
     algo_test()
         .expect_write({0x01, 0x00, 0x00, 0x00, 0x0e})  // Ping request
-        .expect_read(err_builder()
-                         .seqnum(1)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())  // Error response
+        .expect_read(
+            err_builder()
+                .seqnum(1)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )  // Error response
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 

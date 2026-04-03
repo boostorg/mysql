@@ -11,11 +11,6 @@
 
 #include <boost/mysql/detail/next_action.hpp>
 
-#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/message_reader.hpp>
-#include <boost/mysql/impl/internal/sansio/top_level_algo.hpp>
-
 #include <boost/asio/coroutine.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
@@ -24,6 +19,10 @@
 #include <cstdint>
 #include <cstring>
 
+#include "mycosql_internal/protocol/frame_header.hpp"
+#include "mycosql_internal/sansio/connection_state_data.hpp"
+#include "mycosql_internal/sansio/message_reader.hpp"
+#include "mycosql_internal/sansio/top_level_algo.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/create_diagnostics.hpp"

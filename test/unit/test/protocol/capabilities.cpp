@@ -5,10 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/protocol/capabilities.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql;

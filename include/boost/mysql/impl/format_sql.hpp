@@ -21,7 +21,7 @@ namespace mysql {
 namespace detail {
 
 BOOST_MYSQL_DECL
-std::pair<bool, string_view> parse_range_specifiers(const char* spec_begin, const char* spec_end);
+std::pair<bool, std::string_view> parse_range_specifiers(const char* spec_begin, const char* spec_end);
 
 // To use with arguments with a custom formatter
 template <class T>
@@ -145,7 +145,7 @@ formattable_ref_impl make_formattable_ref_writable(
 {
     // Only string types (and not field_views or optionals) support the string specifiers
     return {
-        std::is_convertible<T, string_view>::value ? formattable_ref_impl::type_t::field_with_specs
+        std::is_convertible<T, std::string_view>::value ? formattable_ref_impl::type_t::field_with_specs
                                                    : formattable_ref_impl::type_t::field,
         to_field(v)
     };
@@ -182,7 +182,7 @@ std::string boost::mysql::format_sql(
 )
 {
     std::initializer_list<format_arg> args_il{
-        {string_view(), std::forward<Formattable>(args)}
+        {std::string_view(), std::forward<Formattable>(args)}
         ...
     };
     return format_sql(opts, format_str, args_il);

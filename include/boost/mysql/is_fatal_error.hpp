@@ -34,8 +34,5 @@ bool is_fatal_error(error_code ec) noexcept;
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/is_fatal_error.ipp>
-#endif
 
 #endif

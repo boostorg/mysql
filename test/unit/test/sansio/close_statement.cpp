@@ -10,13 +10,12 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/statement.hpp>
 
-#include <boost/mysql/impl/internal/sansio/close_statement.hpp>
-#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
 
+#include "mycosql_internal/sansio/close_statement.hpp"
+#include "mycosql_internal/sansio/run_pipeline.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
@@ -64,7 +63,8 @@ BOOST_AUTO_TEST_CASE(success_no_backslash_escapes)
     // Run the algo
     algo_test()
         .expect_write(expected_request())  // requests
-        .expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build())
+        .expect_read(
+            create_ok_frame(1, ok_builder().no_backslash_escapes(true).build())
         )  // response to the ping request
         .will_set_backslash_escapes(false)
         .check(fix);
@@ -86,11 +86,13 @@ BOOST_AUTO_TEST_CASE(error_response)
     // Run the test
     algo_test()
         .expect_write(expected_request())  // Ping request
-        .expect_read(err_builder()
-                         .seqnum(1)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())  // Error response
+        .expect_read(
+            err_builder()
+                .seqnum(1)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )  // Error response
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 

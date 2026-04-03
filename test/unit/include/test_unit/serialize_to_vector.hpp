@@ -10,13 +10,13 @@
 
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
 #include <vector>
+
+#include "mycosql_internal/protocol/impl/serialization_context.hpp"
+#include "mycosql_internal/protocol/serialization.hpp"
 
 namespace boost {
 namespace mysql {

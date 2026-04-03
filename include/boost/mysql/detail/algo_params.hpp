@@ -8,17 +8,17 @@
 #ifndef BOOST_MYSQL_DETAIL_ALGO_PARAMS_HPP
 #define BOOST_MYSQL_DETAIL_ALGO_PARAMS_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
-#include <boost/core/span.hpp>
-
 #include <cstddef>
 #include <cstdint>
+#include <span>
+#include <string_view>
 #include <vector>
 
 namespace boost {
@@ -36,8 +36,7 @@ struct pipeline_request_stage;
 
 struct connect_algo_params
 {
-    const void* server_address;  // Points to an any_address or an endpoint for the corresponding stream. For
-                                 // the templated connection, only valid until the first yield!
+    const any_address* server_address;
     handshake_params hparams;
     bool secure_channel;  // Are we using UNIX sockets or any other secure channel?
 
@@ -92,7 +91,7 @@ struct read_some_rows_dynamic_algo_params
 
 struct prepare_statement_algo_params
 {
-    string_view stmt_sql;
+    std::string_view stmt_sql;
 
     using result_type = statement;
 };
@@ -133,8 +132,8 @@ struct close_connection_algo_params
 
 struct run_pipeline_algo_params
 {
-    span<const std::uint8_t> request_buffer;
-    span<const pipeline_request_stage> request_stages;
+    std::span<const std::uint8_t> request_buffer;
+    std::span<const pipeline_request_stage> request_stages;
     std::vector<stage_response>* response;
 
     using result_type = void;

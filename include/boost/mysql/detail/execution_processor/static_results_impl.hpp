@@ -16,7 +16,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
@@ -28,6 +27,7 @@
 
 #include <array>
 #include <cstddef>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -35,7 +35,7 @@ namespace detail {
 
 using results_reset_fn_t = void (*)(void*);
 using results_parse_fn_t =
-    error_code (*)(span<const std::size_t> pos_map, span<const field_view> from, void* to);
+    error_code (*)(std::span<const std::size_t> pos_map, std::span<const field_view> from, void* to);
 
 struct results_resultset_descriptor
 {
@@ -69,7 +69,7 @@ public:
     };
 
     results_external_data(
-        span<const results_resultset_descriptor> desc,
+        std::span<const results_resultset_descriptor> desc,
         results_reset_fn_t reset,
         ptr_data ptr
     ) noexcept
@@ -102,9 +102,9 @@ public:
     }
     results_reset_fn_t reset_fn() const noexcept { return reset_; }
     void* rows() const noexcept { return ptr_.rows; }
-    span<std::size_t> pos_map(std::size_t idx) const noexcept
+    std::span<std::size_t> pos_map(std::size_t idx) const noexcept
     {
-        return span<std::size_t>(ptr_.pos_map, num_columns(idx));
+        return std::span<std::size_t>(ptr_.pos_map, num_columns(idx));
     }
     static_per_resultset_data& per_result(std::size_t idx) const noexcept
     {
@@ -113,7 +113,7 @@ public:
     }
 
 private:
-    span<const results_resultset_descriptor> desc_;
+    std::span<const results_resultset_descriptor> desc_;
     results_reset_fn_t reset_;
     ptr_data ptr_;
 };
@@ -143,10 +143,10 @@ public:
 
     unsigned get_warning_count(std::size_t index) const noexcept { return ext_.per_result(index).warnings; }
 
-    string_view get_info(std::size_t index) const noexcept
+    std::string_view get_info(std::size_t index) const noexcept
     {
         const auto& resultset_data = ext_.per_result(index);
-        return string_view(info_.data() + resultset_data.info_offset, resultset_data.info_size);
+        return std::string_view(info_.data() + resultset_data.info_offset, resultset_data.info_size);
     }
 
     bool get_is_out_params(std::size_t index) const noexcept { return ext_.per_result(index).is_out_params; }
@@ -166,8 +166,11 @@ private:
     error_code on_meta_impl(const coldef_view& coldef, bool is_last, diagnostics& diag) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_row_impl(span<const std::uint8_t> msg, const output_ref&, std::vector<field_view>& fields)
-        override final;
+    error_code on_row_impl(
+        std::span<const std::uint8_t> msg,
+        const output_ref&,
+        std::vector<field_view>& fields
+    ) override final;
 
     BOOST_MYSQL_DECL
     error_code on_row_ok_packet_impl(const ok_view& pack) override final;
@@ -182,8 +185,11 @@ private:
     std::size_t resultset_index_{0};
 
     // Helpers
-    span<std::size_t> current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
-    span<const std::size_t> current_pos_map() const noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    std::span<std::size_t> current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    std::span<const std::size_t> current_pos_map() const noexcept
+    {
+        return ext_.pos_map(resultset_index_ - 1);
+    }
     name_table_t current_name_table() const noexcept { return ext_.name_table(resultset_index_ - 1); }
     static_per_resultset_data& current_resultset() noexcept { return ext_.per_result(resultset_index_ - 1); }
     metadata_collection_view current_resultset_meta() const noexcept
@@ -229,7 +235,11 @@ struct results_fns
     }
 
     template <std::size_t I>
-    static error_code do_parse(span<const std::size_t> pos_map, span<const field_view> from, void* to)
+    static error_code do_parse(
+        std::span<const std::size_t> pos_map,
+        std::span<const field_view> from,
+        void* to
+    )
     {
         using StaticRowT = mp11::mp_at_c<mp11::mp_list<StaticRow...>, I>;
         auto& v = std::get<I>(*static_cast<rows_t*>(to));
@@ -250,8 +260,9 @@ struct results_fns
     }
 
     template <std::size_t... I>
-    static constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)> create_descriptors(mp11::index_sequence<
-                                                                                                       I...>)
+    static constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)> create_descriptors(
+        mp11::index_sequence<I...>
+    )
     {
         return {{create_descriptor<I>()...}};
     }
@@ -264,7 +275,7 @@ BOOST_INLINE_CONSTEXPR std::array<results_resultset_descriptor, sizeof...(Static
     );
 
 template <std::size_t I, class... StaticRow>
-using rows_span_t = boost::span<
+using rows_span_t = std::span<
     const typename std::tuple_element<I, std::tuple<underlying_row_t<StaticRow>...>>::type>;
 
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
@@ -344,9 +355,6 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/static_results_impl.ipp>
-#endif
 
 #endif  // BOOST_MYSQL_CXX14
 

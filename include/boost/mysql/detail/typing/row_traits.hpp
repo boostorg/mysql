@@ -18,7 +18,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
@@ -32,6 +31,7 @@
 #include <boost/mp11/utility.hpp>
 
 #include <cstddef>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -75,7 +75,7 @@ struct array_wrapper
 {
     T data_[N];
 
-    constexpr boost::span<const T> span() const noexcept { return boost::span<const T>(data_); }
+    constexpr std::span<const T> span() const noexcept { return std::span<const T>(data_); }
 };
 
 template <class T>
@@ -85,7 +85,7 @@ struct array_wrapper<T, 0>
     {
     } data_;  // allow empty brace initialization
 
-    constexpr boost::span<const T> span() const noexcept { return boost::span<const T>(); }
+    constexpr std::span<const T> span() const noexcept { return std::span<const T>(); }
 };
 
 // Workaround for char_traits::length not being constexpr in C++14
@@ -103,10 +103,11 @@ using row_members = describe::
     describe_members<DescribeStruct, describe::mod_public | describe::mod_inherited>;
 
 template <template <class...> class ListType, class... MemberDescriptor>
-constexpr array_wrapper<string_view, sizeof...(MemberDescriptor)> get_describe_names(ListType<
-                                                                                     MemberDescriptor...>)
+constexpr array_wrapper<std::string_view, sizeof...(MemberDescriptor)> get_describe_names(
+    ListType<MemberDescriptor...>
+)
 {
-    return {{string_view(MemberDescriptor::name, get_length(MemberDescriptor::name))...}};
+    return {{std::string_view(MemberDescriptor::name, get_length(MemberDescriptor::name))...}};
 }
 
 template <class DescribeStruct>
@@ -205,7 +206,7 @@ struct meta_check_field_fn
 template <class ReadableFieldList>
 error_code meta_check_impl(
     name_table_t name_table,
-    span<const std::size_t> pos_map,
+    std::span<const std::size_t> pos_map,
     metadata_collection_view meta,
     diagnostics& diag
 )
@@ -219,13 +220,13 @@ error_code meta_check_impl(
 // Parsing
 class parse_context
 {
-    span<const std::size_t> pos_map_;
-    span<const field_view> fields_;
+    std::span<const std::size_t> pos_map_;
+    std::span<const field_view> fields_;
     std::size_t index_{};
     error_code ec_;
 
 public:
-    parse_context(span<const std::size_t> pos_map, span<const field_view> fields) noexcept
+    parse_context(std::span<const std::size_t> pos_map, std::span<const field_view> fields) noexcept
         : pos_map_(pos_map), fields_(fields)
     {
     }
@@ -294,7 +295,7 @@ constexpr name_table_t get_row_name_table() noexcept
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view meta, diagnostics& diag)
+error_code meta_check(std::span<const std::size_t> pos_map, metadata_collection_view meta, diagnostics& diag)
 {
     using field_types = typename row_traits_with_check<StaticRow>::field_types;
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
@@ -303,8 +304,8 @@ error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view 
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
 error_code parse(
-    span<const std::size_t> pos_map,
-    span<const field_view> from,
+    std::span<const std::size_t> pos_map,
+    std::span<const field_view> from,
     underlying_row_t<StaticRow>& to
 )
 {
@@ -316,7 +317,7 @@ error_code parse(
 }
 
 using meta_check_fn_t =
-    error_code (*)(span<const std::size_t> field_map, metadata_collection_view meta, diagnostics& diag);
+    error_code (*)(std::span<const std::size_t> field_map, metadata_collection_view meta, diagnostics& diag);
 
 // For multi-resultset
 template <class... StaticRow>

@@ -8,9 +8,9 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
-
 #include <boost/test/unit_test.hpp>
+
+#include "mycosql_internal/protocol/impl/protocol_field_type.hpp"
 
 using namespace boost::mysql::detail;
 namespace collations = boost::mysql::mysql_collations;
@@ -77,8 +77,10 @@ BOOST_AUTO_TEST_CASE(compute_column_type_legacy_types)
     } test_cases[] = {
         {"tiny_text",      protocol_field_type::tiny_blob,   0, collations::utf8mb4_general_ci, column_type::text     },
         {"tiny_blob",      protocol_field_type::tiny_blob,   0, collations::binary,             column_type::blob     },
-        {"medium_text",    protocol_field_type::medium_blob, 0, collations::utf8mb4_general_ci, column_type::text
-        },
+        {"medium_text",
+         protocol_field_type::medium_blob,
+         0,                                                     collations::utf8mb4_general_ci,
+         column_type::text                                                                                            },
         {"medium_blob",    protocol_field_type::medium_blob, 0, collations::binary,             column_type::blob     },
         {"long_text",      protocol_field_type::long_blob,   0, collations::utf8mb4_general_ci, column_type::text     },
         {"long_blob",      protocol_field_type::long_blob,   0, collations::binary,             column_type::blob     },

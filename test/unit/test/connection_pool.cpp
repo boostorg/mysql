@@ -12,10 +12,6 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
-#include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
-#include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
-#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
-
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/io_context.hpp>
@@ -25,6 +21,9 @@
 
 #include <memory>
 
+#include "mycosql_internal/connection_pool/connection_node.hpp"
+#include "mycosql_internal/connection_pool/connection_pool_impl.hpp"
+#include "mycosql_internal/connection_pool/sansio_connection_node.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/printing.hpp"

@@ -25,7 +25,7 @@ namespace mysql {
 /**
  * \brief A non-owning read-only reference to a sequence of fields.
  * \details
- * A `row_view` points to memory owned by an external entity (like `string_view` does). The validity
+ * A `row_view` points to memory owned by an external entity (like `std::string_view` does). The validity
  * of a `row_view` depends on how it was obtained:
  * \n
  * \li If it was constructed from a \ref row object (by calling \ref row::operator row_view()), the

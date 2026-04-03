@@ -9,10 +9,10 @@
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_ERR_HPP
 
 #include <boost/mysql/common_server_errc.hpp>
-#include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include <string_view>
 
+#include "mycosql_internal/protocol/deserialization.hpp"
 #include "test_unit/create_frame.hpp"
 
 namespace boost {

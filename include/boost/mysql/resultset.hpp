@@ -257,10 +257,10 @@ public:
      * \par Complexity
      * Constant.
      */
-    string_view info() const noexcept
+    std::string_view info() const noexcept
     {
         BOOST_ASSERT(has_value_);
-        return string_view(info_.data(), info_.size());
+        return std::string_view(info_.data(), info_.size());
     }
 
     /**
@@ -297,8 +297,5 @@ private:
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/resultset.ipp>
-#endif
 
 #endif

@@ -8,10 +8,10 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_OK_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_OK_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <boost/mysql/detail/flags.hpp>
 #include <boost/mysql/detail/ok_view.hpp>
+
+#include <string_view>
 
 namespace boost {
 namespace mysql {

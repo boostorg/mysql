@@ -302,8 +302,5 @@ BOOST_INLINE_CONSTEXPR date max_date{9999u, 12u, 31u};
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/date.ipp>
-#endif
 
 #endif

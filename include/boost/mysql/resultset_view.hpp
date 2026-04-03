@@ -163,7 +163,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    string_view info() const noexcept
+    std::string_view info() const noexcept
     {
         BOOST_ASSERT(has_value());
         return impl_->get_info(index_);

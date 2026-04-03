@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include "mycosql_internal/protocol/deserialization.hpp"
 
 using namespace boost::mysql::detail;
 

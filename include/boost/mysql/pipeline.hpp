@@ -14,7 +14,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
@@ -23,11 +22,12 @@
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>
-#include <boost/core/span.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <array>
 #include <cstdint>
+#include <span>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -290,7 +290,7 @@ public:
      * query is copied into the request and need not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
-    pipeline_request& add_execute(string_view query);
+    pipeline_request& add_execute(std::string_view query);
 
     /**
      * \brief Adds a stage that executes a prepared statement.
@@ -348,7 +348,7 @@ public:
      * needs not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
-    pipeline_request& add_execute_range(statement stmt, span<const field_view> params);
+    pipeline_request& add_execute_range(statement stmt, std::span<const field_view> params);
 
     /**
      * \brief Adds a prepare statement stage.
@@ -363,7 +363,7 @@ public:
      * stmt_sql is copied into the request and need not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
-    pipeline_request& add_prepare_statement(string_view stmt_sql);
+    pipeline_request& add_prepare_statement(std::string_view stmt_sql);
 
     /**
      * \brief Adds a close statement stage.
@@ -429,8 +429,5 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/pipeline.ipp>
-#endif
 
 #endif

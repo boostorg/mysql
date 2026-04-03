@@ -8,13 +8,13 @@
 #ifndef BOOST_MYSQL_BLOB_VIEW_HPP
 #define BOOST_MYSQL_BLOB_VIEW_HPP
 
-#include <boost/core/span.hpp>
+#include <span>
 
 namespace boost {
 namespace mysql {
 
 /// Non-owning type used to represent binary blobs.
-using blob_view = boost::span<const unsigned char>;
+using blob_view = std::span<const unsigned char>;
 
 }  // namespace mysql
 }  // namespace boost

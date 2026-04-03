@@ -31,7 +31,7 @@ namespace mysql {
  * \ref rows_view::at or \ref rows_view::operator[]) returns a \ref row_view object, representing a
  * single row. All rows in the collection are the same size (as given by \ref num_columns).
  * \n
- * A `rows_view` object points to memory owned by an external entity (like `string_view` does). The
+ * A `rows_view` object points to memory owned by an external entity (like `std::string_view` does). The
  * validity of a `rows_view` object depends on how it was obtained:
  * \n
  * \li If it was constructed from a \ref rows object (by calling \ref rows::operator rows_view()),

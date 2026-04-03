@@ -9,8 +9,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <array>
@@ -18,6 +16,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "mycosql_internal/protocol/impl/serialization_context.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/printing.hpp"

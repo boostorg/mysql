@@ -11,7 +11,6 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -19,6 +18,7 @@
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <cstddef>
+#include <string_view>
 
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_row_message.hpp"

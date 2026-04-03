@@ -8,8 +8,6 @@
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/variant_stream.hpp>
-
 #include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/generic/stream_protocol.hpp>
@@ -24,6 +22,7 @@
 #include <array>
 #include <ostream>
 
+#include "mycosql_internal/variant_stream.hpp"
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/printing.hpp"
 

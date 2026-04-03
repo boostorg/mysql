@@ -17,7 +17,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
 #include <boost/mysql/detail/config.hpp>
@@ -31,6 +30,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace boost {

@@ -9,9 +9,10 @@
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_CREATE_DIAGNOSTICS_HPP
 
 #include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+
+#include <string_view>
 
 namespace boost {
 namespace mysql {

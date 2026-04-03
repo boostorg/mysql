@@ -11,11 +11,10 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
-#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
-
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/sansio/reset_connection.hpp"
+#include "mycosql_internal/sansio/run_pipeline.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
@@ -79,11 +78,13 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 
     // Run the algo. The character set is not updated.
     algo_test()
-        .expect_read(err_builder()
-                         .seqnum(11)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(11)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 
@@ -128,11 +129,13 @@ BOOST_AUTO_TEST_CASE(reset_conn_error_response)
     // Run the algo. The current charset was not updated
     algo_test()
         .expect_write(create_frame(0, {0x1f}))
-        .expect_read(err_builder()
-                         .seqnum(1)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(1)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 

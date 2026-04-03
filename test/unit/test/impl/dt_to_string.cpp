@@ -8,8 +8,6 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/mysql/impl/internal/dt_to_string.hpp>
-
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -17,6 +15,7 @@
 #include <cstdint>
 #include <random>
 
+#include "mycosql_internal/dt_to_string.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/stringize.hpp"
 

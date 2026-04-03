@@ -12,7 +12,6 @@
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
@@ -22,6 +21,7 @@
 #include <boost/throw_exception.hpp>
 
 #include <stdexcept>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -280,7 +280,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    string_view info() const noexcept
+    std::string_view info() const noexcept
     {
         BOOST_ASSERT(has_value());
         return impl_.get_info(0);

@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/impl/internal/ssl_context_with_default.hpp>
-
 #include <boost/asio/ssl/context.hpp>
 #include <boost/test/unit_test.hpp>
+
+#include "mycosql_internal/ssl_context_with_default.hpp"
 
 using namespace boost::mysql::detail;
 

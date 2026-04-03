@@ -18,7 +18,7 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 
 #include <boost/core/ignore_unused.hpp>
-#include <boost/core/span.hpp>
+#include <span>
 #include <boost/mp11/integer_sequence.hpp>
 
 // Execution request traits
@@ -47,7 +47,7 @@ struct execution_request_traits<with_params_t<T...>>
             input.query,
             {{
                 {
-                    string_view(),
+                    std::string_view(),
                     formattable_ref(std::get<I>(std::forward<WithParamsType>(input).args))
                 }...
             }}
@@ -72,7 +72,7 @@ struct execution_request_traits<with_params_t<>>
 {
     static any_execution_request make_request(with_params_t<> input, std::vector<field_view>&)
     {
-        return any_execution_request({input.query, span<format_arg>{}});
+        return any_execution_request({input.query, std::span<format_arg>{}});
     }
 };
 

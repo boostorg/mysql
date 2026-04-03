@@ -10,13 +10,13 @@
 
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/metadata.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/flags.hpp>
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 #include <vector>
 
 namespace boost {

@@ -18,8 +18,6 @@
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
-#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
-
 #include <boost/asio/error.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/tools/detail/per_element_manip.hpp>
@@ -30,6 +28,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "mycosql_internal/sansio/run_pipeline.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
@@ -118,11 +117,13 @@ BOOST_AUTO_TEST_CASE(execute_success)
         .expect_read(create_ok_frame(42, ok_builder().info("1st").build()))  // 1st op ok
         .expect_read(create_frame(11, {0x01}))                               // 2nd op OK, 1 column
         .expect_read(create_coldef_frame(12, meta_builder().type(column_type::tinyint).build_coldef()))
-        .expect_read(buffer_builder()
-                         .add(create_text_row_message(13, 42))
-                         .add(create_text_row_message(14, 43))
-                         .add(create_eof_frame(15, ok_builder().info("2nd").build()))
-                         .build())
+        .expect_read(
+            buffer_builder()
+                .add(create_text_row_message(13, 42))
+                .add(create_text_row_message(14, 43))
+                .add(create_eof_frame(15, ok_builder().info("2nd").build()))
+                .build()
+        )
         .check(fix);
 
     // All stages succeeded
@@ -351,17 +352,21 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors)
     // The first error is the operation's result
     algo_test()
         .expect_write(mock_request)
-        .expect_read(err_builder()
-                         .seqnum(32)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(32)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .expect_read(prepare_stmt_response_builder().seqnum(16).id(3).num_columns(0).num_params(0).build())
-        .expect_read(err_builder()
-                         .seqnum(10)
-                         .code(common_server_errc::er_bad_field_error)
-                         .message("other_msg")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(10)
+                .code(common_server_errc::er_bad_field_error)
+                .message("other_msg")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 
     // Stage errors
@@ -391,11 +396,13 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
     algo_test()
         .expect_write(mock_request)
         .expect_read(prepare_stmt_response_builder().seqnum(32).id(3).num_columns(0).num_params(0).build())
-        .expect_read(err_builder()
-                         .seqnum(16)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(16)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .expect_read(create_ok_frame(10, ok_builder().no_backslash_escapes(true).build()))
         .will_set_backslash_escapes(false)  // we processed the OK packet correctly
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
@@ -474,11 +481,13 @@ BOOST_AUTO_TEST_CASE(nonfatal_then_fatal_error)
     // Run the test
     algo_test()
         .expect_write(mock_request)
-        .expect_read(err_builder()
-                         .seqnum(32)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(32)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .expect_read(asio::error::already_connected)
         .check(fix, asio::error::already_connected);
 
@@ -508,11 +517,13 @@ BOOST_AUTO_TEST_CASE(fatal_error_with_diag)
         .expect_read(
             err_builder().seqnum(32).code(common_server_errc::er_bad_db_error).message("bad db").build_frame()
         )
-        .expect_read(err_builder()
-                         .seqnum(16)
-                         .code(common_server_errc::er_aborting_connection)
-                         .message("aborting connection")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(16)
+                .code(common_server_errc::er_aborting_connection)
+                .message("aborting connection")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_aborting_connection, create_server_diag("aborting connection"));
 
     // Stage results
@@ -574,17 +585,21 @@ BOOST_AUTO_TEST_CASE(no_response_error_1)
     // Run the test
     algo_test()
         .expect_write(mock_request)
-        .expect_read(err_builder()
-                         .seqnum(32)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(32)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .expect_read(create_ok_frame(16, ok_builder().build()))
-        .expect_read(err_builder()
-                         .seqnum(0)
-                         .code(common_server_errc::er_bad_table_error)
-                         .message("other_msg")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(0)
+                .code(common_server_errc::er_bad_table_error)
+                .message("other_msg")
+                .build_frame()
+        )
         .will_set_backslash_escapes(true)           // OK packet processed
         .will_set_current_charset(utf8mb4_charset)  // set character set succeeded
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
@@ -608,11 +623,13 @@ BOOST_AUTO_TEST_CASE(no_response_error_2)
     algo_test()
         .expect_write(mock_request)
         .expect_read(create_ok_frame(32, ok_builder().build()))
-        .expect_read(err_builder()
-                         .seqnum(16)
-                         .code(common_server_errc::er_unknown_character_set)
-                         .message("bad_charset")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(16)
+                .code(common_server_errc::er_unknown_character_set)
+                .message("bad_charset")
+                .build_frame()
+        )
         .expect_read(create_ok_frame(0, ok_builder().build()))
         .will_set_backslash_escapes(true)           // OK packet processed
         .will_set_current_charset(character_set{})  // reset connection succeeded

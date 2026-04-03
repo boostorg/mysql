@@ -5,14 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/quit_connection.hpp>
-
 #include <boost/asio/error.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <vector>
 
+#include "mycosql_internal/sansio/connection_state_data.hpp"
+#include "mycosql_internal/sansio/quit_connection.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/printing.hpp"

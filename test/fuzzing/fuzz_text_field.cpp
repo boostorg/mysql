@@ -13,12 +13,12 @@
 #include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/flags.hpp>
 
-#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
-
 #include <boost/endian/conversion.hpp>
 
 #include <cstddef>
 #include <cstdint>
+
+#include "mycosql_internal/protocol/deserialization.hpp"
 
 using namespace boost::mysql::detail;
 using boost::mysql::column_type;

@@ -12,11 +12,10 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
-
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/sansio/connection_state_data.hpp"
+#include "mycosql_internal/sansio/read_resultset_head.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_diagnostics.hpp"
@@ -147,13 +146,15 @@ BOOST_AUTO_TEST_CASE(success_rows_available)
     // Run the algo. The multi-function operation is still in-progress
     algo_test()
         .expect_read(create_frame(1, {0x01}))  // 1 metadata follows
-        .expect_read(buffer_builder()
-                         .add(create_coldef_frame(
-                             2,
-                             meta_builder().type(column_type::varchar).name("f1").build_coldef()
-                         ))
-                         .add(create_text_row_message(3, "abc"))
-                         .build())
+        .expect_read(
+            buffer_builder()
+                .add(create_coldef_frame(
+                    2,
+                    meta_builder().type(column_type::varchar).name("f1").build_coldef()
+                ))
+                .add(create_text_row_message(3, "abc"))
+                .build()
+        )
         .check(fix);
 
     // We've read the response but not the rows
@@ -174,10 +175,12 @@ BOOST_AUTO_TEST_CASE(success_ok_packet_next_resultset)
 
             // Run the algo. The multi-function operation is still in progress
             algo_test()
-                .expect_read(buffer_builder()
-                                 .add(create_ok_frame(1, ok_builder().info("1st").more_results(true).build()))
-                                 .add(create_ok_frame(2, ok_builder().info("2nd").build()))
-                                 .build())
+                .expect_read(
+                    buffer_builder()
+                        .add(create_ok_frame(1, ok_builder().info("1st").more_results(true).build()))
+                        .add(create_ok_frame(2, ok_builder().info("2nd").build()))
+                        .build()
+                )
                 .check(fix);
 
             // Verify
@@ -291,11 +294,13 @@ BOOST_AUTO_TEST_CASE(error_deserialize_execution_response)
 
             // Run the algo
             algo_test()
-                .expect_read(err_builder()
-                                 .seqnum(1)
-                                 .code(common_server_errc::er_bad_db_error)
-                                 .message("no_db")
-                                 .build_frame())
+                .expect_read(
+                    err_builder()
+                        .seqnum(1)
+                        .code(common_server_errc::er_bad_db_error)
+                        .message("no_db")
+                        .build_frame()
+                )
                 .will_set_status(
                     // errors end multi-function operations. Transition performed only if is_top_level=true
                     tc.is_top_level ? connection_status::ready : fix.st.status

@@ -8,8 +8,6 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <algorithm>
@@ -18,6 +16,7 @@
 #include <cstring>
 #include <vector>
 
+#include "mycosql_internal/sansio/read_buffer.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/printing.hpp"
 
@@ -588,15 +587,8 @@ BOOST_AUTO_TEST_CASE(is_power_of_two)
 {
     read_buffer buff(8);
 
-    std::size_t test_sizes[] = {
-        5, 7, 8,
-        9, 15, 16,
-        17, 31, 32,
-        33, 63, 64,
-        65, 127, 128,
-        129, 255, 256,
-        257, 511, 512, 513
-    };
+    std::size_t test_sizes[] = {5,  7,  8,   9,   15,  16,  17,  31,  32,  33,  63,
+                                64, 65, 127, 128, 129, 255, 256, 257, 511, 512, 513};
 
     // Test that buffer capacity grows to powers of two
     for (auto new_size : test_sizes)

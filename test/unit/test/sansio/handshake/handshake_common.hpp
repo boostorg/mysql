@@ -10,12 +10,11 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-#include <boost/mysql/impl/internal/sansio/handshake.hpp>
-
 #include <algorithm>
 
+#include "mycosql_internal/protocol/capabilities.hpp"
+#include "mycosql_internal/protocol/impl/protocol_types.hpp"
+#include "mycosql_internal/sansio/handshake.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/serialize_to_vector.hpp"
@@ -104,7 +103,8 @@ public:
                     int1{25},  // character set
                     int2{0},   // status flags
                     caps_high,
-                    int1{static_cast<std::uint8_t>(auth_plugin_data_.size() + 1u)
+                    int1{
+                        static_cast<std::uint8_t>(auth_plugin_data_.size() + 1u)
                     },                  // auth plugin data length
                     string_fixed<10>{}  // reserved
                 );
@@ -174,15 +174,17 @@ public:
     std::vector<std::uint8_t> build() const
     {
         auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
-            ctx.serialize(detail::login_request{
-                caps_,
-                detail::max_packet_size,
-                collation_id_,
-                username_,
-                auth_response_,
-                database_,
-                auth_plugin_name_
-            });
+            ctx.serialize(
+                detail::login_request{
+                    caps_,
+                    detail::max_packet_size,
+                    collation_id_,
+                    username_,
+                    auth_response_,
+                    database_,
+                    auth_plugin_name_
+                }
+            );
         });
         return create_frame(seqnum_, body);
     }

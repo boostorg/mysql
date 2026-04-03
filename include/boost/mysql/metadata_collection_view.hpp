@@ -10,7 +10,7 @@
 
 #include <boost/mysql/metadata.hpp>
 
-#include <boost/core/span.hpp>
+#include <span>
 
 namespace boost {
 namespace mysql {
@@ -22,7 +22,7 @@ namespace mysql {
  * owned by a \ref results or \ref execution_state object. This view is valid as long
  * as the memory allocated for the \ref metadata objects remain valid.
  */
-using metadata_collection_view = boost::span<const metadata>;
+using metadata_collection_view = std::span<const metadata>;
 
 }  // namespace mysql
 }  // namespace boost

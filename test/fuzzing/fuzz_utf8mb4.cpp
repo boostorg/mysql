@@ -7,10 +7,10 @@
 
 #include <boost/mysql/character_set.hpp>
 
-#include <boost/mysql/impl/internal/call_next_char.hpp>
-
 #include <cstddef>
 #include <stdint.h>
+
+#include "mycosql_internal/call_next_char.hpp"
 
 using namespace boost::mysql;
 

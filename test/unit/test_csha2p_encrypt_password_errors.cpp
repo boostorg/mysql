@@ -7,8 +7,6 @@
 
 #define BOOST_TEST_MODULE test_csha2p_encrypt_password_errors
 
-#include <boost/mysql/impl/internal/sansio/csha2p_encrypt_password.hpp>
-
 #include <boost/container/small_vector.hpp>
 #include <boost/system/error_category.hpp>
 #include <boost/test/unit_test.hpp>
@@ -16,6 +14,8 @@
 
 #include <cstdint>
 #include <string>
+
+#include "mycosql_internal/sansio/csha2p_encrypt_password.hpp"
 
 using namespace boost::mysql;
 using detail::csha2p_encrypt_password;

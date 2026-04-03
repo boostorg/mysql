@@ -19,7 +19,6 @@
 #endif
 
 #include <boost/mysql/pfr.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
@@ -27,6 +26,7 @@
 #include <boost/pfr/core_name.hpp>
 #include <boost/pfr/traits.hpp>
 
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -60,9 +60,11 @@ using pfr_fields_t = decltype(pfr::structure_to_tuple(std::declval<const T&>()))
 
 // PFR field names use std::string_view
 template <std::size_t N>
-constexpr std::array<string_view, N> to_name_table_storage(std::array<std::string_view, N> input) noexcept
+constexpr std::array<std::string_view, N> to_name_table_storage(
+    std::array<std::string_view, N> input
+) noexcept
 {
-    std::array<string_view, N> res{};
+    std::array<std::string_view, N> res{};
     for (std::size_t i = 0; i < N; ++i)
         res[i] = input[i];
     return res;
@@ -72,7 +74,7 @@ template <class T>
 constexpr inline std::size_t pfr_row_size_v = mp11::mp_size<pfr_fields_t<T>>::value;
 
 template <class T>
-constexpr std::array<string_view, pfr_row_size_v<T>> create_pfr_name_table() noexcept
+constexpr std::array<std::string_view, pfr_row_size_v<T>> create_pfr_name_table() noexcept
 {
     // Some MSVC compilers have trouble with pfr::names_as_array<T>() when
     // the row type is empty

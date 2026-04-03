@@ -12,7 +12,6 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field_kind.hpp>
-#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -25,6 +24,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iosfwd>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -53,8 +53,8 @@ namespace mysql {
  *     `field` is.
  * \li If it was created from a scalar (null, integral, floating point, date, datetime or time), the
  *     `field_view` has value semnatics and will always be valid.
- * \li If it was created from a string or blob type, the `field_view` acts as a `string_view` or `blob_view`,
- *     and will be valid as long as the original string/blob is.
+ * \li If it was created from a string or blob type, the `field_view` acts as a `std::string_view` or
+ * `blob_view`, and will be valid as long as the original string/blob is.
  * \n
  * Calling any member function on a `field_view` that has been invalidated results in undefined
  * behavior.
@@ -76,7 +76,7 @@ public:
      * \brief Constructs a `field_view` holding NULL.
      * \details
      * Caution: `field_view(NULL)` will <b>not</b> match this overload. It will try to construct
-     * a `string_view` from a NULL C string, causing undefined behavior.
+     * a `std::string_view` from a NULL C string, causing undefined behavior.
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -157,9 +157,9 @@ public:
      *
      * \par Object lifetimes
      * Results in a `field_view` with reference semantics. It will
-     * be valid as long as the character buffer the `string_view` points to is valid.
+     * be valid as long as the character buffer the `std::string_view` points to is valid.
      */
-    BOOST_CXX14_CONSTEXPR explicit field_view(string_view v) noexcept : impl_{v} {}
+    BOOST_CXX14_CONSTEXPR explicit field_view(std::string_view v) noexcept : impl_{v} {}
 
     /**
      * \brief Constructs a `field_view` holding a blob.
@@ -323,7 +323,7 @@ public:
      * \par Object lifetimes
      * The returned view has the same lifetime rules as `*this` (it's valid as long as `*this` is valid).
      */
-    BOOST_CXX14_CONSTEXPR inline string_view as_string() const;
+    BOOST_CXX14_CONSTEXPR inline std::string_view as_string() const;
 
     /**
      * \brief Retrieves the underlying value as a blob or throws an exception.
@@ -412,9 +412,10 @@ public:
      * \par Object lifetimes
      * The returned view has the same lifetime rules as `*this` (it's valid as long as `*this` is valid).
      */
-    BOOST_CXX14_CONSTEXPR inline string_view get_string() const noexcept
+    BOOST_CXX14_CONSTEXPR inline std::string_view get_string() const noexcept
     {
-        return is_field_ptr() ? string_view(impl_.repr.field_ptr->get<std::string>()) : impl_.repr.string;
+        return is_field_ptr() ? std::string_view(impl_.repr.field_ptr->get<std::string>())
+                              : impl_.repr.string;
     }
 
     /**
@@ -547,7 +548,7 @@ private:
     {
         std::int64_t int64;
         std::uint64_t uint64;
-        string_view string;
+        std::string_view string;
         blob_view blob;
         float float_;
         double double_;
@@ -560,7 +561,7 @@ private:
         BOOST_CXX14_CONSTEXPR repr_t() noexcept : int64{} {}
         BOOST_CXX14_CONSTEXPR repr_t(std::int64_t v) noexcept : int64(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(std::uint64_t v) noexcept : uint64(v) {}
-        BOOST_CXX14_CONSTEXPR repr_t(string_view v) noexcept : string{v} {}
+        BOOST_CXX14_CONSTEXPR repr_t(std::string_view v) noexcept : string{v} {}
         BOOST_CXX14_CONSTEXPR repr_t(blob_view v) noexcept : blob{v} {}
         BOOST_CXX14_CONSTEXPR repr_t(float v) noexcept : float_(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(double v) noexcept : double_(v) {}
@@ -583,7 +584,7 @@ private:
         BOOST_CXX14_CONSTEXPR impl_t() = default;
         BOOST_CXX14_CONSTEXPR impl_t(std::int64_t v) noexcept : ikind(internal_kind::int64), repr(v) {}
         BOOST_CXX14_CONSTEXPR impl_t(std::uint64_t v) noexcept : ikind(internal_kind::uint64), repr(v) {}
-        BOOST_CXX14_CONSTEXPR impl_t(string_view v) noexcept : ikind(internal_kind::string), repr{v} {}
+        BOOST_CXX14_CONSTEXPR impl_t(std::string_view v) noexcept : ikind(internal_kind::string), repr{v} {}
         BOOST_CXX14_CONSTEXPR impl_t(blob_view v) noexcept : ikind(internal_kind::blob), repr{v} {}
         BOOST_CXX14_CONSTEXPR impl_t(float v) noexcept : ikind(internal_kind::float_), repr(v) {}
         BOOST_CXX14_CONSTEXPR impl_t(double v) noexcept : ikind(internal_kind::double_), repr(v) {}
@@ -625,8 +626,5 @@ std::ostream& operator<<(std::ostream& os, const field_view& v);
 }  // namespace boost
 
 #include <boost/mysql/impl/field_view.hpp>
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/field_view.ipp>
-#endif
 
 #endif

@@ -11,11 +11,10 @@
 
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/read_some_rows_dynamic.hpp>
-
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/sansio/connection_state_data.hpp"
+#include "mycosql_internal/sansio/read_some_rows_dynamic.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_execution_processor.hpp"
@@ -75,10 +74,12 @@ BOOST_AUTO_TEST_CASE(batch_with_rows)
 
     // Run the algo
     algo_test()
-        .expect_read(buffer_builder()
-                         .add(create_text_row_message(42, "abc"))
-                         .add(create_text_row_message(43, "von"))
-                         .build())
+        .expect_read(
+            buffer_builder()
+                .add(create_text_row_message(42, "abc"))
+                .add(create_text_row_message(43, "von"))
+                .build()
+        )
         .check(fix);
 
     // Check
@@ -93,11 +94,13 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
 
     // Run the algo
     algo_test()
-        .expect_read(buffer_builder()
-                         .add(create_text_row_message(42, "abc"))
-                         .add(create_text_row_message(43, "von"))
-                         .add(create_eof_frame(44, ok_builder().affected_rows(1).info("1st").build()))
-                         .build())
+        .expect_read(
+            buffer_builder()
+                .add(create_text_row_message(42, "abc"))
+                .add(create_text_row_message(43, "von"))
+                .add(create_eof_frame(44, ok_builder().affected_rows(1).info("1st").build()))
+                .build()
+        )
         .will_set_status(detail::connection_status::ready)
         .check(fix);
 

@@ -13,7 +13,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/coldef_view.hpp>
@@ -22,11 +21,12 @@
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
-#include <boost/core/span.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <span>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -51,7 +51,7 @@ public:
     constexpr output_ref() noexcept = default;
 
     template <class T>
-    constexpr output_ref(boost::span<T> span, std::size_t type_index, std::size_t offset = 0) noexcept
+    constexpr output_ref(std::span<T> span, std::size_t type_index, std::size_t offset = 0) noexcept
         : data_(span.data()), max_size_(span.size()), type_index_(type_index), offset_(offset)
     {
     }
@@ -121,7 +121,11 @@ public:
     void on_row_batch_finish() { on_row_batch_finish_impl(); }
 
     BOOST_ATTRIBUTE_NODISCARD
-    error_code on_row(span<const std::uint8_t> msg, const output_ref& ref, std::vector<field_view>& storage)
+    error_code on_row(
+        std::span<const std::uint8_t> msg,
+        const output_ref& ref,
+        std::vector<field_view>& storage
+    )
     {
         BOOST_ASSERT(is_reading_rows());
         return on_row_impl(msg, ref, storage);
@@ -157,7 +161,7 @@ protected:
     virtual error_code on_meta_impl(const coldef_view& coldef, bool is_last, diagnostics& diag) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_view& pack) = 0;
     virtual error_code on_row_impl(
-        span<const std::uint8_t> msg,
+        std::span<const std::uint8_t> msg,
         const output_ref& ref,
         std::vector<field_view>& storage
     ) = 0;

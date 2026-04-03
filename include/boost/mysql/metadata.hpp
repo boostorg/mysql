@@ -9,15 +9,17 @@
 #define BOOST_MYSQL_METADATA_HPP
 
 #include <boost/mysql/column_type.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/flags.hpp>
 
+#include <boost/assert.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <string_view>
 #include <vector>
 
 namespace boost {
@@ -48,7 +50,7 @@ public:
      * No-throw guarantee.
      *
      * \par Object lifetimes
-     * `string_view`s obtained by calling accessor functions on `other` are invalidated.
+     * `std::string_view`s obtained by calling accessor functions on `other` are invalidated.
      */
     metadata(metadata&& other) = default;
 
@@ -67,7 +69,7 @@ public:
      * No-throw guarantee.
      *
      * \par Object lifetimes
-     * `string_view`s obtained by calling accessor functions on both `*this` and `other`
+     * `std::string_view`s obtained by calling accessor functions on both `*this` and `other`
      * are invalidated.
      */
     metadata& operator=(metadata&& other) = default;
@@ -79,7 +81,7 @@ public:
      * Basic guarantee. Internal allocations may throw.
      *
      * \par Object lifetimes
-     * `string_view`s obtained by calling accessor functions on `*this`
+     * `std::string_view`s obtained by calling accessor functions on `*this`
      * are invalidated.
      */
     metadata& operator=(const metadata& other) = default;
@@ -100,7 +102,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view database() const noexcept { return substring(0, table_offset_); }
+    std::string_view database() const noexcept { return substring(0, table_offset_); }
 
     /**
      * \brief Returns the name of the virtual table the column belongs to.
@@ -117,7 +119,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view table() const noexcept { return substring(table_offset_, org_table_offset_); }
+    std::string_view table() const noexcept { return substring(table_offset_, org_table_offset_); }
 
     /**
      * \brief Returns the name of the physical table the column belongs to.
@@ -134,7 +136,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view original_table() const noexcept { return substring(org_table_offset_, name_offset_); }
+    std::string_view original_table() const noexcept { return substring(org_table_offset_, name_offset_); }
 
     /**
      * \brief Returns the actual name of the column.
@@ -152,7 +154,7 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view column_name() const noexcept { return substring(name_offset_, org_name_offset_); }
+    std::string_view column_name() const noexcept { return substring(name_offset_, org_name_offset_); }
 
     /**
      * \brief Returns the original (physical) name of the column.
@@ -169,7 +171,10 @@ public:
      * The returned reference is valid as long as `*this` is alive and hasn't been
      * assigned to or moved from.
      */
-    string_view original_column_name() const noexcept { return substring(org_name_offset_, strings_.size()); }
+    std::string_view original_column_name() const noexcept
+    {
+        return substring(org_name_offset_, strings_.size());
+    }
 
     /**
      * \brief Returns the ID of the collation that fields belonging to this column use.
@@ -287,7 +292,7 @@ private:
                coldef.org_name.size();
     }
 
-    static char* copy_string(string_view from, char* to)
+    static char* copy_string(std::string_view from, char* to)
     {
         if (!from.empty())
             std::memcpy(to, from.data(), from.size());
@@ -324,7 +329,7 @@ private:
 
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 
-    string_view substring(std::size_t first, std::size_t last) const
+    std::string_view substring(std::size_t first, std::size_t last) const
     {
         return {strings_.data() + first, static_cast<std::size_t>(last - first)};
     }

@@ -8,14 +8,13 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/call_next_char.hpp>
-
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 #include <string>
 
+#include "mycosql_internal/call_next_char.hpp"
 #include "test_common/create_basic.hpp"
 
 using namespace boost::mysql;
@@ -57,7 +56,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_multibyte_valid)
         string_view input;
         std::size_t expected;
     } test_cases[] = {
-  // 2 byte characters. We perform some extra tests for c2 and c3
+        // 2 byte characters. We perform some extra tests for c2 and c3
         {"c2 min (U+0080)",          "\xc2\x80",         2u},
         {"c2 reg (U+0095)",          "\xc2\x95",         2u},
         {"c2 max (U+00BF)",          "\xc2\xbf",         2u},
@@ -65,7 +64,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_multibyte_valid)
         {"c3 reg (U+00E7)",          "\xc3\xa7",         2u},
         {"c3 max (U+00FF)",          "\xc3\xbf",         2u},
 
- // c4-df behave the same as c2-c3, so only min and max
+        // c4-df behave the same as c2-c3, so only min and max
         {"c4 min (U+0100)",          "\xc4\x80",         2u},
         {"c4 max (U+013F)",          "\xc4\xbf",         2u},
         {"c5 min (U+0140)",          "\xc5\x80",         2u},
@@ -123,7 +122,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_multibyte_valid)
         {"df min (U+07C0)",          "\xdf\x80",         2u},
         {"df max (U+07FF)",          "\xdf\xbf",         2u},
 
- // 3 byte characters. We perform some extra tests for e0 and e1
+        // 3 byte characters. We perform some extra tests for e0 and e1
         {"e0 min min (U+0800)",      "\xe0\xa0\x80",     3u},
         {"e0 min reg (U+0835)",      "\xe0\xa0\xb5",     3u},
         {"e0 min max (U+083F)",      "\xe0\xa0\xbf",     3u},
@@ -139,7 +138,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_multibyte_valid)
         {"e1 max min (U+1FC0)",      "\xe1\xbf\x80",     3u},
         {"e1 max max (U+1FFF)",      "\xe1\xbf\xbf",     3u},
 
- // e2-ec behave like e1
+        // e2-ec behave like e1
         {"e2 min (U+2000)",          "\xe2\x80\x80",     3u},
         {"e2 max (U+2FFF)",          "\xe2\xbf\xbf",     3u},
         {"e3 min (U+3000)",          "\xe3\x80\x80",     3u},
@@ -163,18 +162,18 @@ BOOST_AUTO_TEST_CASE(utf8mb4_multibyte_valid)
         {"ec min (U+C000)",          "\xec\x80\x80",     3u},
         {"ec max (U+CFFF)",          "\xec\xbf\xbf",     3u},
 
- // ed is different because of surrogates (code points U+D800 to U+DFFF)
+        // ed is different because of surrogates (code points U+D800 to U+DFFF)
         {"ed min (U+D000)",          "\xed\x80\x80",     3u},
         {"ed reg (U+D631)",          "\xed\x98\xb1",     3u},
         {"ed max (U+D7FF)",          "\xed\x9f\xbf",     3u},
 
- // ee-ef behave like e1
+        // ee-ef behave like e1
         {"ee min (U+E000)",          "\xee\x80\x80",     3u},
         {"ee max (U+EFFF)",          "\xee\xbf\xbf",     3u},
         {"ef min (U+F000)",          "\xef\x80\x80",     3u},
         {"ef max (U+FFFF)",          "\xef\xbf\xbf",     3u},
 
- // 4 byte characters - we perform some extra testing for f0
+        // 4 byte characters - we perform some extra testing for f0
         {"f0 min min min (U+10000)", "\xf0\x90\x80\x80", 4u},
         {"f0 min min max (U+1003F)", "\xf0\x90\x80\xbf", 4u},
         {"f0 min max min (U+10FC0)", "\xf0\x90\xbf\x80", 4u},
@@ -191,7 +190,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_multibyte_valid)
         {"f3 min (U+C0000)",         "\xf3\x80\x80\x80", 4u},
         {"f3 max (U+FFFFF)",         "\xf3\xbf\xbf\xbf", 4u},
 
- // The last allowable code point is U+10FFFF
+        // The last allowable code point is U+10FFFF
         {"f4 min (U+100000)",        "\xf4\x80\x80\x80", 4u},
         {"f4 max (U+10FFFF)",        "\xf4\x8f\xbf\xbf", 4u},
     };
@@ -245,7 +244,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
         string_view name;
         string_view input;
     } test_cases[] = {
-  // 2 byte characters
+        // 2 byte characters
         {"c2 zero",             makesv("\xc2\x00")        },
         {"c2 ltmin",            "\xc2\x7f"                },
         {"c2 gtmax",            "\xc2\xc0"                },
@@ -309,7 +308,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
         {"df ltmin",            "\xdf\x7f"                },
         {"df gtmax",            "\xdf\xc0"                },
 
- // 3 byte chars (e0 is special)
+        // 3 byte chars (e0 is special)
         {"e0 ltmin ok",         "\xe0\x9f\x91"            },
         {"e0 gtmax ok",         "\xe0\xc0\x91"            },
         {"e0 ok ltmin",         "\xe0\xa0\x7F"            },
@@ -375,7 +374,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
         {"ec ok ltmin",         "\xec\xa0\x7F"            },
         {"ec ok gtmax",         "\xec\xa0\xc0"            },
 
- // ed is special because it includes surrogates
+        // ed is special because it includes surrogates
         {"ed ltmin ok",         "\xed\x7f\x91"            },
         {"ed gtmax ok",         "\xed\xc0\x91"            },
         {"ed ok ltmin",         "\xed\xa0\x7F"            },
@@ -384,7 +383,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
         {"ed surrogate reg",    "\xed\xa1\x92"            },
         {"ed surrogate max",    "\xed\xbf\xbf"            },
 
- // ee and ef behave like e1
+        // ee and ef behave like e1
         {"ee ltmin ok",         "\xee\x7f\x91"            },
         {"ee gtmax ok",         "\xee\xc0\x91"            },
         {"ee ok ltmin",         "\xee\xa0\x7F"            },
@@ -395,7 +394,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
         {"ef ok ltmin",         "\xef\xa0\x7F"            },
         {"ef ok gtmax",         "\xef\xa0\xc0"            },
 
- // 4 byte characters. f0 is special
+        // 4 byte characters. f0 is special
         {"f0 ltmin ok ok",      "\xf0\x8f\x80\x80"        },
         {"f0 gtmax ok ok",      "\xf0\xc0\x80\x80"        },
         {"f0 ok ltmin ok",      "\xf0\xa1\x7f\xa3"        },
@@ -424,7 +423,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
         {"f3 ok ok ltmin",      "\xf3\xa1\xa2\x7f"        },
         {"f3 ok ok gtmax",      "\xf3\xa1\xa2\xc0"        },
 
- // f4 is also special because it's the end of the unicode range
+        // f4 is also special because it's the end of the unicode range
         {"f4 ltmin ok ok",      "\xf4\x7f\x80\x80"        },
         {"f4 gtmax ok ok",      "\xf4\x90\x80\x80"        },
         {"f4 ok ltmin ok",      "\xf4\xa1\x7f\xa3"        },
@@ -432,7 +431,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
         {"f4 ok ok ltmin",      "\xf4\xa1\xa2\x7f"        },
         {"f4 ok ok gtmax",      "\xf4\xa1\xa2\xc0"        },
 
- // overlong characters
+        // overlong characters
         {"overlong / 2byte",    "\xc0\xaf"                },
         {"overlong / 3byte",    "\xe0\x80\xaf"            },
         {"overlong / 4byte",    "\xf0\x80\x80\xaf"        },

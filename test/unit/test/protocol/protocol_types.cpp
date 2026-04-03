@@ -9,13 +9,12 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
 #include <memory>
 
+#include "mycosql_internal/protocol/impl/protocol_types.hpp"
 #include "operators.hpp"
 #include "serialization_test.hpp"
 #include "test_common/buffer_concat.hpp"

@@ -8,11 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_EXECUTION_CONCEPTS_HPP
 #define BOOST_MYSQL_DETAIL_EXECUTION_CONCEPTS_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
 
+#include <string_view>
 #include <type_traits>
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS

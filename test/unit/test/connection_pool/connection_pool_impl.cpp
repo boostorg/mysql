@@ -21,11 +21,6 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 
-#include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
-#include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
-#include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
-#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
-
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
@@ -56,6 +51,10 @@
 #include <ostream>
 #include <utility>
 
+#include "mycosql_internal/connection_pool/connection_node.hpp"
+#include "mycosql_internal/connection_pool/connection_pool_impl.hpp"
+#include "mycosql_internal/connection_pool/internal_pool_params.hpp"
+#include "mycosql_internal/connection_pool/sansio_connection_node.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"

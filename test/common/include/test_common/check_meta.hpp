@@ -12,11 +12,11 @@
 
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include <initializer_list>
+#include <string_view>
 
 namespace boost {
 namespace mysql {

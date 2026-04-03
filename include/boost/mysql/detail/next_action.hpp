@@ -8,12 +8,14 @@
 #ifndef BOOST_MYSQL_DETAIL_NEXT_ACTION_HPP
 #define BOOST_MYSQL_DETAIL_NEXT_ACTION_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/assert.hpp>
-#include <boost/core/span.hpp>
+#include <span>
 
 #include <cstdint>
+#include <span>
 
 namespace boost {
 namespace mysql {
@@ -35,13 +37,13 @@ class next_action
 public:
     struct read_args_t
     {
-        span<std::uint8_t> buffer;
+        std::span<std::uint8_t> buffer;
         bool use_ssl;
     };
 
     struct write_args_t
     {
-        span<const std::uint8_t> buffer;
+        std::span<const std::uint8_t> buffer;
         bool use_ssl;
     };
 
@@ -58,7 +60,7 @@ public:
         BOOST_ASSERT(is_done());
         return data_.ec;
     }
-    const void* connect_endpoint() const noexcept { return data_.connect_endpoint; }
+    const any_address& connect_endpoint() const noexcept { return *data_.connect_endpoint; }
     read_args_t read_args() const noexcept
     {
         BOOST_ASSERT(type_ == next_action_type::read);
@@ -70,7 +72,7 @@ public:
         return data_.write_args;
     }
 
-    static next_action connect(const void* endpoint) noexcept
+    static next_action connect(const any_address* endpoint) noexcept
     {
         return next_action(next_action_type::connect, endpoint);
     }
@@ -94,12 +96,12 @@ private:
     union data_t
     {
         error_code ec;
-        const void* connect_endpoint;
+        const any_address* connect_endpoint;
         read_args_t read_args;
         write_args_t write_args;
 
         data_t() noexcept : ec(error_code()) {}
-        data_t(const void* endpoint) noexcept : connect_endpoint(endpoint) {}
+        data_t(const any_address* endpoint) noexcept : connect_endpoint(endpoint) {}
         data_t(error_code ec) noexcept : ec(ec) {}
         data_t(read_args_t args) noexcept : read_args(args) {}
         data_t(write_args_t args) noexcept : write_args(args) {}

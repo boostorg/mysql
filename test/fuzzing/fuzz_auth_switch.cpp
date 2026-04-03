@@ -7,7 +7,7 @@
 
 #include <boost/mysql/diagnostics.hpp>
 
-#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include "mycosql_internal/protocol/deserialization.hpp"
 
 using namespace boost::mysql::detail;
 

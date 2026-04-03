@@ -9,9 +9,9 @@
 #define BOOST_MYSQL_DETAIL_COLDEF_VIEW_HPP
 
 #include <boost/mysql/column_type.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <cstdint>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -19,11 +19,11 @@ namespace detail {
 
 struct coldef_view
 {
-    string_view database;
-    string_view table;
-    string_view org_table;
-    string_view name;
-    string_view org_name;
+    std::string_view database;
+    std::string_view table;
+    std::string_view org_table;
+    std::string_view name;
+    std::string_view org_name;
     std::uint16_t collation_id;
     std::uint32_t column_length;  // maximum length of the field
     column_type type;

@@ -23,17 +23,6 @@
 #include <boost/mysql/detail/results_iterator.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
-#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
-#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
-#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
-#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_state.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/error.hpp>
@@ -48,6 +37,16 @@
 #include <ostream>
 #include <utility>
 
+#include "mycosql_internal/connection_pool/sansio_connection_node.hpp"
+#include "mycosql_internal/protocol/capabilities.hpp"
+#include "mycosql_internal/protocol/db_flavor.hpp"
+#include "mycosql_internal/protocol/deserialization.hpp"
+#include "mycosql_internal/protocol/frame_header.hpp"
+#include "mycosql_internal/protocol/impl/protocol_field_type.hpp"
+#include "mycosql_internal/protocol/impl/protocol_types.hpp"
+#include "mycosql_internal/protocol/impl/serialization_context.hpp"
+#include "mycosql_internal/sansio/connection_state.hpp"
+#include "mycosql_internal/sansio/connection_state_data.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
@@ -808,12 +807,14 @@ boost::mysql::any_connection boost::mysql::test::create_test_any_connection(
     detail::connection_status initial_status
 )
 {
-    auto res = any_connection(detail::access::construct<any_connection>(
-        std::unique_ptr<detail::engine>(
-            new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
-        ),
-        params
-    ));
+    auto res = any_connection(
+        detail::access::construct<any_connection>(
+            std::unique_ptr<detail::engine>(
+                new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
+            ),
+            params
+        )
+    );
     detail::access::get_impl(res).get_state().data().status = initial_status;
     return res;
 }

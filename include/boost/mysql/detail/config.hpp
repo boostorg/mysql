@@ -29,13 +29,8 @@
     #define BOOST_MYSQL_CONSTEVAL constexpr
 #endif
 
-// Separate build
-#if defined(BOOST_MYSQL_SEPARATE_COMPILATION)
-    #define BOOST_MYSQL_DECL
-#else
-    #define BOOST_MYSQL_HEADER_ONLY
-    #define BOOST_MYSQL_DECL inline
-#endif
+// Separate build (TODO)
+#define BOOST_MYSQL_DECL
 
 // Auto return type. Having this as a macro helps the documentation tool.
 #ifdef BOOST_NO_CXX14_RETURN_TYPE_DEDUCTION

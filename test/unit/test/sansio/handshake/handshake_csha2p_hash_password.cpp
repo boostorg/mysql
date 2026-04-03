@@ -5,10 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/impl/internal/sansio/caching_sha2_password.hpp>
-
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/sansio/caching_sha2_password.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 
 using namespace boost::mysql;

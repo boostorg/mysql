@@ -12,10 +12,9 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
-#include <boost/mysql/impl/internal/sansio/execute.hpp>
-
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/sansio/execute.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_unit/algo_test.hpp"
@@ -72,11 +71,13 @@ BOOST_AUTO_TEST_CASE(read_response_single_row_batch)
     algo_test()
         .expect_read(create_frame(42, {0x01}))  // OK, 1 column
         .expect_read(create_coldef_frame(43, meta_builder().type(column_type::bigint).build_coldef()))
-        .expect_read(buffer_builder()
-                         .add(create_text_row_message(44, 42))
-                         .add(create_text_row_message(45, 43))
-                         .add(create_eof_frame(46, ok_builder().affected_rows(10u).info("1st").build()))
-                         .build())
+        .expect_read(
+            buffer_builder()
+                .add(create_text_row_message(44, 42))
+                .add(create_text_row_message(45, 43))
+                .add(create_eof_frame(46, ok_builder().affected_rows(10u).info("1st").build()))
+                .build()
+        )
         .check(fix);
 
     // Verify
@@ -210,11 +211,13 @@ BOOST_AUTO_TEST_CASE(execute_success_rows)
         .expect_write(create_frame(0, serialized_select_1))
         .expect_read(create_frame(1, {0x01}))  // OK, 1 column
         .expect_read(create_coldef_frame(2, meta_builder().type(column_type::bigint).build_coldef()))
-        .expect_read(buffer_builder()
-                         .add(create_text_row_message(3, 42))
-                         .add(create_text_row_message(4, 43))
-                         .add(create_eof_frame(5, ok_builder().affected_rows(10u).info("1st").build()))
-                         .build())
+        .expect_read(
+            buffer_builder()
+                .add(create_text_row_message(3, 42))
+                .add(create_text_row_message(4, 43))
+                .add(create_eof_frame(5, ok_builder().affected_rows(10u).info("1st").build()))
+                .build()
+        )
         .check(fix);
 
     // Verify

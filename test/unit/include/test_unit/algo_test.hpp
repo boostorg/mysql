@@ -14,10 +14,6 @@
 
 #include <boost/mysql/detail/next_action.hpp>
 
-#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
 #include <boost/optional/optional.hpp>
@@ -26,6 +22,9 @@
 #include <cstdint>
 #include <vector>
 
+#include "mycosql_internal/protocol/capabilities.hpp"
+#include "mycosql_internal/protocol/db_flavor.hpp"
+#include "mycosql_internal/sansio/connection_state_data.hpp"
 #include "test_common/source_location.hpp"
 
 namespace boost {

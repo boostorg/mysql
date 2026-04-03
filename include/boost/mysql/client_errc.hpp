@@ -201,8 +201,5 @@ struct is_error_code_enum<::boost::mysql::client_errc>
 
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/error_categories.ipp>
-#endif
 
 #endif

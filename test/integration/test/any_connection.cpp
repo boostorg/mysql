@@ -22,8 +22,6 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/engine_impl.hpp>
 
-#include <boost/mysql/impl/internal/variant_stream.hpp>
-
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
@@ -36,6 +34,7 @@
 #include <chrono>
 #include <string>
 
+#include "mycosql_internal/variant_stream.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/network_result.hpp"

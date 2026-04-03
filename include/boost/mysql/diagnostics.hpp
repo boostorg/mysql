@@ -8,11 +8,10 @@
 #ifndef BOOST_MYSQL_DIAGNOSTICS_HPP
 #define BOOST_MYSQL_DIAGNOSTICS_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <boost/mysql/detail/access.hpp>
 
 #include <string>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -48,9 +47,9 @@ public:
      * The returned view is valid as long as `*this` is alive, hasn't been assigned-to
      * or moved-from, and \ref clear hasn't been called. Moving `*this` invalidates the view.
      */
-    string_view client_message() const noexcept
+    std::string_view client_message() const noexcept
     {
-        return impl_.is_server ? string_view() : string_view(impl_.msg);
+        return impl_.is_server ? std::string_view() : std::string_view(impl_.msg);
     }
 
     /**
@@ -66,9 +65,9 @@ public:
      * The returned view is valid as long as `*this` is alive, hasn't been assigned-to
      * or moved-from, and \ref clear hasn't been called. Moving `*this` invalidates the view.
      */
-    string_view server_message() const noexcept
+    std::string_view server_message() const noexcept
     {
-        return impl_.is_server ? string_view(impl_.msg) : string_view();
+        return impl_.is_server ? std::string_view(impl_.msg) : std::string_view();
     }
 
     /**

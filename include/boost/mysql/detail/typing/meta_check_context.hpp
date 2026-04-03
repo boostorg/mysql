@@ -14,7 +14,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
@@ -22,6 +21,7 @@
 
 #include <memory>
 #include <sstream>
+#include <string_view>
 
 namespace boost {
 namespace mysql {
@@ -63,7 +63,7 @@ class meta_check_context
 {
     std::unique_ptr<std::ostringstream> errors_;
     std::size_t current_index_{};
-    span<const std::size_t> pos_map_;
+    std::span<const std::size_t> pos_map_;
     name_table_t name_table_;
     metadata_collection_view meta_{};
     bool nullability_checked_{};
@@ -87,7 +87,7 @@ class meta_check_context
 
 public:
     meta_check_context(
-        span<const std::size_t> pos_map,
+        std::span<const std::size_t> pos_map,
         name_table_t name_table,
         metadata_collection_view meta
     ) noexcept
@@ -128,8 +128,5 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/meta_check_context.ipp>
-#endif
 
 #endif

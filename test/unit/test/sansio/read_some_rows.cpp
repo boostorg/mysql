@@ -9,15 +9,14 @@
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/read_some_rows.hpp>
-
 #include <boost/asio/error.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 
+#include "mycosql_internal/sansio/connection_state_data.hpp"
+#include "mycosql_internal/sansio/read_some_rows.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
@@ -163,10 +162,12 @@ BOOST_AUTO_TEST_CASE(batch_with_rows)
 
             // Run the algo. Single, long read that yields two rows
             algo_test()
-                .expect_read(buffer_builder()
-                                 .add(create_text_row_message(42, "abc"))
-                                 .add(create_text_row_message(43, "von"))
-                                 .build())
+                .expect_read(
+                    buffer_builder()
+                        .add(create_text_row_message(42, "abc"))
+                        .add(create_text_row_message(43, "von"))
+                        .build()
+                )
                 .check(fix);
 
             // Validate
@@ -195,14 +196,16 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
 
             // Run the algo. Single, long read that yields rows and eof
             algo_test()
-                .expect_read(buffer_builder()
-                                 .add(create_text_row_message(42, "abc"))
-                                 .add(create_text_row_message(43, "von"))
-                                 .add(create_eof_frame(
-                                     44,
-                                     ok_builder().affected_rows(1).info("1st").more_results(true).build()
-                                 ))
-                                 .build())
+                .expect_read(
+                    buffer_builder()
+                        .add(create_text_row_message(42, "abc"))
+                        .add(create_text_row_message(43, "von"))
+                        .add(create_eof_frame(
+                            44,
+                            ok_builder().affected_rows(1).info("1st").more_results(true).build()
+                        ))
+                        .build()
+                )
                 .check(fix);
 
             // Validate
@@ -266,12 +269,14 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_out_of_span_space)
     // Run the algo. Single, long read that yields 4 rows.
     // We have only space for 3
     algo_test()
-        .expect_read(buffer_builder()
-                         .add(create_text_row_message(42, "aaa"))
-                         .add(create_text_row_message(43, "bbb"))
-                         .add(create_text_row_message(44, "ccc"))
-                         .add(create_text_row_message(45, "ddd"))
-                         .build())
+        .expect_read(
+            buffer_builder()
+                .add(create_text_row_message(42, "aaa"))
+                .add(create_text_row_message(43, "bbb"))
+                .add(create_text_row_message(44, "ccc"))
+                .add(create_text_row_message(45, "ddd"))
+                .build()
+        )
         .check(fix);
 
     // Validate
@@ -295,11 +300,13 @@ BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
     // Run the algo
     auto eof = create_eof_frame(44, ok_builder().affected_rows(1).info("1st").build());
     algo_test()
-        .expect_read(buffer_builder()
-                         .add(create_text_row_message(42, "aaa"))
-                         .add(create_text_row_message(43, "bbb"))
-                         .add(boost::span<const std::uint8_t>(eof).subspan(0, 6))  // OK partially received
-                         .build())
+        .expect_read(
+            buffer_builder()
+                .add(create_text_row_message(42, "aaa"))
+                .add(create_text_row_message(43, "bbb"))
+                .add(boost::span<const std::uint8_t>(eof).subspan(0, 6))  // OK partially received
+                .build()
+        )
         .check(fix);
 
     // Validate
@@ -399,10 +406,12 @@ BOOST_AUTO_TEST_CASE(error_seqnum_mismatch_successive_messages)
 
             // Run the algo
             algo_test()
-                .expect_read(buffer_builder()
-                                 .add(create_text_row_message(42, "abc"))
-                                 .add(create_text_row_message(45, "von"))  // seqnum mismatch here
-                                 .build())
+                .expect_read(
+                    buffer_builder()
+                        .add(create_text_row_message(42, "abc"))
+                        .add(create_text_row_message(45, "von"))  // seqnum mismatch here
+                        .build()
+                )
                 .will_set_status(
                     // Errors finish multi-function ops. Transition only performed if is_top_level = true
                     tc.is_top_level ? connection_status::ready : fix.st.status
@@ -461,8 +470,12 @@ BOOST_AUTO_TEST_CASE(error_on_row_ok_packet)
                 .check(fix, client_errc::num_resultsets_mismatch);
 
             // Validate
-            fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).on_row_batch_start(1).validate(
-            );
+            fix.proc.num_calls()
+                .on_num_meta(1)
+                .on_meta(1)
+                .on_row_ok_packet(1)
+                .on_row_batch_start(1)
+                .validate();
         }
     }
 }
@@ -479,11 +492,13 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
 
             // Run the algo
             algo_test()
-                .expect_read(err_builder()
-                                 .seqnum(42)
-                                 .code(common_server_errc::er_alter_info)
-                                 .message("abc")
-                                 .build_frame())
+                .expect_read(
+                    err_builder()
+                        .seqnum(42)
+                        .code(common_server_errc::er_alter_info)
+                        .message("abc")
+                        .build_frame()
+                )
                 .will_set_status(
                     // Errors finish multi-function ops. Transition only performed if is_top_level = true
                     tc.is_top_level ? connection_status::ready : fix.st.status

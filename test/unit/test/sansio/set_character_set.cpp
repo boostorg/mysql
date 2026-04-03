@@ -12,11 +12,10 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
-
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "mycosql_internal/sansio/set_character_set.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
@@ -118,11 +117,13 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 
     // Run the algo. The current charset was not updated
     algo_test()
-        .expect_read(err_builder()
-                         .seqnum(29)
-                         .code(common_server_errc::er_unknown_character_set)
-                         .message("Unknown charset")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(29)
+                .code(common_server_errc::er_unknown_character_set)
+                .message("Unknown charset")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_unknown_character_set, create_server_diag("Unknown charset"));
 }
 

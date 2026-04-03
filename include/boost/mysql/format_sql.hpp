@@ -11,7 +11,6 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
@@ -19,11 +18,11 @@
 #include <boost/mysql/detail/output_string.hpp>
 
 #include <boost/config.hpp>
-#include <boost/core/span.hpp>
 #include <boost/system/result.hpp>
 
 #include <initializer_list>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -147,7 +146,7 @@ class format_arg
 #ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
-        string_view name;
+        std::string_view name;
         detail::formattable_ref_impl value;
     } impl_;
 
@@ -166,7 +165,7 @@ public:
      * \par Object lifetimes
      * Both `name` and `value` are stored as views.
      */
-    format_arg(string_view name, formattable_ref value) noexcept
+    format_arg(std::string_view name, formattable_ref value) noexcept
         : impl_{name, detail::access::get_impl(value)}
     {
     }
@@ -204,7 +203,7 @@ class format_context_base
     friend class detail::format_state;
 #endif
 
-    BOOST_MYSQL_DECL void format_arg(detail::formattable_ref_impl arg, string_view format_spec);
+    BOOST_MYSQL_DECL void format_arg(detail::formattable_ref_impl arg, std::string_view format_spec);
 
 protected:
     format_context_base(detail::output_string_ref out, format_options opts, error_code ec = {}) noexcept
@@ -270,7 +269,7 @@ public:
      */
     format_context_base& append_value(
         formattable_ref value,
-        constant_string_view format_specifiers = string_view()
+        constant_string_view format_specifiers = std::string_view()
     )
     {
         format_arg(detail::access::get_impl(value), format_specifiers.get());
@@ -489,7 +488,7 @@ template <BOOST_MYSQL_FORMATTABLE... Formattable>
 void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args)
 {
     std::initializer_list<format_arg> args_il{
-        {string_view(), std::forward<Formattable>(args)}
+        {std::string_view(), std::forward<Formattable>(args)}
         ...
     };
     detail::vformat_sql_to(ctx, format_str, args_il);
@@ -562,8 +561,5 @@ std::string format_sql(
 }  // namespace boost
 
 #include <boost/mysql/impl/format_sql.hpp>
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/format_sql.ipp>
-#endif
 
 #endif

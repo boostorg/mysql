@@ -13,13 +13,13 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 #include <boost/assert.hpp>
 
+#include <string_view>
 #include <vector>
 
 namespace boost {
@@ -64,8 +64,11 @@ class execution_state_impl final : public execution_processor
     error_code on_meta_impl(const coldef_view&, bool, diagnostics&) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_row_impl(span<const std::uint8_t> msg, const output_ref&, std::vector<field_view>& fields)
-        override final;
+    error_code on_row_impl(
+        std::span<const std::uint8_t> msg,
+        const output_ref&,
+        std::vector<field_view>& fields
+    ) override final;
 
     BOOST_MYSQL_DECL
     error_code on_row_ok_packet_impl(const ok_view& pack) override final;
@@ -97,10 +100,10 @@ public:
         return eof_data_.warnings;
     }
 
-    string_view get_info() const noexcept
+    std::string_view get_info() const noexcept
     {
         BOOST_ASSERT(eof_data_.has_value);
-        return string_view(info_.data(), info_.size());
+        return std::string_view(info_.data(), info_.size());
     }
 
     bool get_is_out_params() const noexcept
@@ -116,8 +119,5 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/execution_state_impl.ipp>
-#endif
 
 #endif

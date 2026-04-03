@@ -11,7 +11,7 @@
 #include <boost/mysql/detail/character_set.hpp>
 #include <boost/mysql/detail/config.hpp>
 
-#include <boost/core/span.hpp>
+#include <span>
 
 #include <cstddef>
 
@@ -50,7 +50,7 @@ struct character_set
      * \n
      * This function must not throw exceptions or have side effects.
      */
-    std::size_t (*next_char)(span<const unsigned char>);
+    std::size_t (*next_char)(std::span<const unsigned char>);
 };
 
 /// The utf8mb4 character set (the one you should use by default).
@@ -84,8 +84,5 @@ struct format_options
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/character_set.ipp>
-#endif
 
 #endif

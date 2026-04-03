@@ -12,13 +12,12 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 
+#include "mycosql_internal/protocol/impl/binary_protocol.hpp"
+#include "mycosql_internal/protocol/impl/serialization_context.hpp"
 #include "operators.hpp"
 #include "serialization_test.hpp"
 #include "test_common/create_basic.hpp"
@@ -274,7 +273,8 @@ void add_bit_types(std::vector<success_sample>& output)
     output.push_back(success_sample("bit_8", {0x01, 0x12}, std::uint64_t(0x12), meta));
     output.push_back(success_sample("bit_16", {0x02, 0x12, 0x34}, std::uint64_t(0x1234), meta));
     output.push_back(success_sample("bit_24", {0x03, 0x12, 0x34, 0x56}, std::uint64_t(0x123456), meta));
-    output.push_back(success_sample("bit_32", {0x04, 0x12, 0x34, 0x56, 0x78}, std::uint64_t(0x12345678), meta)
+    output.push_back(
+        success_sample("bit_32", {0x04, 0x12, 0x34, 0x56, 0x78}, std::uint64_t(0x12345678), meta)
     );
     output.push_back(
         success_sample("bit_40", {0x05, 0x12, 0x34, 0x56, 0x78, 0x9a}, std::uint64_t(0x123456789a), meta)
@@ -735,7 +735,8 @@ void add_date_samples(std::vector<error_sample>& output)
     auto meta = create_meta(column_type::date);
 
     output.push_back(error_sample("empty", {}, meta, deserialize_errc::incomplete_message));
-    output.push_back(error_sample("incomplete_year", {0x04, 0xda}, meta, deserialize_errc::incomplete_message)
+    output.push_back(
+        error_sample("incomplete_year", {0x04, 0xda}, meta, deserialize_errc::incomplete_message)
     );
     output.push_back(
         error_sample("no_month_day", {0x04, 0xda, 0x07}, meta, deserialize_errc::incomplete_message)
@@ -791,7 +792,8 @@ void add_datetime_samples(column_type type, std::vector<error_sample>& output)
         deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample("invalid_year_d", {0x04, 0x10, 0x27, 0x01, 0x01}, meta));  // year 10000
-    output.push_back(error_sample("invalid_year_hms", {0x07, 0x10, 0x27, 0x01, 0x01, 0x17, 0x01, 0x3b}, meta)
+    output.push_back(
+        error_sample("invalid_year_hms", {0x07, 0x10, 0x27, 0x01, 0x01, 0x17, 0x01, 0x3b}, meta)
     );
     output.push_back(error_sample(
         "invalid_year_hmsu",
@@ -919,8 +921,8 @@ void add_time_samples(std::vector<error_sample>& output)
         {"invalid_secs",       {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 60}                          },
         {"invalid_secs_max",   {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0xff}                        },
         {"invalid_micros",     {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0x40, 0x42, 0xf4, 0x00}},
-        {"invalid_micros_max", {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0xff, 0xff, 0xff, 0xff}
-        },
+        {"invalid_micros_max",
+         {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0xff, 0xff, 0xff, 0xff}                      },
     };
 
     for (auto& c : out_of_range_cases)

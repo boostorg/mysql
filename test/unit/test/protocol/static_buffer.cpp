@@ -5,13 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <vector>
 
+#include "mycosql_internal/protocol/static_buffer.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 
 using namespace boost::mysql::test;
@@ -65,9 +64,11 @@ BOOST_AUTO_TEST_CASE(clear_empty)
 BOOST_AUTO_TEST_CASE(clear_not_empty)
 {
     static_buffer<32> v;
-    v.append(std::array<std::uint8_t, 5>{
-        {0, 1, 2, 3, 4}
-    });
+    v.append(
+        std::array<std::uint8_t, 5>{
+            {0, 1, 2, 3, 4}
+    }
+    );
     BOOST_TEST(v.size() == 5u);
     v.clear();
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v, std::vector<std::uint8_t>());
