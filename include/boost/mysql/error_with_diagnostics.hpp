@@ -29,7 +29,7 @@ class error_with_diagnostics : public system::system_error
     static system::system_error create_base(const error_code& err, const diagnostics& diag)
     {
         return diag.client_message().empty() ? system::system_error(err)
-                                             : system::system_error(err, diag.client_message());
+                                             : system::system_error(err, std::string(diag.client_message()));
     }
 
 public:
