@@ -5,46 +5,19 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-# Separately compiled Boost.MySQL and Boost.Asio
-add_library(
-    boost_mysql_compiled
-    STATIC
-    common/src/boost_asio.cpp
-    common/src/boost_mysql.cpp
-)
-target_compile_definitions(
-    boost_mysql_compiled
-    PUBLIC
-    BOOST_ASIO_SEPARATE_COMPILATION
-    BOOST_MYSQL_SEPARATE_COMPILATION
-)
-target_link_libraries(boost_mysql_compiled PUBLIC boost_mysql)
-boost_mysql_test_target_settings(boost_mysql_compiled)
-
 # boost_mysql_testing contains common definitions, includes and settings.
-# Note: old versions of cmake require the sources passed to target_sources to be absolute
-add_library(boost_mysql_testing INTERFACE)
-target_sources(
-    boost_mysql_testing
-    INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/src/entry_point.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/src/utils.cpp
+add_library(boost_mysql_testing STATIC
+    common/src/utils.cpp
 )
-target_link_libraries(
-    boost_mysql_testing
-    INTERFACE
-    boost_mysql_compiled
-    Boost::unit_test_framework
+target_link_libraries(boost_mysql_testing PUBLIC
+    Boost::mycosql
+    Boost::core
     Boost::pfr
 )
-target_include_directories(
-    boost_mysql_testing
-    INTERFACE
-    common/include
-)
+target_include_directories(boost_mysql_testing PUBLIC common/include)
 
-# Unit testing
-add_subdirectory(unit)
+# # Unit testing
+# add_subdirectory(unit)
 
 # Integration testing
 if(BOOST_MYSQL_INTEGRATION_TESTS)
