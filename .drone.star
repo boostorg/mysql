@@ -128,24 +128,41 @@ def _pipeline(
             "privileged": True,
             "commands": ["echo 0 | tee /proc/sys/kernel/randomize_va_space"]
         })
-    
-    # Generate certificates
-    gen_certificates = db != None or os == "windows"
-    cert_path = "C:\\ssl\\" if os == "windows" else "/tls/"
-    ca_path = cert_path + "ca-cert.pem"
-    if gen_certificates:
+
+    # Set up the database and certificates
+    cert_dir = "C:/ssl/" if os == "windows" else "/opt/tls/"
+    if os == "windows":
+        # Generate certificates
+        steps.append({
+            "name": "Generate certificates",
+            "image": image,
+            "pull": "if-not-exists",
+            "commands": [
+                "python tools/ci/gen-certificates.py {}".format(cert_dir)
+            ]
+        })
+
+        # Restart MySQL, so certificates are picked up
+        steps.append({
+            "name": "Restart MySQL",
+            "commands": [
+                "net stop MySQL",
+                "net start MySQL"
+            ]
+        })
+    elif db != None:
+        # Generate certificates
         steps.append({
             "name": "Generate certificates",
             "image": image,
             "pull": "if-not-exists",
             "volumes": volumes,
             "commands": [
-                "python tools/ci/gen-certificates.py {}".format(cert_path)
+                "python tools/ci/gen-certificates.py {}".format(cert_dir)
             ]
         })
-    
-    # Start the database
-    if db != None:
+
+        # Database step
         steps.append({
             "name": "mysql",
             "image": db,
@@ -162,15 +179,6 @@ def _pipeline(
             ],
             "volumes": volumes
         })
-    elif os == "windows":
-        steps.append({
-            "name": "Restart MySQL",
-            "commands": [
-                "net stop MySQL",
-                "net start MySQL"
-            ]
-        })
-
     
     # Run the build
     steps.append({
@@ -180,7 +188,7 @@ def _pipeline(
         "privileged": arch == "arm64", # TSAN tests fail otherwise (personality syscall)
         "volumes": volumes,
         "environment": {
-            "BOOST_MYSQL_CA_CERTIFICATE": ca_path
+            "BOOST_MYSQL_CA_CERTIFICATE": cert_dir + "ca.crt"
         },
         "commands": [command]
     })
