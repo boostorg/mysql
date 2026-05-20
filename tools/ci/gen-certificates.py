@@ -15,7 +15,7 @@ import stat
 
 
 def _run_openssl(*args: str) -> None:
-    print(f' + {" ".join(args)}')
+    print(' +', *args)
     subprocess.run(['openssl', *args], check=True)
 
 
