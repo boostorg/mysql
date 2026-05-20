@@ -23,5 +23,5 @@ services:
     tty: true
     volumes:
       - ../../:/boost-mysql
-      - /opt/ci-tls-mysql:/tls
+      - /opt/ci-tls-mysql:/opt/ci-tls-mysql
       - /var/run/mysqld:/var/run/mysqld

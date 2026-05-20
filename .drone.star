@@ -130,7 +130,7 @@ def _pipeline(
         })
 
     # Set up the database and certificates
-    cert_dir = "C:\\\\ssl\\\\" if os == "windows" else "/opt/tls/"
+    cert_dir = "C:\\\\ssl\\\\" if os == "windows" else "/tls/"
     if os == "windows":
         # Generate certificates
         steps.append({

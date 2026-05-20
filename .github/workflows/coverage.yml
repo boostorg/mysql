@@ -21,6 +21,9 @@ jobs:
       - name: Fetch code
         uses: actions/checkout@v6
 
+      - name: Generate certificates
+        run: sudo python tools/gen-certificates.py /opt/ci-tls-mysql
+
       - name: Start containers
         uses: hoverkraft-tech/compose-action@v2.6.0
         with:
@@ -48,14 +51,14 @@ jobs:
             --rc geninfo_unexecuted_blocks=1 \
             --ignore-errors mismatch \
             --gcov-tool gcov-14 \
-            --directory ~/boost-root/bin.v2 \
+            --directory /root/boost-root/bin.v2 \
             --capture \
             --output-file all.info
           docker exec builder lcov \
             --rc branch_coverage=0 \
             --output-file coverage.info \
             --extract all.info '*/boost/mysql*'
-          docker exec builder sed "s|^SF:$HOME/boost-root/|SF:include/|g" coverage.info > /boost-mysql/coverage.info
+          docker exec builder sed "s|^SF:/root/boost-root/|SF:include/|g" coverage.info > /boost-mysql/coverage.info
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v6
