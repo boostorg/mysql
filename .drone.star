@@ -147,6 +147,7 @@ def _pipeline(
             "name": "Restart MySQL",
             "image": image,
             "commands": [
+                "net start MySQL",
                 "net stop MySQL",
                 "net start MySQL"
             ]
