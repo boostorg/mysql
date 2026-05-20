@@ -142,16 +142,16 @@ def _pipeline(
             ]
         })
 
-        # Restart MySQL, so certificates are picked up
-        steps.append({
-            "name": "Restart MySQL",
-            "image": image,
-            "commands": [
-                "net start MySQL",
-                "net stop MySQL",
-                "net start MySQL"
-            ]
-        })
+        # # Restart MySQL, so certificates are picked up
+        # steps.append({
+        #     "name": "Restart MySQL",
+        #     "image": image,
+        #     "commands": [
+        #         "net start MySQL",
+        #         "net stop MySQL",
+        #         "net start MySQL"
+        #     ]
+        # })
     elif db != None:
         # Generate certificates
         steps.append({
