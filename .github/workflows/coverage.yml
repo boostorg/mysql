@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fetch code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Start containers
-        uses: hoverkraft-tech/compose-action@v2.5.0
+        uses: hoverkraft-tech/compose-action@v2.6.0
         with:
           compose-file: ./tools/ci/docker-compose.yml
         env:
@@ -58,7 +58,7 @@ jobs:
           docker exec builder sed "s|^SF:$HOME/boost-root/|SF:include/|g" coverage.info > /boost-mysql/coverage.info
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           verbose: true
           fail_ci_if_error: true

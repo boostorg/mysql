@@ -21,17 +21,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fetch code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Start containers
-        uses: hoverkraft-tech/compose-action@v2.5.0
+        uses: hoverkraft-tech/compose-action@v2.6.0
         with:
           compose-file: ./tools/ci/docker-compose.yml
         env:
           BUILDER_IMAGE: ghcr.io/anarthal/cpp-ci-containers/build-clang18:1
 
       - name: Restore corpus
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /tmp/corpus.tar.gz
           key: corpus-${{ github.run_id }}
@@ -50,7 +50,7 @@ jobs:
           docker exec builder bash -c 'cp /root/boost-root/crash-* /root/boost-root/leak-* /root/boost-root/timeout-* /boost-mysql/ || true'
 
       - name: Archive any crashes as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: crashes
