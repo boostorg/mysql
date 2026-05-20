@@ -190,7 +190,7 @@ def _pipeline(
         "privileged": arch == "arm64", # TSAN tests fail otherwise (personality syscall)
         "volumes": volumes,
         "environment": {
-            "BOOST_MYSQL_CA_CERTIFICATE": cert_dir + "ca.crt"
+            "BOOST_MYSQL_CA_CERTIFICATE": cert_dir + "ca-cert.pem"
         },
         "commands": [command]
     })
