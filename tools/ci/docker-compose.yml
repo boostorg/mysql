@@ -1,3 +1,12 @@
+#
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+# Used in GitHub Actions CIs
+
 services:
   mysql:
     image: mysql:8.4.1
@@ -6,7 +15,7 @@ services:
       MYSQL_ALLOW_EMPTY_PASSWORD: "1"
       MYSQL_ROOT_PASSWORD: ""
     volumes:
-      - /opt/ci-tls-mysql:/tls
+      - /tmp/mysql-tls:/tls
       - /var/run/mysqld:/var/run/mysqld
     command: >
       /bin/bash -c 'chown -R mysql:mysql /var/run/mysqld && \
@@ -23,5 +32,5 @@ services:
     tty: true
     volumes:
       - ../../:/boost-mysql
-      - /opt/ci-tls-mysql:/opt/ci-tls-mysql
+      - /tmp/mysql-tls:/opt/ci-tls-mysql
       - /var/run/mysqld:/var/run/mysqld
