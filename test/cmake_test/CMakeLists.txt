@@ -22,6 +22,7 @@ else()
         charconv
         compat
         config
+        container
         core
         describe
         endian
@@ -63,12 +64,10 @@ else()
         regex
         tuple
         unordered
-        container
         integer
         conversion
         function_types
         fusion
-        functional
         typeof
     )
 
