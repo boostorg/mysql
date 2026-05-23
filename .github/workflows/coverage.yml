@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Generate certificates
-        run: python tools/gen-certificates.py /tmp/mysql-tls
+        run: python tools/ci/gen-certificates.py /tmp/mysql-tls
 
       - name: Start containers
         uses: hoverkraft-tech/compose-action@v2.6.0
