@@ -68,7 +68,7 @@ jobs:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           plugins: noop # Don't run gcov again, codecov doesn't know about the filtering we perform
-          file: coverage.info
+          files: coverage.info
           disable_search: true # Don't upload unwanted files
           disable_file_fixes: true # Default fixes make reports unusable
 
