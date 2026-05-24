@@ -58,7 +58,8 @@ jobs:
             --rc branch_coverage=0 \
             --output-file coverage.info \
             --extract all.info '*/boost/mysql*'
-          docker exec builder sed "s|^SF:/root/boost-root/|SF:include/|g" coverage.info > /boost-mysql/coverage.info
+          docker exec builder sed -i "s|^SF:/root/boost-root/|SF:include/|g" coverage.info
+          docker exec builder mv coverage.info /boost-mysql/coverage.info
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v6
