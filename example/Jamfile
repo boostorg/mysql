@@ -17,6 +17,12 @@ if $(hostname) = ""
     hostname = "127.0.0.1" ;
 }
 
+local ca_certificate = [ os.environ BOOST_MYSQL_CA_CERTIFICATE ] ;
+if $(ca_certificate) = ""
+{
+    ca_certificate = "/opt/ci-tls-mysql/ca-cert.pem" ;
+}
+
 # Builds and run an example
 rule run_example (
     example_name :
@@ -86,7 +92,7 @@ run_example dynamic_filters : 2_simple/dynamic_filters.cpp
 run_example disable_tls : 2_simple/disable_tls.cpp
     : $(regular_args) ;
 run_example tls_certificate_verification : 2_simple/tls_certificate_verification.cpp
-    : $(regular_args) ;
+    : $(regular_args) $(ca_certificate) ;
 run_example metadata : 2_simple/metadata.cpp 
     : $(regular_args) ;
 run_example prepared_statements : 2_simple/prepared_statements.cpp 

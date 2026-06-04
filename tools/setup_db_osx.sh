@@ -13,10 +13,13 @@
 brew install mysql@8.0
 export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
 
+# Generate the certificates
+mkdir -p /tmp/mysql-tls
+python tools/ci/gen-certificates.py /tmp/mysql-tls
+export BOOST_MYSQL_CA_CERTIFICATE=/tmp/mysql-tls/ca-cert.pem
+
 # Copy config files and set up paths
 cp tools/osx-ci.cnf ~/.my.cnf
-sudo mkdir -p /etc/ssl/certs/mysql/
-sudo cp tools/ssl/*.pem /etc/ssl/certs/mysql/
 sudo mkdir -p /var/run/mysqld/
 sudo chmod 777 /var/run/mysqld/
 

@@ -10,7 +10,7 @@ name: fuzz
 on:
   push:
     branches: [develop, master]
-    tags: ['*']
+    tags: ["*"]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -19,43 +19,46 @@ on:
 jobs:
   fuzz:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/anarthal/cpp-ci-containers/build-clang18:1
-      volumes:
-        - /var/run/mysqld:/var/run/mysqld
-    services:
-      mysql:
-        image: ghcr.io/anarthal/cpp-ci-containers/mysql-8_4_1:1
-        ports:
-          - 3306:3306
-        volumes:
-          - /var/run/mysqld:/var/run/mysqld
     steps:
       - name: Fetch code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Generate certificates
+        run: python tools/ci/gen-certificates.py /tmp/mysql-tls
+
+      - name: Start containers
+        uses: hoverkraft-tech/compose-action@v2.6.0
+        with:
+          compose-file: ./tools/ci/docker-compose.yml
+        env:
+          BUILDER_IMAGE: ghcr.io/anarthal/cpp-ci-containers/build-clang18:1
 
       - name: Restore corpus
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /tmp/corpus.tar.gz
           key: corpus-${{ github.run_id }}
           restore-keys: corpus-
-        
+
       # Note: this will take care of using the corpus and updating it
       - name: Build and run the fuzzer
         run: |
-          python tools/ci/main.py \
-            --source-dir=$(pwd) \
-            fuzz \
-            --server-host=mysql
+          docker exec builder python /boost-mysql/tools/ci/main.py \
+            --source-dir=/boost-mysql \
+            fuzz
+
+      - name: Copy crashes from container
+        if: always()
+        run: |
+          docker exec builder bash -c 'cp /root/boost-root/crash-* /root/boost-root/leak-* /root/boost-root/timeout-* /boost-mysql/ || true'
 
       - name: Archive any crashes as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: crashes
           path: |
-            ~/boost-root/crash-*
-            ~/boost-root/leak-*
-            ~/boost-root/timeout-*
+            crash-*
+            leak-*
+            timeout-*
           if-no-files-found: ignore

@@ -17,27 +17,26 @@ on:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/anarthal/cpp-ci-containers/build-gcc14-lcov:1
-      volumes:
-        - /var/run/mysqld:/var/run/mysqld
-    services:
-      mysql:
-        image: ghcr.io/anarthal/cpp-ci-containers/mysql-8_4_1:1
-        ports:
-          - 3306:3306
-        volumes:
-          - /var/run/mysqld:/var/run/mysqld
     steps:
       - name: Fetch code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Generate certificates
+        run: python tools/ci/gen-certificates.py /tmp/mysql-tls
+
+      - name: Start containers
+        uses: hoverkraft-tech/compose-action@v2.6.0
+        with:
+          compose-file: ./tools/ci/docker-compose.yml
+        env:
+          BUILDER_IMAGE: ghcr.io/anarthal/cpp-ci-containers/build-gcc14-lcov:1
 
       - name: Build code
         run: |
-          python tools/ci/main.py \
-            --source-dir=$(pwd) \
+          docker exec builder python /boost-mysql/tools/ci/main.py \
+            --source-dir=/boost-mysql \
             b2 \
-            --server-host=mysql \
+            --server-host=localhost \
             --toolset=gcc \
             --cxxstd=20 \
             --variant=debug \
@@ -47,29 +46,29 @@ jobs:
       - name: Generate coverage reports
         shell: bash
         run: |
-          cd ~/boost-root/bin.v2
-          lcov \
+          docker exec builder lcov \
             --rc branch_coverage=0 \
             --rc geninfo_unexecuted_blocks=1 \
             --ignore-errors mismatch \
             --gcov-tool gcov-14 \
-            --directory . \
+            --directory /root/boost-root/bin.v2 \
             --capture \
             --output-file all.info
-          lcov \
+          docker exec builder lcov \
             --rc branch_coverage=0 \
             --output-file coverage.info \
             --extract all.info '*/boost/mysql*'
-          sed "s|^SF:$HOME/boost-root/|SF:include/|g" coverage.info > $GITHUB_WORKSPACE/coverage.info
+          docker exec builder sed -i "s|^SF:/root/boost-root/|SF:include/|g" coverage.info
+          docker exec builder mv coverage.info /boost-mysql/coverage.info
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           verbose: true
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           plugins: noop # Don't run gcov again, codecov doesn't know about the filtering we perform
-          file: coverage.info
+          files: coverage.info
           disable_search: true # Don't upload unwanted files
           disable_file_fixes: true # Default fixes make reports unusable
 

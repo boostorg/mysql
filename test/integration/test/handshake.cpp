@@ -26,8 +26,11 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <cerrno>
+#include <fstream>
 #include <ostream>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -39,7 +42,6 @@
 #include "test_common/source_location.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
-#include "test_integration/server_ca.hpp"
 #include "test_integration/server_features.hpp"
 #include "test_integration/tcp_connection_fixture.hpp"
 
@@ -50,6 +52,22 @@ namespace asio = boost::asio;
 namespace data = boost::unit_test::data;
 
 namespace {
+
+// Retrieves the CA certificate that signed the server's certificate
+std::string read_ca_pem()
+{
+    auto path = safe_getenv("BOOST_MYSQL_CA_CERTIFICATE", "/opt/ci-tls-mysql/ca-cert.pem");
+    std::ifstream ifs(path);
+    if (!ifs)
+        throw std::system_error(errno, std::system_category(), "Failed to open " + std::string(path));
+    return std::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
+}
+
+string_view get_ca_pem()
+{
+    static std::string res = read_ca_pem();
+    return res;
+}
 
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
@@ -362,7 +380,7 @@ BOOST_AUTO_TEST_CASE(certificate_valid)
     // Setup
     asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
-    ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    ssl_ctx.add_certificate_authority(boost::asio::buffer(get_ca_pem()));
     any_connection_fixture fix(ssl_ctx);
 
     // Connect works
@@ -390,7 +408,7 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_success)
     // Setup
     asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
-    ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    ssl_ctx.add_certificate_authority(boost::asio::buffer(get_ca_pem()));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("mysql"));
     any_connection_fixture fix(ssl_ctx);
 
@@ -405,7 +423,7 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
     // Setup
     asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
-    ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    ssl_ctx.add_certificate_authority(boost::asio::buffer(get_ca_pem()));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
     any_connection_fixture fix(ssl_ctx);
 
@@ -422,7 +440,7 @@ BOOST_FIXTURE_TEST_CASE(tcp_ssl_connection_, io_context_fixture)
     // Setup
     asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
-    ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    ssl_ctx.add_certificate_authority(boost::asio::buffer(get_ca_pem()));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
     tcp_ssl_connection conn(ctx, ssl_ctx);
     auto params = connect_params_builder().build_hparams();

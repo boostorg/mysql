@@ -30,7 +30,6 @@
 #include <boost/mysql/results.hpp>
 
 #include <boost/asio/awaitable.hpp>
-#include <boost/asio/buffer.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -42,35 +41,12 @@
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
-// The CA file that signed the server's certificate
-constexpr const char CA_PEM[] = R"%(-----BEGIN CERTIFICATE-----
-MIIDZzCCAk+gAwIBAgIUWznm2UoxXw3j7HCcp9PpiayTvFQwDQYJKoZIhvcNAQEL
-BQAwQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAMBgNVBAoM
-BW15c3FsMQ4wDAYDVQQDDAVteXNxbDAgFw0yMDA0MDQxNDMwMjNaGA8zMDE5MDgw
-NjE0MzAyM1owQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAM
-BgNVBAoMBW15c3FsMQ4wDAYDVQQDDAVteXNxbDCCASIwDQYJKoZIhvcNAQEBBQAD
-ggEPADCCAQoCggEBAN0WYdvsDb+a0TxOGPejcwZT0zvTrf921mmDUlrLN1Z0hJ/S
-ydgQCSD7Q+6za4lTFZCXcvs52xvvS2gfC0yXyYLCT/jA4RQRxuF+/+w1gDWEbGk0
-KzEpsBuKrEIvEaVdoS78SxInnW/aegshdrRRocp4JQ6KHsZgkLTxSwPfYSUmMUo0
-cRO0Q/ak3VK8NP13A6ZFvZjrBxjS3cSw9HqilgADcyj1D4EokvfI1C9LrgwgLlZC
-XVkjjBqqoMXGGlnXOEK+pm8bU68HM/QvMBkb1Amo8pioNaaYgqJUCP0Ch0iu1nUU
-HtsWt6emXv0jANgIW0oga7xcT4MDGN/M+IRWLTECAwEAAaNTMFEwHQYDVR0OBBYE
-FNxhaGwf5ePPhzK7yOAKD3VF6wm2MB8GA1UdIwQYMBaAFNxhaGwf5ePPhzK7yOAK
-D3VF6wm2MA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAAoeJCAX
-IDCFoAaZoQ1niI6Ac/cds8G8It0UCcFGSg+HrZ0YujJxWIruRCUG60Q2OAbEvn0+
-uRpTm+4tV1Wt92WFeuRyqkomozx0g4CyfsxGX/x8mLhKPFK/7K9iTXM4/t+xQC4f
-J+iRmPVsMKQ8YsHYiWVhlOMH9XJQiqERCB2kOKJCH6xkaF2k0GbM2sGgbS7Z6lrd
-fsFTOIVx0VxLVsZnWX3byE9ghnDR5jn18u30Cpb/R/ShxNUGIHqRa4DkM5la6uZX
-W1fpSW11JBSUv4WnOO0C2rlIu7UJWOROqZZ0OsybPRGGwagcyff2qVRuI2XFvAMk
-OzBrmpfHEhF6NDU=
------END CERTIFICATE-----
-)%";
-
 // The main coroutine
 asio::awaitable<void> coro_main(
     std::string_view server_hostname,
     std::string_view username,
-    std::string_view password
+    std::string_view password,
+    std::string_view ca_cert_path
 )
 {
     //[section_connection_establishment_tls_options
@@ -83,11 +59,9 @@ asio::awaitable<void> coro_main(
 
     // Load a trusted CA, which was used to sign the server's certificate.
     // This will allow the signature verification to succeed in our example.
-    // You will have to run your MySQL server with the test certificates
-    // located under $BOOST_MYSQL_ROOT/tools/ssl/
     // If you want to use your system's trusted CAs, use
     // ssl::context::set_default_verify_paths() instead of this function.
-    ssl_ctx.add_certificate_authority(asio::buffer(CA_PEM));
+    ssl_ctx.load_verify_file(std::string(ca_cert_path));
 
     // We expect the server certificate's common name to be "mysql".
     // If it's not, the certificate will be rejected and handshake or connect will fail.
@@ -123,9 +97,9 @@ asio::awaitable<void> coro_main(
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname> <ca-cert-path>\n";
         exit(1);
     }
 
@@ -135,7 +109,7 @@ void main_impl(int argc, char** argv)
     // Launch our coroutine
     asio::co_spawn(
         ctx,
-        [=] { return coro_main(argv[3], argv[1], argv[2]); },
+        [=] { return coro_main(argv[3], argv[1], argv[2], argv[4]); },
         // If any exception is thrown in the coroutine body, rethrow it.
         [](std::exception_ptr ptr) {
             if (ptr)

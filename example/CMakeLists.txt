@@ -15,6 +15,12 @@ else()
     set(SERVER_HOST "127.0.0.1")
 endif()
 
+if(DEFINED ENV{BOOST_MYSQL_CA_CERTIFICATE})
+    set(CA_CERTIFICATE $ENV{BOOST_MYSQL_CA_CERTIFICATE})
+else()
+    set(CA_CERTIFICATE "/opt/ci-tls-mysql/ca-cert.pem")
+endif()
+
 add_library(boost_mysql_examples_common INTERFACE)
 target_link_libraries(
     boost_mysql_examples_common
@@ -85,7 +91,7 @@ add_simple_example(batch_inserts_generic        ARGS ${SERVER_HOST}  PYTHON_RUNN
 add_simple_example(patch_updates                ARGS ${SERVER_HOST}  PYTHON_RUNNER run_patch_updates.py)
 add_simple_example(dynamic_filters              ARGS ${SERVER_HOST}  PYTHON_RUNNER run_dynamic_filters.py)
 add_simple_example(disable_tls                  ARGS ${REGULAR_ARGS})
-add_simple_example(tls_certificate_verification ARGS ${REGULAR_ARGS})
+add_simple_example(tls_certificate_verification ARGS ${REGULAR_ARGS} ${CA_CERTIFICATE})
 add_simple_example(metadata                     ARGS ${REGULAR_ARGS})
 add_simple_example(prepared_statements          ARGS ${REGULAR_ARGS} "HGS")
 add_simple_example(pipeline                     ARGS ${REGULAR_ARGS} "HGS")
