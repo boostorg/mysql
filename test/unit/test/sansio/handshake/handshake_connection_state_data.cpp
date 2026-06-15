@@ -92,10 +92,12 @@ BOOST_AUTO_TEST_CASE(unknown_collation)
     // Run the test
     algo_test()
         .expect_read(server_hello_builder().auth_data(mnp_scramble).build())
-        .expect_write(login_request_builder()
-                          .collation(mysql_collations::utf8mb4_0900_as_ci)
-                          .auth_response(mnp_hash)
-                          .build())
+        .expect_write(
+            login_request_builder()
+                .collation(mysql_collations::utf8mb4_0900_as_ci)
+                .auth_response(mnp_hash)
+                .build()
+        )
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -103,6 +105,13 @@ BOOST_AUTO_TEST_CASE(unknown_collation)
         .will_set_connection_id(42)
         .check(fix);
 }
+
+// server_default_charset set if passed as parameter
+// server_default_charset reset if it was previously set
+// known collation with non-empty server_default_charset => uses known collation
+// unknown collation with non-empty server_default_charset => sets current charset to invalid
+// invalid_collation_id with non-empty server_default_charset
+// invalid_collation_id with empty server_default_charset
 
 // The value of backslash_escapes in the final OK packet doesn't get ignored
 BOOST_AUTO_TEST_CASE(backslash_escapes)

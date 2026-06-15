@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_TEST_SANSIO_HANDSHAKE_HANDSHAKE_COMMON_HPP
 #define BOOST_MYSQL_TEST_UNIT_TEST_SANSIO_HANDSHAKE_HANDSHAKE_COMMON_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
@@ -265,9 +266,10 @@ struct handshake_fixture : algo_fixture_base
 
     handshake_fixture(
         const handshake_params& hparams = handshake_params("example_user", password),
-        bool secure_transport = false
+        bool secure_transport = false,
+        character_set server_default_charset = {}
     )
-        : algo({hparams, secure_transport, {}})
+        : algo({hparams, secure_transport, server_default_charset})
     {
         st.status = detail::connection_status::not_connected;
     }
