@@ -10,32 +10,22 @@ set -e
 
 repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
-BK=cmake
-IMAGE=build-gcc13
+BK=docs
+IMAGE=build-docs
 IMAGE_VERSION=1
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal/cpp-ci-containers/$IMAGE:$IMAGE_VERSION
-DB=mysql-9_4_0
-DB_VERSION=1
 
-docker start $DB || docker run -d \
-    --name $DB \
-    -v /var/run/mysqld:/var/run/mysqld \
-    -p 3306:3306 \
-    ghcr.io/anarthal/cpp-ci-containers/$DB:$DB_VERSION
 docker start $CONTAINER || docker run -dit \
     --name $CONTAINER \
+    --network host \
     -v "$repo_base:/opt/boost-mysql" \
     -v /var/run/mysqld:/var/run/mysqld \
     $FULL_IMAGE
-docker network connect my-net $DB || echo "DB already connected"
-docker network connect my-net $CONTAINER || echo "Network already connected"
 
 # Command line
-db_args="--server-host=$DB"
 case $BK in
-    b2) cmd="$db_args
-            --toolset=clang
+    b2) cmd="--toolset=clang
             --cxxstd=11
             --variant=release
             --stdlib=native
@@ -48,7 +38,7 @@ case $BK in
             --valgrind=0"
         ;;
     
-    cmake) cmd="$db_args
+    cmake) cmd="
             --cmake-build-type=Debug
             --build-shared-libs=1
             --cxxstd=11
@@ -56,9 +46,7 @@ case $BK in
             "
         ;;
     
-    fuzz) cmd="$db_args" ;;
-
-    bench) cmd="$db_args
+    bench) cmd="
                 --protocol-iters=10
                 --connection-pool-iters=0
                 "
