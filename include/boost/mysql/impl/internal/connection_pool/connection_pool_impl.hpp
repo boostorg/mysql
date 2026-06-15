@@ -94,7 +94,7 @@ class basic_pool_impl
     void create_connection()
     {
         // Connection tasks always run in the pool's executor
-        all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_, &params_.reset_pipeline);
+        all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_);
         all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
     }
 
