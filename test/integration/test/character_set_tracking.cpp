@@ -8,6 +8,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/defaults.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
@@ -132,5 +133,39 @@ BOOST_FIXTURE_TEST_CASE(connect_with_unknown_collation, any_connection_fixture)
     BOOST_TEST(conn.current_character_set()->name == "ascii");
     validate_db_charset(conn, "ascii");
 }
+
+// Connecting with invalid_collation_id falls back to the server's default charset
+// and leaves us with an unknown charset
+BOOST_FIXTURE_TEST_CASE(connect_with_invalid_collation_id, any_connection_fixture)
+{
+    connect(connect_params_builder().collation(invalid_collation_id).build());
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
+    BOOST_TEST(conn.format_opts().error() == client_errc::unknown_character_set);
+
+    // The server is always using its default value
+    results r;
+    conn.async_execute("SELECT @@GLOBAL.character_set_client, @@character_set_client", r, as_netresult)
+        .validate_no_error();
+    BOOST_TEST(r.rows().at(0).at(0) == r.rows().at(0).at(1));
+}
+
+// Specifying the server's default charset and invalid_collation_id tells
+// tracking which charset it should be using
+BOOST_FIXTURE_TEST_CASE(connect_with_invalid_collation_id_server_default, any_connection_fixture)
+{
+    connect(
+        connect_params_builder().collation(invalid_collation_id).default_server_charset(ascii_charset).build()
+    );
+    BOOST_TEST(conn.current_character_set() == ascii_charset);
+
+    // The server is always using its default value
+    results r;
+    conn.async_execute("SELECT @@GLOBAL.character_set_client, @@character_set_client", r, as_netresult)
+        .validate_no_error();
+    BOOST_TEST(r.rows().at(0).at(0) == r.rows().at(0).at(1));
+}
+
+// Resetting after having connected specifying the server's default sets
+//    the value accordingly
 
 BOOST_AUTO_TEST_SUITE_END()
