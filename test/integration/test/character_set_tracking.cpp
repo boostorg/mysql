@@ -134,6 +134,26 @@ BOOST_FIXTURE_TEST_CASE(connect_with_unknown_collation, any_connection_fixture)
     validate_db_charset(conn, "ascii");
 }
 
+// Supplying a server default has no effect when the collation may be unknown
+BOOST_FIXTURE_TEST_CASE(connect_with_unknown_collation_server_default, any_connection_fixture)
+{
+    // Connect with a collation that some servers may not support, or that we don't know of
+    // utf8mb4_0900_ai_ci is not supported by MariaDB, triggers fallback
+    connect(
+        connect_params_builder()
+            .collation(mysql_collations::utf8mb4_0900_ai_ci)
+            .default_server_charset(ascii_charset)
+            .build()
+    );
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
+    BOOST_TEST(conn.format_opts().error() == client_errc::unknown_character_set);
+
+    // Explicitly setting the character set solves the issue
+    conn.async_set_character_set(ascii_charset, as_netresult).validate_no_error();
+    BOOST_TEST(conn.current_character_set()->name == "ascii");
+    validate_db_charset(conn, "ascii");
+}
+
 // Connecting with invalid_collation_id falls back to the server's default charset
 // and leaves us with an unknown charset
 BOOST_FIXTURE_TEST_CASE(connect_with_invalid_collation_id, any_connection_fixture)
@@ -165,7 +185,23 @@ BOOST_FIXTURE_TEST_CASE(connect_with_invalid_collation_id_server_default, any_co
     BOOST_TEST(r.rows().at(0).at(0) == r.rows().at(0).at(1));
 }
 
-// Resetting after having connected specifying the server's default sets
-//    the value accordingly
+// Resetting after having connected specifying the server's default makes
+// tracking use this value, instead of clearing it.
+BOOST_FIXTURE_TEST_CASE(reset_with_server_default, any_connection_fixture)
+{
+    // Connect with a known character set. Specify the server's default
+    connect(connect_params_builder().default_server_charset(ascii_charset).build());
+    BOOST_TEST(conn.current_character_set() == utf8mb4_charset);
+
+    // Resetting sets the charset to the server's default.
+    // Because we specified a server's default charset, tracking uses it.
+    conn.async_reset_connection(as_netresult).validate_no_error();
+    BOOST_TEST(conn.current_character_set() == ascii_charset);
+
+    results r;
+    conn.async_execute("SELECT @@GLOBAL.character_set_client, @@character_set_client", r, as_netresult)
+        .validate_no_error();
+    BOOST_TEST(r.rows().at(0).at(0) == r.rows().at(0).at(1));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
