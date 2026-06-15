@@ -170,7 +170,7 @@ Following the above points, this is how tracking works:
 ]
 
 Modern servers (MySQL 8.0+ and MariaDB 11.6+) have `utf8mb4` as the default
-character set. If you know your for sure your server's default character set,
+character set. If you know for sure your server's default character set,
 you can set it in [refmem connect_params server_default_charset].
 This changes the tracking algorithm:
 

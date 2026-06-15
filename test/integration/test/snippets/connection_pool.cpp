@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -130,15 +131,17 @@ public:
     {
         // This function will run within the strand. Binding the passed callback to
         // the strand will make async_get_connection run it within the strand, too.
-        pool_.async_get_connection(asio::cancel_after(
-            std::chrono::seconds(30),
-            asio::bind_executor(
-                strand_,
-                [self = shared_from_this()](boost::system::error_code, mysql::pooled_connection) {
-                    // Use the connection as required
-                }
+        pool_.async_get_connection(
+            asio::cancel_after(
+                std::chrono::seconds(30),
+                asio::bind_executor(
+                    strand_,
+                    [self = shared_from_this()](boost::system::error_code, mysql::pooled_connection) {
+                        // Use the connection as required
+                    }
+                )
             )
-        ));
+        );
     }
 };
 
@@ -215,6 +218,17 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
             pool.cancel();
         });
 #endif
+    }
+    {
+        //[connection_pool_charset_strategy
+        mysql::pool_params params;
+
+        // Connections will no longer issue SET NAMES statements when reset.
+        // Instead, they rely on the server's default character set being the one
+        // passed here. You must verify yourself that the server's default matches
+        // what you pass! Use this as an optimization, and only if you know what you are doing.
+        params.charset_strategy = mysql::pool_charset_strategy::use_server_default(mysql::utf8mb4_charset);
+        //]
     }
     {
         //[connection_pool_thread_safe_create

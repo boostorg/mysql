@@ -88,7 +88,6 @@ struct connection_state_data
 
     // The server's default character set, or a value-initialized one if unknown.
     // This may be passed by the user as an optimization.
-    // TODO: account for this in tests
     character_set server_default_charset{};
 
     // The current character set, or a value-initialized one if unknown

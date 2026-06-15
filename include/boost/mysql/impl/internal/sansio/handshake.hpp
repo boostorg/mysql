@@ -138,7 +138,7 @@ class handshake_algo
     std::array<std::uint8_t, scramble_size> scramble_;
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
-    character_set server_default_charset_;
+    character_set server_default_charset_{};
 
     static capabilities conditional_capability(bool condition, capabilities cap)
     {

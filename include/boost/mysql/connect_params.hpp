@@ -79,7 +79,7 @@ struct connect_params
      * \li After a successful \ref any_connection::async_reset_connection, the connection's
      *     character set is assumed to be this one (resetting restores the server's default).
      *
-     * Leave it default-constructed (the default) if you don't know the server's default
+     * Leave it value-initialized (the default) if you don't know the server's default
      * character set, in which case the above operations leave the current character set unknown.
      *
      * When you set this value, you are promising the library that your server is configured
