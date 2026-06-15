@@ -166,8 +166,9 @@ params.charset_strategy = pool_charset_strategy::use_server_default(utf8mb4_char
 
 You can obtain your server's default character set by running:
 
+[!teletype]
 ```
-select @@global.character_set_client;
+SELECT @@GLOBAL.character_set_client;
 ```
 
 

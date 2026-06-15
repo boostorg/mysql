@@ -30,7 +30,7 @@ BOOST_INLINE_CONSTEXPR std::size_t default_initial_read_buffer_size = 1024;
  * \details
  * Pass this value as \ref connect_params::connection_collation to set the
  * connection's character set and collation to the server's defaults.
- * Run `select @@global.character_set_client;` to find out the server's
+ * Run `"SELECT @@GLOBAL.character_set_client;"` to find out the server's
  * default character set.
  *
  * This is intended to be used together with \ref connect_params::server_default_charset.
