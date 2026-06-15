@@ -10,6 +10,7 @@
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
@@ -211,7 +212,7 @@ class handshake_algo
     {
         switch (collation_id)
         {
-        case 0: return server_default_charset;  // zero is always an invalid collation ID
+        case invalid_collation_id: return server_default_charset;
         case mysql_collations::utf8mb4_bin:
         case mysql_collations::utf8mb4_general_ci: return utf8mb4_charset;
         case mysql_collations::ascii_general_ci:
