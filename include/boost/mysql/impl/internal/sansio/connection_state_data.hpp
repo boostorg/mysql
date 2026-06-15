@@ -123,6 +123,7 @@ struct connection_state_data
         tls_active = false;
         backslash_escapes = true;
         current_charset = character_set{};
+        server_default_charset = character_set{};
     }
 
     // Reads an OK packet from the reader. This operation is repeated in several places.
