@@ -13,16 +13,11 @@
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/config.hpp>
-
 #include <cstdint>
 #include <string>
 
 namespace boost {
 namespace mysql {
-
-// TODO: document and maybe move? Do we need it?
-BOOST_INLINE_CONSTEXPR std::uint16_t invalid_collation_id = 0u;
 
 /**
  * \brief Parameters to be used with \ref any_connection connect functions.

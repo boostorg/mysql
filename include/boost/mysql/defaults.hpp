@@ -11,6 +11,7 @@
 #include <boost/config.hpp>
 
 #include <cstddef>
+#include <cstdint>
 
 namespace boost {
 namespace mysql {
@@ -23,6 +24,9 @@ BOOST_INLINE_CONSTEXPR const char* default_port_string = "3306";
 
 /// The default initial size of the connection's internal buffer, in bytes.
 BOOST_INLINE_CONSTEXPR std::size_t default_initial_read_buffer_size = 1024;
+
+// TODO: document
+BOOST_INLINE_CONSTEXPR std::uint16_t invalid_collation_id = 0u;
 
 }  // namespace mysql
 }  // namespace boost

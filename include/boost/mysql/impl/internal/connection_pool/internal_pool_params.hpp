@@ -11,6 +11,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connect_params.hpp>
+#include <boost/mysql/defaults.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/pool_params.hpp>
