@@ -142,7 +142,7 @@ BOOST_FIXTURE_TEST_CASE(connect_with_unknown_collation_server_default, any_conne
     connect(
         connect_params_builder()
             .collation(mysql_collations::utf8mb4_0900_ai_ci)
-            .default_server_charset(ascii_charset)
+            .server_default_charset(ascii_charset)
             .build()
     );
     BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
@@ -174,7 +174,7 @@ BOOST_FIXTURE_TEST_CASE(connect_with_invalid_collation_id, any_connection_fixtur
 BOOST_FIXTURE_TEST_CASE(connect_with_invalid_collation_id_server_default, any_connection_fixture)
 {
     connect(
-        connect_params_builder().collation(invalid_collation_id).default_server_charset(ascii_charset).build()
+        connect_params_builder().collation(invalid_collation_id).server_default_charset(ascii_charset).build()
     );
     BOOST_TEST(conn.current_character_set() == ascii_charset);
 
@@ -190,7 +190,7 @@ BOOST_FIXTURE_TEST_CASE(connect_with_invalid_collation_id_server_default, any_co
 BOOST_FIXTURE_TEST_CASE(reset_with_server_default, any_connection_fixture)
 {
     // Connect with a known character set. Specify the server's default
-    connect(connect_params_builder().default_server_charset(ascii_charset).build());
+    connect(connect_params_builder().server_default_charset(ascii_charset).build());
     BOOST_TEST(conn.current_character_set() == utf8mb4_charset);
 
     // Resetting sets the charset to the server's default.

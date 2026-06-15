@@ -171,19 +171,19 @@ Following the above points, this is how tracking works:
 
 Modern servers (MySQL 8.0+ and MariaDB 11.6+) have `utf8mb4` as the default
 character set. If you know your for sure your server's default character set,
-you can set it in [refmem connect_params default_server_charset].
+you can set it in [refmem connect_params server_default_charset].
 This changes the tracking algorithm:
 
 * If [refmem connect_params connection_collation] is set to [reflink invalid_collation_id],
   after [refmemunq any_connection async_connect] succeeds, the current character
-  set is the one passed in [refmem connect_params default_server_charset].
+  set is the one passed in [refmem connect_params server_default_charset].
 * Calling [refmemunq any_connection async_reset_connection]
   sets the current character set to what was passed as
-  [refmem connect_params default_server_charset] when connecting.
+  [refmem connect_params server_default_charset] when connecting.
 
 
 [warning
-  When setting [refmem connect_params default_server_charset], you, as a user,
+  When setting [refmem connect_params server_default_charset], you, as a user,
   are promising the library that your server is configured to use this character set
   as its default one. This fact is not checked at runtime.
   Failing to fulfill this promise can lead to vulnerabilities.

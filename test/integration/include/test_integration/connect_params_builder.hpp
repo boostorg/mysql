@@ -29,7 +29,7 @@ class connect_params_builder
 {
     handshake_params res_{integ_user, integ_passwd, integ_db};
     any_address addr_;
-    character_set default_server_charset_{};
+    character_set server_default_charset_{};
 
 public:
     connect_params_builder() { addr_.emplace_host_and_port(get_hostname()); }
@@ -79,9 +79,9 @@ public:
         return *this;
     }
 
-    connect_params_builder& default_server_charset(character_set v)
+    connect_params_builder& server_default_charset(character_set v)
     {
-        default_server_charset_ = v;
+        server_default_charset_ = v;
         return *this;
     }
 
