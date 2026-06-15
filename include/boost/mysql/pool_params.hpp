@@ -11,10 +11,12 @@
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/defaults.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/assert.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <chrono>
@@ -32,15 +34,30 @@ enum class pool_charset_strategy_type
 
 class pool_charset_strategy
 {
+    pool_charset_strategy_type type_{pool_charset_strategy_type::set_to_utf8mb4};
+    character_set server_default_charset_{};
+
+    explicit pool_charset_strategy(character_set c)
+        : type_(pool_charset_strategy_type::use_server_default), server_default_charset_(c)
+    {
+    }
+
 public:
     pool_charset_strategy() = default;
 
-    static pool_charset_strategy set_to_utf8mb4() { return {}; }
-    static pool_charset_strategy use_server_default(character_set charset);
+    static inline pool_charset_strategy set_to_utf8mb4() noexcept { return {}; }
+    static inline pool_charset_strategy use_server_default(character_set charset) noexcept
+    {
+        return pool_charset_strategy(charset);
+    }
 
-    pool_charset_strategy_type type() const;
+    pool_charset_strategy_type type() const noexcept { return type_; }
 
-    character_set server_default_charset() const;
+    character_set server_default_charset() const noexcept
+    {
+        BOOST_ASSERT(type_ == pool_charset_strategy_type::use_server_default);
+        return server_default_charset_;
+    }
 };
 
 /**
