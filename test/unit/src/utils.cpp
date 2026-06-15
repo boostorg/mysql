@@ -154,6 +154,7 @@ class boost::mysql::test::algo_test::state_checker
     bool expected_tls_active;
     bool expected_backslash_escapes;
     character_set expected_charset;
+    character_set expected_server_default_charset;
 
 public:
     state_checker(detail::connection_state_data& st, const expected_state_changes_t& changes) noexcept
@@ -166,7 +167,10 @@ public:
           expected_tls_supported(changes.tls_active.value_or(st.tls_supported)),
           expected_tls_active(changes.tls_active.value_or(st.tls_active)),
           expected_backslash_escapes(changes.backslash_escapes.value_or(st.backslash_escapes)),
-          expected_charset(changes.current_charset.value_or(st.current_charset))
+          expected_charset(changes.current_charset.value_or(st.current_charset)),
+          expected_server_default_charset(
+              changes.server_default_charset.value_or(st.server_default_charset)
+          )
     {
     }
 
@@ -181,6 +185,7 @@ public:
         BOOST_TEST(st_.tls_active == expected_tls_active);
         BOOST_TEST(st_.backslash_escapes == expected_backslash_escapes);
         BOOST_TEST(st_.current_charset == expected_charset);
+        BOOST_TEST(st_.server_default_charset == expected_server_default_charset);
         BOOST_TEST(!st_.op_in_progress);  // No algorithm should modify this
     }
 };

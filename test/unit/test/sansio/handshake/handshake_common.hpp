@@ -104,7 +104,8 @@ public:
                     int1{25},  // character set
                     int2{0},   // status flags
                     caps_high,
-                    int1{static_cast<std::uint8_t>(auth_plugin_data_.size() + 1u)
+                    int1{
+                        static_cast<std::uint8_t>(auth_plugin_data_.size() + 1u)
                     },                  // auth plugin data length
                     string_fixed<10>{}  // reserved
                 );
@@ -174,15 +175,17 @@ public:
     std::vector<std::uint8_t> build() const
     {
         auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
-            ctx.serialize(detail::login_request{
-                caps_,
-                detail::max_packet_size,
-                collation_id_,
-                username_,
-                auth_response_,
-                database_,
-                auth_plugin_name_
-            });
+            ctx.serialize(
+                detail::login_request{
+                    caps_,
+                    detail::max_packet_size,
+                    collation_id_,
+                    username_,
+                    auth_response_,
+                    database_,
+                    auth_plugin_name_
+                }
+            );
         });
         return create_frame(seqnum_, body);
     }
@@ -264,7 +267,7 @@ struct handshake_fixture : algo_fixture_base
         const handshake_params& hparams = handshake_params("example_user", password),
         bool secure_transport = false
     )
-        : algo({hparams, secure_transport})
+        : algo({hparams, secure_transport, {}})
     {
         st.status = detail::connection_status::not_connected;
     }
