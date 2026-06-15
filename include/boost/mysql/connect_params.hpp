@@ -66,6 +66,27 @@ struct connect_params
      */
     bool multi_queries{false};
 
+    /**
+     * \brief The character set that the server uses as its default.
+     * \details
+     * Set this value if you know the character set that your server is configured to use
+     * by default, as an optimization. It affects how the connection tracks its current
+     * character set (see \ref any_connection::current_character_set):
+     *
+     * \li If \ref connection_collation is set to \ref invalid_collation_id,
+     *     after connection establishment, the connection's character set is assumed to be
+     *     this one.
+     * \li After a successful \ref any_connection::async_reset_connection, the connection's
+     *     character set is assumed to be this one (resetting restores the server's default).
+     *
+     * Leave it default-constructed (the default) if you don't know the server's default
+     * character set, in which case the above operations leave the current character set unknown.
+     *
+     * When you set this value, you are promising the library that your server is configured
+     * to use this character set as its default. This is not checked at runtime, and failing
+     * to fulfill this promise can lead to vulnerabilities. Use it only as an optimization if
+     * you know what you are doing.
+     */
     character_set server_default_charset{};
 };
 

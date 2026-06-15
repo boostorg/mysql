@@ -47,6 +47,7 @@
           <member><link linkend="mysql.ref.boost__mysql__pfr_by_name">pfr_by_name</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pfr_by_position">pfr_by_position</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pipeline_request">pipeline_request</link> (experimental)</member>
+          <member><link linkend="mysql.ref.boost__mysql__pool_charset_strategy">pool_charset_strategy</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pool_params">pool_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pooled_connection">pooled_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__results">results</link></member>
@@ -74,6 +75,7 @@
           <member><link linkend="mysql.ref.boost__mysql__common_server_errc">common_server_errc</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field_kind">field_kind</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata_mode">metadata_mode</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__pool_charset_strategy_type">pool_charset_strategy_type</link></member>
           <member><link linkend="mysql.ref.boost__mysql__quoting_context">quoting_context</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ssl_mode">ssl_mode</link></member>
         </simplelist>
@@ -83,6 +85,7 @@
           <member><link linkend="mysql.ref.boost__mysql__default_initial_read_buffer_size">default_initial_read_buffer_size</link></member>
           <member><link linkend="mysql.ref.boost__mysql__default_port">default_port</link></member>
           <member><link linkend="mysql.ref.boost__mysql__default_port_string">default_port_string</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__invalid_collation_id">invalid_collation_id</link></member>
           <member><link linkend="mysql.ref.boost__mysql__max_date">max_date</link></member>
           <member><link linkend="mysql.ref.boost__mysql__min_date">min_date</link></member>
           <member><link linkend="mysql.ref.boost__mysql__max_datetime">max_datetime</link></member>
