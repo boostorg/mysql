@@ -46,9 +46,9 @@ public:
             if (!ec)
             {
                 // Reset was successful. Resetting changes the connection's character set
-                // to the server's default, which is an unknown value that doesn't have to match
-                // what was specified in handshake. As a safety measure, clear the current charset
-                st.current_charset = character_set{};
+                // to the server's default, which is an unknown value unless the user specified
+                // it during handshake.
+                st.current_charset = st.server_default_charset;
             }
 
             // Done

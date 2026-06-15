@@ -86,7 +86,12 @@ struct connection_state_data
     // be disabled using a variable. OK packets include a flag with this info.
     bool backslash_escapes{true};
 
-    // The current character set, or a default-constructed character set (will all nullptrs) if unknown
+    // The server's default character set, or a value-initialized one if unknown.
+    // This may be passed by the user as an optimization.
+    // TODO: account for this in tests
+    character_set server_default_charset{};
+
+    // The current character set, or a value-initialized one if unknown
     character_set current_charset{};
 
     // The write buffer

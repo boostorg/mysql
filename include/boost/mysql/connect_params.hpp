@@ -9,14 +9,20 @@
 #define BOOST_MYSQL_CONNECT_PARAMS_HPP
 
 #include <boost/mysql/any_address.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
+
+#include <boost/config.hpp>
 
 #include <cstdint>
 #include <string>
 
 namespace boost {
 namespace mysql {
+
+// TODO: document and maybe move? Do we need it?
+BOOST_INLINE_CONSTEXPR std::uint16_t invalid_collation_id = 0u;
 
 /**
  * \brief Parameters to be used with \ref any_connection connect functions.
@@ -64,6 +70,8 @@ struct connect_params
      * \details Disabled by default.
      */
     bool multi_queries{false};
+
+    character_set server_default_charset{};
 };
 
 }  // namespace mysql

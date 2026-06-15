@@ -40,6 +40,7 @@ struct connect_algo_params
                                  // the templated connection, only valid until the first yield!
     handshake_params hparams;
     bool secure_channel;  // Are we using UNIX sockets or any other secure channel?
+    character_set server_default_charset;
 
     using result_type = void;
 };
@@ -48,6 +49,7 @@ struct handshake_algo_params
 {
     handshake_params hparams;
     bool secure_channel;  // Are we using UNIX sockets or any other secure channel?
+    character_set server_default_charset;
 
     using result_type = void;
 };

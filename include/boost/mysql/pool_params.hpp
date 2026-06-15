@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_POOL_PARAMS_HPP
 
 #include <boost/mysql/any_address.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
@@ -22,6 +23,25 @@
 
 namespace boost {
 namespace mysql {
+
+enum class pool_charset_strategy_type
+{
+    set_to_utf8mb4,
+    use_server_default,
+};
+
+class pool_charset_strategy
+{
+public:
+    pool_charset_strategy() = default;
+
+    static pool_charset_strategy set_to_utf8mb4() { return {}; }
+    static pool_charset_strategy use_server_default(character_set charset);
+
+    pool_charset_strategy_type type() const;
+
+    character_set server_default_charset() const;
+};
 
 /**
  * \brief Configuration parameters for \ref connection_pool.
@@ -192,6 +212,8 @@ struct pool_params
      * (as per \ref connection_pool::get_executor).
      */
     asio::any_io_executor connection_executor{};
+
+    pool_charset_strategy charset_strategy{};
 };
 
 }  // namespace mysql
