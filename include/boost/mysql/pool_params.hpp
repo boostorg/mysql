@@ -243,6 +243,13 @@ struct pool_params
      * Pings will be sent with a periodicity of `ping_interval` until the connection
      * is handed to the user, or a ping fails.
      *
+     * Health checks serve two purposes:
+     *
+     *   \li They prevent connections from closing during period of no activity.
+     *   \li They detect network errors and trigger reconnection. Without health checks,
+     *       you may be handed over connections that are no longer functional, but
+     *       haven't been diagnosed yet.
+     *
      * Set this interval to zero to disable pings.
      *
      * This value must not be negative. It should be smaller than the server's
@@ -252,7 +259,7 @@ struct pool_params
      * session variable). Otherwise, the server might close connections
      * without the pool detecting it.
      */
-    std::chrono::steady_clock::duration ping_interval{std::chrono::hours(1)};
+    std::chrono::steady_clock::duration ping_interval{std::chrono::seconds(10)};
 
     /**
      * \brief The timeout to use for pings and session resets.
