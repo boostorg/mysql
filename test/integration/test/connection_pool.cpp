@@ -767,7 +767,6 @@ BOOST_FIXTURE_TEST_CASE(charset_strategy_use_server_default, fixture)
     BOOST_TEST(conn->current_character_set() == greek_charset);
 
     // The connection is using the server's default (this is different across versions)
-    results r;
     conn->async_execute("SELECT @@GLOBAL.character_set_client, @@character_set_client", r, as_netresult)
         .validate_no_error();
     std::string server_default = r.rows().at(0).at(0).as_string();
