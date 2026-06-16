@@ -18,6 +18,10 @@ namespace mysql {
 enum class address_type;
 std::ostream& operator<<(std::ostream& os, address_type value);
 
+// pool_charset_strategy_type
+enum class pool_charset_strategy_type;
+std::ostream& operator<<(std::ostream& os, pool_charset_strategy_type value);
+
 namespace detail {
 
 // capabilities

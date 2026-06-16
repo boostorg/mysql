@@ -64,6 +64,21 @@ BOOST_AUTO_TEST_CASE(read_response_success_no_backslash_escapes)
         .check(fix);
 }
 
+BOOST_AUTO_TEST_CASE(read_response_success_nonempty_server_default_charset)
+{
+    // Setup
+    read_response_fixture fix;
+    fix.st.current_charset = utf8mb4_charset;
+    fix.st.server_default_charset = ascii_charset;
+
+    // Run the algo
+    algo_test()
+        .expect_read(create_ok_frame(11, ok_builder().no_backslash_escapes(true).build()))
+        .will_set_backslash_escapes(false)        // OK packet processed
+        .will_set_current_charset(ascii_charset)  // charset was set to the default passed by the user
+        .check(fix);
+}
+
 BOOST_AUTO_TEST_CASE(read_response_error_network)
 {
     algo_test()
@@ -79,11 +94,13 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 
     // Run the algo. The character set is not updated.
     algo_test()
-        .expect_read(err_builder()
-                         .seqnum(11)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(11)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 
@@ -128,11 +145,13 @@ BOOST_AUTO_TEST_CASE(reset_conn_error_response)
     // Run the algo. The current charset was not updated
     algo_test()
         .expect_write(create_frame(0, {0x1f}))
-        .expect_read(err_builder()
-                         .seqnum(1)
-                         .code(common_server_errc::er_bad_db_error)
-                         .message("my_message")
-                         .build_frame())
+        .expect_read(
+            err_builder()
+                .seqnum(1)
+                .code(common_server_errc::er_bad_db_error)
+                .message("my_message")
+                .build_frame()
+        )
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 

@@ -125,18 +125,43 @@ affects state or not, assume it does.
 
 [heading Character set]
 
-Pooled connections always use `utf8mb4` as its character set. When connections
+By default, pooled connections use `utf8mb4` as its character set. When connections
 are reset, the equivalent of [refmem any_connection async_set_character_set] is used
 to restore the character set to `utf8mb4` (recall that raw [refmemunq any_connection async_reset_connection]
 will wipe character set data).
-
-Pooled connections always know the character set they're using.
-This means that [refmem any_connection format_opts] and [refmemunq any_connection current_character_set]
+This means that, when using the defaults,
+[refmem any_connection format_opts] and [refmemunq any_connection current_character_set]
 always succeed.
 
 We recommend to always stick to `utf8mb4`. If you really need to use any other character set,
 use [refmemunq any_connection async_set_character_set] on your connection after it's been retrieved
 from the pool.
+
+[heading Avoiding SET NAMES statements on modern servers]
+
+Every time a connection is reset, [refmemunq any_connection async_reset_connection]
+causes a `SET NAMES` statement to be issued. The performance impact is minimal
+because the statement is pipelined with the reset request, but it might still
+appear in your performance data.
+
+Modern servers (MySQL 8.0+ and MariaDB 11.6+) use the `utf8mb4` character set by
+default. If you are completely sure that your server is configured to use `utf8mb4`,
+you can prevent `SET NAMES` from being used by setting [refmem pool_params charset_strategy]:
+
+[connection_pool_charset_strategy]
+
+[warning
+  When using [refmem pool_charset_strategy use_server_default], you, as a user,
+  are promising the library that your server is properly configured. This fact
+  is not checked at runtime. Use it only as an optimization if you know what you are doing.
+]
+
+You can obtain your server's default character set by running:
+
+[!teletype]
+```
+SELECT @@GLOBAL.character_set_client;
+```
 
 
 [heading Connection lifecycle]

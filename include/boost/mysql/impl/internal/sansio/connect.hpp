@@ -31,7 +31,8 @@ class connect_algo
 
 public:
     connect_algo(connect_algo_params params) noexcept
-        : server_address_(params.server_address), handshake_({params.hparams, params.secure_channel})
+        : server_address_(params.server_address),
+          handshake_({params.hparams, params.secure_channel, params.server_default_charset})
     {
     }
 

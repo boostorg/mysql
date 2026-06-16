@@ -10,6 +10,7 @@
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
@@ -138,6 +139,7 @@ class handshake_algo
     std::array<std::uint8_t, scramble_size> scramble_;
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
+    character_set server_default_charset_{};
 
     static capabilities conditional_capability(bool condition, capabilities cap)
     {
@@ -203,10 +205,14 @@ class handshake_algo
     // Attempts to map the collection_id to a character set. We try to be conservative
     // here, since servers will happily accept unknown collation IDs, silently defaulting
     // to the server's default character set (often latin1, which is not Unicode).
-    static character_set collation_id_to_charset(std::uint16_t collation_id)
+    static character_set collation_id_to_charset(
+        character_set server_default_charset,
+        std::uint16_t collation_id
+    )
     {
         switch (collation_id)
         {
+        case invalid_collation_id: return server_default_charset;
         case mysql_collations::utf8mb4_bin:
         case mysql_collations::utf8mb4_general_ci: return utf8mb4_charset;
         case mysql_collations::ascii_general_ci:
@@ -311,7 +317,11 @@ class handshake_algo
     {
         st.status = connection_status::ready;
         st.backslash_escapes = ok.backslash_escapes();
-        st.current_charset = collation_id_to_charset(hparams_.connection_collation());
+        st.server_default_charset = server_default_charset_;
+        st.current_charset = collation_id_to_charset(
+            server_default_charset_,
+            hparams_.connection_collation()
+        );
     }
 
     next_action resume_impl(connection_state_data& st, diagnostics& diag, error_code ec)
@@ -437,7 +447,9 @@ class handshake_algo
 
 public:
     handshake_algo(handshake_algo_params params) noexcept
-        : hparams_(params.hparams), secure_channel_(params.secure_channel)
+        : hparams_(params.hparams),
+          secure_channel_(params.secure_channel),
+          server_default_charset_(params.server_default_charset)
     {
     }
 

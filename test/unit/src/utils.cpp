@@ -13,6 +13,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/pool_params.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/coldef_view.hpp>
@@ -154,6 +155,7 @@ class boost::mysql::test::algo_test::state_checker
     bool expected_tls_active;
     bool expected_backslash_escapes;
     character_set expected_charset;
+    character_set expected_server_default_charset;
 
 public:
     state_checker(detail::connection_state_data& st, const expected_state_changes_t& changes) noexcept
@@ -166,7 +168,8 @@ public:
           expected_tls_supported(changes.tls_active.value_or(st.tls_supported)),
           expected_tls_active(changes.tls_active.value_or(st.tls_active)),
           expected_backslash_escapes(changes.backslash_escapes.value_or(st.backslash_escapes)),
-          expected_charset(changes.current_charset.value_or(st.current_charset))
+          expected_charset(changes.current_charset.value_or(st.current_charset)),
+          expected_server_default_charset(changes.server_default_charset.value_or(st.server_default_charset))
     {
     }
 
@@ -181,6 +184,7 @@ public:
         BOOST_TEST(st_.tls_active == expected_tls_active);
         BOOST_TEST(st_.backslash_escapes == expected_backslash_escapes);
         BOOST_TEST(st_.current_charset == expected_charset);
+        BOOST_TEST(st_.server_default_charset == expected_server_default_charset);
         BOOST_TEST(!st_.op_in_progress);  // No algorithm should modify this
     }
 };
@@ -614,6 +618,23 @@ static const char* to_string(address_type v)
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, address_type v) { return os << ::to_string(v); }
 
+// pool_charset_strategy_type
+static const char* to_string(pool_charset_strategy_type v)
+{
+    switch (v)
+    {
+    case pool_charset_strategy_type::set_to_utf8mb4: return "pool_charset_strategy_type::set_to_utf8mb4";
+    case pool_charset_strategy_type::use_server_default:
+        return "pool_charset_strategy_type::use_server_default";
+    default: return "<unknown pool_charset_strategy_type>";
+    }
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, pool_charset_strategy_type v)
+{
+    return os << ::to_string(v);
+}
+
 // capabilities
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, capabilities v)
 {
@@ -808,12 +829,14 @@ boost::mysql::any_connection boost::mysql::test::create_test_any_connection(
     detail::connection_status initial_status
 )
 {
-    auto res = any_connection(detail::access::construct<any_connection>(
-        std::unique_ptr<detail::engine>(
-            new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
-        ),
-        params
-    ));
+    auto res = any_connection(
+        detail::access::construct<any_connection>(
+            std::unique_ptr<detail::engine>(
+                new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
+            ),
+            params
+        )
+    );
     detail::access::get_impl(res).get_state().data().status = initial_status;
     return res;
 }

@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_CONNECT_PARAMS_BUILDER_HPP
 
 #include <boost/mysql/any_address.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
@@ -28,6 +29,7 @@ class connect_params_builder
 {
     handshake_params res_{integ_user, integ_passwd, integ_db};
     any_address addr_;
+    character_set server_default_charset_{};
 
 public:
     connect_params_builder() { addr_.emplace_host_and_port(get_hostname()); }
@@ -74,6 +76,12 @@ public:
     connect_params_builder& collation(std::uint16_t v)
     {
         res_.set_connection_collation(v);
+        return *this;
+    }
+
+    connect_params_builder& server_default_charset(character_set v)
+    {
+        server_default_charset_ = v;
         return *this;
     }
 

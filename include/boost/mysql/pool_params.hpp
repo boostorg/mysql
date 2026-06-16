@@ -9,11 +9,14 @@
 #define BOOST_MYSQL_POOL_PARAMS_HPP
 
 #include <boost/mysql/any_address.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/defaults.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/assert.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <chrono>
@@ -22,6 +25,110 @@
 
 namespace boost {
 namespace mysql {
+
+/// Type tag for \ref pool_charset_strategy.
+enum class pool_charset_strategy_type
+{
+    /// Connections are set to use `utf8mb4` explicitly.
+    set_to_utf8mb4,
+
+    /// Connections use the server's default character set, which is supplied by the user.
+    use_server_default,
+};
+
+/**
+ * \brief Describes how pooled connections manage their character set.
+ * \details
+ * This is a lightweight variant-like type that determines how connections in a pool
+ * set its character set and restore it when they are returned
+ * to the pool. Create instances using the \ref set_to_utf8mb4 and \ref use_server_default
+ * factory functions.
+ *
+ * \li When using \ref set_to_utf8mb4 (the default), connections are established using
+ *     a collation ID of `utf8mb4_general_ci`, and a `SET NAMES` statement is issued
+ *     after returning them to the pool and resetting them. The character set is always
+ *     known and equal to `utf8mb4`.
+ * \li When using \ref use_server_default, connections are established using
+ *     \ref invalid_collation_id as collation ID, causing them to use the server's default.
+ *     No `SET NAMES` statement is issued after resetting the connections,
+ *     causing them again to use the server's default.
+ *     When using this value, you must provide the server's default character set
+ *     as an argument, and it must match what is actually configured in the server
+ *     (no runtime check is performed). This option should only be used as an optimization,
+ *     and if you know what you are doing.
+ */
+class pool_charset_strategy
+{
+    pool_charset_strategy_type type_{pool_charset_strategy_type::set_to_utf8mb4};
+    character_set server_default_charset_{};
+
+    explicit pool_charset_strategy(character_set c)
+        : type_(pool_charset_strategy_type::use_server_default), server_default_charset_(c)
+    {
+    }
+
+public:
+    /**
+     * \brief Default constructor, equivalent to \ref set_to_utf8mb4.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    pool_charset_strategy() = default;
+
+    /**
+     * \brief Creates a strategy that makes pooled connections use `utf8mb4`.
+     * \details
+     * Creates an object with type \ref pool_charset_strategy_type::set_to_utf8mb4.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    static inline pool_charset_strategy set_to_utf8mb4() noexcept { return {}; }
+
+    /**
+     * \brief Creates a strategy that makes pooled connections use the server's default character set.
+     * \details
+     * Creates an object with type \ref pool_charset_strategy_type::use_server_default
+     * and a \ref server_default_charset equal to the passed charset.
+     *
+     * The passed `charset` must equal the server's configured default character set.
+     * No runtime check is performed to verify this assertion. If it does not hold,
+     * vulnerabilities may arise. If unsure, prefer \ref set_to_utf8mb4.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    static inline pool_charset_strategy use_server_default(character_set charset) noexcept
+    {
+        return pool_charset_strategy(charset);
+    }
+
+    /**
+     * \brief Retrieves the kind of strategy represented by this object.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    pool_charset_strategy_type type() const noexcept { return type_; }
+
+    /**
+     * \brief Retrieves the server's default character set.
+     *
+     * \details Returns the character set that was passed to \ref use_server_default.
+     *
+     * \par Preconditions
+     * `this->type() == pool_charset_strategy_type::use_server_default`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    character_set server_default_charset() const noexcept
+    {
+        BOOST_ASSERT(type_ == pool_charset_strategy_type::use_server_default);
+        return server_default_charset_;
+    }
+};
 
 /**
  * \brief Configuration parameters for \ref connection_pool.
@@ -192,6 +299,18 @@ struct pool_params
      * (as per \ref connection_pool::get_executor).
      */
     asio::any_io_executor connection_executor{};
+
+    /**
+     * \brief Determines the character set used by connections created by the pool.
+     * \details
+     * Controls how pooled connections manage their character set.
+     * Defaults to \ref pool_charset_strategy::set_to_utf8mb4,
+     * which makes all connections use `utf8mb4` by setting it explicitly.
+     *
+     * This is an advanced setting. Please read how character set tracking works
+     * before changing it.
+     */
+    pool_charset_strategy charset_strategy{};
 };
 
 }  // namespace mysql

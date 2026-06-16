@@ -225,7 +225,7 @@ class connection_impl
     // Connect
     static connect_algo_params make_params_connect(const void* server_address, const handshake_params& params)
     {
-        return connect_algo_params{server_address, params, false};
+        return connect_algo_params{server_address, params, false, {}};
     }
 
     static connect_algo_params make_params_connect_v2(const connect_params& params)
@@ -233,7 +233,8 @@ class connection_impl
         return connect_algo_params{
             &params.server_address,
             make_hparams(params),
-            params.server_address.type() == address_type::unix_path
+            params.server_address.type() == address_type::unix_path,
+            params.server_default_charset,
         };
     }
 
@@ -453,7 +454,7 @@ public:
     // Handshake
     handshake_algo_params make_params_handshake(const handshake_params& params) const
     {
-        return {params, false};
+        return {params, false, {}};
     }
 
     // Execute

@@ -6,10 +6,12 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
@@ -33,6 +35,7 @@
 #include <exception>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "test_common/ci_server.hpp"
@@ -738,6 +741,58 @@ BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
 }
 
 #endif
+
+// Using a charset strategy of use_server_default makes us
+//   - Request the server's default charset when connecting
+//   - Suppress SET NAMES when resetting
+//   - Assume that the server's charset is the one passed by the user
+BOOST_FIXTURE_TEST_CASE(charset_strategy_use_server_default, fixture)
+{
+    // A dummy character set for testing purposes
+    character_set greek_charset{"greek", ascii_charset.next_char};
+
+    // Create a pool with max_size 1, so the same connection gets always returned.
+    // Set the charset to something different than utf8mb4. This is not what the server
+    // is actually using, but allows us to test that we trust the user.
+    auto params = create_pool_params(1);
+    params.charset_strategy = pool_charset_strategy::use_server_default(greek_charset);
+    connection_pool pool(ctx, std::move(params));
+    auto run_result = pool.async_run(as_netresult);
+
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
+    BOOST_TEST_REQUIRE(conn.valid());
+
+    // The connection thinks it's using the charset we supplied
+    BOOST_TEST(conn->current_character_set() == greek_charset);
+
+    // The connection is using the server's default (this is different across versions)
+    conn->async_execute("SELECT @@GLOBAL.character_set_client, @@character_set_client", r, as_netresult)
+        .validate_no_error();
+    std::string server_default = r.rows().at(0).at(0).as_string();
+    BOOST_TEST(r.rows().at(0).at(1) == field_view(server_default));
+
+    // Alter session state and the character set
+    conn->async_execute("SET @myvar = 'abc'", r, as_netresult).validate_no_error();
+    conn->async_set_character_set(ascii_charset, as_netresult).validate_no_error();
+
+    // Return the connection
+    conn = pooled_connection();
+
+    // Get the same connection again
+    conn = pool.async_get_connection(diag, as_netresult).get();
+    BOOST_TEST_REQUIRE(conn.valid());
+
+    // The same connection is returned, but session state has been cleared
+    // and the character set returned to the server's default
+    conn->async_execute("SELECT @myvar, @@character_set_client", r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(2, nullptr, server_default), per_element());
+    BOOST_TEST(conn->current_character_set() == greek_charset);
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
+}
 
 // Spotcheck: constructing a connection_pool with invalid params throws
 BOOST_AUTO_TEST_CASE(invalid_params)

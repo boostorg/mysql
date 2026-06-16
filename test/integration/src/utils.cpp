@@ -108,6 +108,7 @@ connect_params connect_params_builder::build()
     res.multi_queries = res_.multi_queries();
     res.ssl = res_.ssl();
     res.connection_collation = res_.connection_collation();
+    res.server_default_charset = server_default_charset_;
     return res;
 }
 

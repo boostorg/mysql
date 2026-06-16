@@ -98,7 +98,6 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     diagnostics connect_diag_;
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
-    const pipeline_request* reset_pipeline_req_;
     std::vector<stage_response> reset_pipeline_res_;
 
     // Thread-safe
@@ -190,7 +189,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
             case next_connection_action::reset:
                 node_.run_with_timeout(
                     node_.conn_.async_run_pipeline(
-                        *node_.reset_pipeline_req_,
+                        node_.params_->reset_pipeline,
                         node_.reset_pipeline_res_,
                         asio::deferred
                     ),
@@ -219,15 +218,13 @@ public:
         internal_pool_params& params,
         boost::asio::any_io_executor pool_ex,
         boost::asio::any_io_executor conn_ex,
-        conn_shared_state<ConnectionType, ClockType>& shared_st,
-        const pipeline_request* reset_pipeline_req
+        conn_shared_state<ConnectionType, ClockType>& shared_st
     )
         : params_(&params),
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
           timer_(pool_ex),
-          collection_timer_(pool_ex, (std::chrono::steady_clock::time_point::max)()),
-          reset_pipeline_req_(reset_pipeline_req)
+          collection_timer_(pool_ex, (std::chrono::steady_clock::time_point::max)())
     {
     }
 

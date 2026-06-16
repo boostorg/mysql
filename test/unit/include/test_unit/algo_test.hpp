@@ -86,6 +86,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         boost::optional<bool> tls_active;
         boost::optional<bool> backslash_escapes;
         boost::optional<character_set> current_charset;
+        boost::optional<character_set> server_default_charset;
     } state_changes_;
 
     class state_checker;
@@ -204,6 +205,13 @@ public:
     algo_test& will_set_current_charset(character_set expected)
     {
         state_changes_.current_charset = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_server_default_charset(character_set expected)
+    {
+        state_changes_.server_default_charset = expected;
         return *this;
     }
 

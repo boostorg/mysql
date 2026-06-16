@@ -17,6 +17,9 @@
 #include <chrono>
 #include <stdexcept>
 
+#include "test_common/printing.hpp"
+#include "test_unit/printing.hpp"
+
 using namespace boost::mysql;
 namespace asio = boost::asio;
 
@@ -161,6 +164,24 @@ BOOST_AUTO_TEST_CASE(valid_params)
             BOOST_CHECK_NO_THROW(detail::check_validity(params));
         }
     }
+}
+
+//
+// pool_charset_strategy
+//
+
+BOOST_AUTO_TEST_CASE(charset_strategy_accessors)
+{
+    // Default-constructed: equivalent to set_to_utf8mb4
+    BOOST_TEST(pool_charset_strategy().type() == pool_charset_strategy_type::set_to_utf8mb4);
+
+    // set_to_utf8mb4
+    BOOST_TEST(pool_charset_strategy::set_to_utf8mb4().type() == pool_charset_strategy_type::set_to_utf8mb4);
+
+    // use_server_default stores the type and the passed charset
+    auto strategy = pool_charset_strategy::use_server_default(ascii_charset);
+    BOOST_TEST(strategy.type() == pool_charset_strategy_type::use_server_default);
+    BOOST_TEST(strategy.server_default_charset() == ascii_charset);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
