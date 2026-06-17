@@ -16,6 +16,7 @@
 #include <boost/mysql/pool_params.hpp>
 
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/lightweight_any.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
@@ -48,13 +49,10 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Templating on ConnectionWrapper is useful for mocking in tests.
-// Production code always uses ConnectionWrapper = pooled_connection.
-template <class ConnectionType, class ClockType, class ConnectionWrapper>
-class basic_pool_impl
-    : public std::enable_shared_from_this<basic_pool_impl<ConnectionType, ClockType, ConnectionWrapper>>
+template <class ConnectionType, class ClockType>
+class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<ConnectionType, ClockType>>
 {
-    using this_type = basic_pool_impl<ConnectionType, ClockType, ConnectionWrapper>;
+    using this_type = basic_pool_impl<ConnectionType, ClockType>;
     using node_type = basic_connection_node<ConnectionType, ClockType>;
     using timer_type = asio::basic_waitable_timer<ClockType>;
     using shared_state_type = conn_shared_state<ConnectionType, ClockType>;
@@ -78,6 +76,9 @@ class basic_pool_impl
     // Rest of the parameters
     internal_pool_params params_;
 
+    // Factory to create user state objects in a type-erased way
+    lightweight_any (*state_factory_)(ConnectionType&);
+
     // State
     state_t state_{state_t::initial};
     std::list<node_type> all_conns_;
@@ -94,7 +95,7 @@ class basic_pool_impl
     void create_connection()
     {
         // Connection tasks always run in the pool's executor
-        all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_);
+        all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_, state_factory_);
         all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
     }
 
@@ -289,10 +290,9 @@ class basic_pool_impl
         template <class Self>
         void do_complete(Self& self)
         {
-            auto wr = result_ec ? ConnectionWrapper() : ConnectionWrapper(*result_conn, std::move(obj));
             parent_slot.clear();
             sig.reset();
-            self.complete(result_ec, std::move(wr));
+            self.complete(result_ec, result_conn, std::move(obj));
         }
 
         template <class Self>
@@ -435,11 +435,16 @@ class basic_pool_impl
     void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
 
 public:
-    basic_pool_impl(asio::any_io_executor ex, pool_params&& params)
+    basic_pool_impl(
+        asio::any_io_executor ex,
+        pool_params&& params,
+        lightweight_any (*state_factory)(ConnectionType&)
+    )
         : original_pool_ex_(std::move(ex)),
           pool_ex_(params.thread_safe ? asio::make_strand(original_pool_ex_) : original_pool_ex_),
           conn_ex_(params.connection_executor ? std::move(params.connection_executor) : original_pool_ex_),
           params_(make_internal_pool_params(std::move(params))),
+          state_factory_(state_factory),
           shared_st_(pool_ex_),
           cancel_timer_(pool_ex_, (std::chrono::steady_clock::time_point::max)())
     {
@@ -471,7 +476,7 @@ public:
 
     void async_get_connection(
         diagnostics* diag,
-        asio::any_completion_handler<void(error_code, ConnectionWrapper)> handler
+        asio::any_completion_handler<void(error_code, node_type*, std::shared_ptr<this_type>)> handler
     )
     {
         // The slot to pass for cleanup
@@ -502,8 +507,9 @@ public:
         }
 
         // Start
-        using handler_type = asio::any_completion_handler<void(error_code, ConnectionWrapper)>;
-        asio::async_compose<handler_type, void(error_code, ConnectionWrapper)>(
+        using handler_type = asio::any_completion_handler<
+            void(error_code, node_type*, std::shared_ptr<this_type>)>;
+        asio::async_compose<handler_type, void(error_code, node_type*, std::shared_ptr<this_type>)>(
             get_connection_op(shared_from_this_wrapper(), diag, std::move(sig), parent_slot),
             handler,
             pool_ex_
