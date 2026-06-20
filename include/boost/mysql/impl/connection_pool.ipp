@@ -13,8 +13,8 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
 
+#include <boost/mysql/detail/any_resettable.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
-#include <boost/mysql/detail/lightweight_any.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
 
@@ -46,7 +46,7 @@ void* boost::mysql::detail::get_user_node(boost::mysql::detail::connection_node&
 std::shared_ptr<boost::mysql::detail::pool_impl> boost::mysql::detail::make_pool_impl(
     asio::any_io_executor ex,
     pool_params&& params,
-    lightweight_any (*state_factory)(any_connection&)
+    any_resettable (*state_factory)(any_connection&)
 )
 {
     return std::make_shared<detail::pool_impl>(std::move(ex), std::move(params), state_factory);

@@ -15,11 +15,11 @@
 #include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/any_resettable.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 #include <boost/mysql/detail/initiation_base.hpp>
 #include <boost/mysql/detail/intermediate_handler.hpp>
-#include <boost/mysql/detail/lightweight_any.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
@@ -259,7 +259,7 @@ BOOST_MYSQL_DECL
 std::shared_ptr<pool_impl> make_pool_impl(
     asio::any_io_executor ex,
     pool_params&& params,
-    lightweight_any (*state_factory)(any_connection&)
+    any_resettable (*state_factory)(any_connection&)
 );
 
 BOOST_MYSQL_DECL
@@ -433,7 +433,7 @@ class basic_connection_pool
 
     basic_connection_pool(asio::any_io_executor ex, pool_params&& params, int)
         : impl_(detail::make_pool_impl(std::move(ex), std::move(params), [](any_connection& conn) {
-              return detail::make_lightweight_any<PoolNode>(conn);
+              return detail::any_resettable::make<PoolNode>(conn);
           }))
     {
     }

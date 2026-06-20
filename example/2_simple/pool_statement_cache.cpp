@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/pfr.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
@@ -138,6 +139,11 @@ asio::awaitable<std::string> get_employee_details(cached_pool& pool, std::int64_
         "SELECT first_name, last_name FROM employee WHERE id = ?"
     );
 
+    auto stmt = co_await conn.node().cached_prepare(
+        conn.get(),
+        "SELECT first_name, last_name FROM employee WHERE id = ?"
+    );
+
     // Use the connection normally to query the database.
     mysql::static_results<mysql::pfr_by_name<employee>> result;
     auto [ec2] = co_await conn->async_execute(stmt.bind(employee_id), result, diag, asio::as_tuple);
@@ -146,6 +152,9 @@ asio::awaitable<std::string> get_employee_details(cached_pool& pool, std::int64_
         log_error("Error running query", ec2, diag);
         co_return "ERROR";
     }
+
+    // Done with the connection
+    conn.return_without_reset();
 
     // Compose the message to be sent back to the client
     if (result.rows().empty())
@@ -325,6 +334,7 @@ void main_impl(int argc, char** argv)
     params.username = username;
     params.password = password;
     params.database = "boost_mysql_examples";
+    params.ssl = boost::mysql::ssl_mode::disable;
 
     // Construct the pool.
     // ctx will be used to create the connections and other I/O objects

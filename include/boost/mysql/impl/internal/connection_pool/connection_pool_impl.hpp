@@ -15,8 +15,8 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
 
+#include <boost/mysql/detail/any_resettable.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/lightweight_any.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
@@ -77,7 +77,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<Conn
     internal_pool_params params_;
 
     // Factory to create user state objects in a type-erased way
-    lightweight_any (*state_factory_)(ConnectionType&);
+    any_resettable (*state_factory_)(ConnectionType&);
 
     // State
     state_t state_{state_t::initial};
@@ -438,7 +438,7 @@ public:
     basic_pool_impl(
         asio::any_io_executor ex,
         pool_params&& params,
-        lightweight_any (*state_factory)(ConnectionType&)
+        any_resettable (*state_factory)(ConnectionType&)
     )
         : original_pool_ex_(std::move(ex)),
           pool_ex_(params.thread_safe ? asio::make_strand(original_pool_ex_) : original_pool_ex_),

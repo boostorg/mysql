@@ -16,8 +16,8 @@
 #include <boost/mysql/pipeline.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/any_resettable.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
-#include <boost/mysql/detail/lightweight_any.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
@@ -32,6 +32,7 @@
 #include <boost/intrusive/list_hook.hpp>
 
 #include <chrono>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -100,7 +101,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
     std::vector<stage_response> reset_pipeline_res_;
-    lightweight_any user_state_;
+    any_resettable user_state_;
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -189,6 +190,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 );
                 break;
             case next_connection_action::reset:
+                node_.user_state_.reset();
                 node_.run_with_timeout(
                     node_.conn_.async_run_pipeline(
                         node_.params_->reset_pipeline,
@@ -221,7 +223,7 @@ public:
         boost::asio::any_io_executor pool_ex,
         boost::asio::any_io_executor conn_ex,
         conn_shared_state<ConnectionType, ClockType>& shared_st,
-        lightweight_any (*state_factory)(ConnectionType&)  // TODO: I don't like this
+        any_resettable (*state_factory)(ConnectionType&)  // TODO: I don't like this
     )
         : params_(&params),
           shared_st_(&shared_st),
@@ -261,7 +263,7 @@ public:
 
     // Getters, used by pooled_connection
     ConnectionType& connection() noexcept { return conn_; }
-    lightweight_any& user_state() noexcept { return user_state_; }
+    any_resettable& user_state() noexcept { return user_state_; }
 
     // Exposed for testing
     collection_state get_collection_state() const noexcept { return collection_state_; }
