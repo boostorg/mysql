@@ -1,0 +1,74 @@
+#
+# Copyright (c) 2026 Vladislav Soulgard (vsoulgard at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+# import compile rule
+import testing ;
+
+project : requirements <include>../../include ;
+
+compile any_address.cpp ;
+compile any_connection.cpp ;
+compile bad_field_access.cpp ;
+compile blob_view.cpp ;
+compile blob.cpp ;
+compile buffer_params.cpp ;
+compile character_set.cpp ;
+compile client_errc.cpp ;
+compile column_type.cpp ;
+compile common_server_errc.cpp ;
+compile connect_params.cpp ;
+compile connection_pool.cpp ;
+compile connection.cpp ;
+compile constant_string_view.cpp ;
+compile date.cpp ;
+compile datetime.cpp ;
+compile days.cpp ;
+compile defaults.cpp ;
+compile diagnostics.cpp ;
+compile error_categories.cpp ;
+compile error_code.cpp ;
+compile error_with_diagnostics.cpp ;
+compile escape_string.cpp ;
+compile execution_state.cpp ;
+compile field_kind.cpp ;
+compile field_view.cpp ;
+compile field.cpp ;
+compile format_sql.cpp ;
+compile handshake_params.cpp ;
+compile is_fatal_error.cpp ;
+compile mariadb_collations.cpp ;
+compile mariadb_server_errc.cpp ;
+compile metadata_collection_view.cpp ;
+compile metadata_mode.cpp ;
+compile metadata.cpp ;
+compile mysql_collations.cpp ;
+compile mysql_server_errc.cpp ;
+compile pfr.cpp ;
+compile pipeline.cpp ;
+compile pool_params.cpp ;
+compile results.cpp ;
+compile resultset_view.cpp ;
+compile resultset.cpp ;
+compile row_view.cpp ;
+compile row.cpp ;
+compile rows_view.cpp ;
+compile rows.cpp ;
+compile sequence.cpp ;
+compile ssl_mode.cpp ;
+compile statement.cpp ;
+compile static_execution_state.cpp ;
+compile static_results.cpp ;
+compile string_view.cpp ;
+compile tcp_ssl.cpp ;
+compile tcp.cpp ;
+compile throw_on_error.cpp ;
+compile time.cpp ;
+compile underlying_row.cpp ;
+compile unix_ssl.cpp ;
+compile unix.cpp ;
+compile with_diagnostics.cpp ;
+compile with_params.cpp ;

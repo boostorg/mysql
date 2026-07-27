@@ -1,0 +1,82 @@
+#
+# Copyright (c) 2026 Vladislav Soulgard (vsoulgard at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+add_library(
+    boost_mysql_standalone_tests
+    OBJECT
+
+    any_address.cpp
+    any_connection.cpp
+    bad_field_access.cpp
+    blob_view.cpp
+    blob.cpp
+    buffer_params.cpp
+    character_set.cpp
+    client_errc.cpp
+    column_type.cpp
+    common_server_errc.cpp
+    connect_params.cpp
+    connection_pool.cpp
+    connection.cpp
+    constant_string_view.cpp
+    date.cpp
+    datetime.cpp
+    days.cpp
+    defaults.cpp
+    diagnostics.cpp
+    error_categories.cpp
+    error_code.cpp
+    error_with_diagnostics.cpp
+    escape_string.cpp
+    execution_state.cpp
+    field_kind.cpp
+    field_view.cpp
+    field.cpp
+    format_sql.cpp
+    handshake_params.cpp
+    is_fatal_error.cpp
+    mariadb_collations.cpp
+    mariadb_server_errc.cpp
+    metadata_collection_view.cpp
+    metadata_mode.cpp
+    metadata.cpp
+    mysql_collations.cpp
+    mysql_server_errc.cpp
+    pfr.cpp
+    pipeline.cpp
+    pool_params.cpp
+    results.cpp
+    resultset_view.cpp
+    resultset.cpp
+    row_view.cpp
+    row.cpp
+    rows_view.cpp
+    rows.cpp
+    sequence.cpp
+    ssl_mode.cpp
+    statement.cpp
+    static_execution_state.cpp
+    static_results.cpp
+    string_view.cpp
+    tcp_ssl.cpp
+    tcp.cpp
+    throw_on_error.cpp
+    time.cpp
+    underlying_row.cpp
+    unix_ssl.cpp
+    unix.cpp
+    with_diagnostics.cpp
+    with_params.cpp
+)
+
+target_include_directories(
+    boost_mysql_standalone_tests
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+)
+
+boost_mysql_test_target_settings(boost_mysql_standalone_tests)
