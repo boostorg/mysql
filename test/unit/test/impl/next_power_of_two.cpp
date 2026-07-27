@@ -20,6 +20,14 @@ BOOST_AUTO_TEST_CASE(basic)
     // n = 0 (special case)
     BOOST_TEST(next_power_of_two(0u) == 1u);
 
+    // n is bigger than largest power of two (special case)
+    BOOST_TEST(next_power_of_two((std::numeric_limits<std::size_t>::max() >> 1) + 2) == std::numeric_limits<std::size_t>::max());
+    BOOST_TEST(next_power_of_two((std::numeric_limits<std::size_t>::max() >> 1) + 1024) == std::numeric_limits<std::size_t>::max());
+    BOOST_TEST(next_power_of_two((std::numeric_limits<std::size_t>::max() >> 1) + 888) == std::numeric_limits<std::size_t>::max());
+
+    // n is largest power of two (corner case)
+    BOOST_TEST(next_power_of_two((std::numeric_limits<std::size_t>::max() >> 1) + 1 == std::numeric_limits<std::size_t>::max() >> 1) + 1);
+
     // n is already power of two
     BOOST_TEST(next_power_of_two(1u) == 1u);
     BOOST_TEST(next_power_of_two(2u) == 2u);
@@ -29,6 +37,7 @@ BOOST_AUTO_TEST_CASE(basic)
     BOOST_TEST(next_power_of_two(32u) == 32u);
     BOOST_TEST(next_power_of_two(64u) == 64u);
     BOOST_TEST(next_power_of_two(128u) == 128u);
+    BOOST_TEST(next_power_of_two(2048u) == 2048u);
 
     // n just below power of two
     BOOST_TEST(next_power_of_two(3u) == 4u);
@@ -37,6 +46,7 @@ BOOST_AUTO_TEST_CASE(basic)
     BOOST_TEST(next_power_of_two(31u) == 32u);
     BOOST_TEST(next_power_of_two(63u) == 64u);
     BOOST_TEST(next_power_of_two(127u) == 128u);
+    BOOST_TEST(next_power_of_two(2047u) == 2048u);
 
     // n just above power of two
     BOOST_TEST(next_power_of_two(5u) == 8u);
@@ -45,6 +55,7 @@ BOOST_AUTO_TEST_CASE(basic)
     BOOST_TEST(next_power_of_two(33u) == 64u);
     BOOST_TEST(next_power_of_two(65u) == 128u);
     BOOST_TEST(next_power_of_two(129u) == 256u);
+    BOOST_TEST(next_power_of_two(2049u) == 4096u);
 
     // n is random value
     BOOST_TEST(next_power_of_two(6u) == 8u);
@@ -57,6 +68,7 @@ BOOST_AUTO_TEST_CASE(basic)
     BOOST_TEST(next_power_of_two(400u) == 512u);
     BOOST_TEST(next_power_of_two(505u) == 512u);
     BOOST_TEST(next_power_of_two(888u) == 1024u);
+    BOOST_TEST(next_power_of_two(2222u) == 4096u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
