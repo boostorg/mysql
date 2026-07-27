@@ -43,6 +43,12 @@ for test in $(tests)
             <target-os>darwin:<build>no
             <boost.mysql.use-ts-executor>on:<build>no
             <toolset>gcc-5:<build>no
+            # Asio has problems with TSAN under older compilers
+            # https://github.com/chriskohlhoff/asio/issues/1759
+            # https://github.com/boostorg/mysql/issues/515
+            <toolset>gcc-6:<build>no
+            <toolset>gcc-7:<build>no
+            <toolset>clang-4:<build>no
             $(libcpp_exclusion)
             <thread-sanitizer>norecover
         : target-name $(test)
