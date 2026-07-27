@@ -41,8 +41,8 @@ project : requirements
     <library>/boost/system//boost_system
     <library>/boost/throw_exception//boost_throw_exception
     <library>/boost/variant2//boost_variant2
-    <library>/openssl//ssl
-    <library>/openssl//crypto
+    [ ac.check-library /openssl//ssl    : <library>/openssl//ssl/<link>shared : <build>no ]
+    [ ac.check-library /openssl//crypto : <library>/openssl//crypto/<link>shared : <build>no ]
     ;
 
 compile any_address.cpp ;
