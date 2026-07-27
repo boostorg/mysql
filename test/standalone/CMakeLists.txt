@@ -79,4 +79,30 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include
 )
 
+target_include_directories(
+    boost_mysql_standalone_tests
+    PRIVATE
+    ${OPENSSL_INCLUDE_DIR}
+)
+
+target_link_libraries(
+    boost_mysql_standalone_tests
+    INTERFACE
+    Boost::asio
+    Boost::assert
+    Boost::charconv
+    Boost::compat
+    Boost::config
+    Boost::container
+    Boost::core
+    Boost::describe
+    Boost::endian
+    Boost::intrusive
+    Boost::mp11
+    Boost::optional
+    Boost::system
+    Boost::throw_exception
+    Boost::variant2
+)
+
 boost_mysql_test_target_settings(boost_mysql_standalone_tests)
