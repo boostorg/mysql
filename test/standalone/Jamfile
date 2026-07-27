@@ -25,7 +25,8 @@ project : requirements
     <library>//boost/system//boost_system
     <library>//boost/throw_exception//boost_throw_exception
     <library>//boost/variant2//boost_variant2
-    <library>/openssl//openssl
+    <library>/openssl//ssl
+    <library>/openssl//crypto
     ;
 
 compile any_address.cpp ;

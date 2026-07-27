@@ -7,7 +7,7 @@
 
 add_library(
     boost_mysql_standalone_tests
-    OBJECT
+    STATIC
 
     any_address.cpp
     any_connection.cpp
