@@ -87,7 +87,7 @@ target_include_directories(
 
 target_link_libraries(
     boost_mysql_standalone_tests
-    INTERFACE
+    PRIVATE
     Boost::asio
     Boost::assert
     Boost::charconv
