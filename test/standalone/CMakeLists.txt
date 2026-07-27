@@ -100,6 +100,7 @@ target_link_libraries(
     Boost::intrusive
     Boost::mp11
     Boost::optional
+    Boost::pfr
     Boost::system
     Boost::throw_exception
     Boost::variant2

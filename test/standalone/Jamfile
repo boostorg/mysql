@@ -5,8 +5,24 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-# import compile rule
-import testing ;
+import testing : compile ;
+import ac ;
+import indirect ;
+
+rule do_fail_impl ( a * )
+{
+    exit "OpenSSL could not be found. Don't build target fail_if_no_openssl to skip this check" ;
+}
+
+local do_fail = [ indirect.make do_fail_impl ] ;
+
+alias fail_if_no_openssl
+    : requirements
+        [ ac.check-library /openssl//ssl    : : <conditional>@$(do_fail) ]
+        [ ac.check-library /openssl//crypto : : <conditional>@$(do_fail) ]
+;
+
+explicit fail_if_no_openssl ;
 
 project : requirements
     <include>../../include
