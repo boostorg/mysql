@@ -84,6 +84,7 @@ target_link_libraries(
     boost_mysql_standalone_tests
     PRIVATE
     Boost::mysql
+    Boost::pfr
 )
 
 boost_mysql_test_target_settings(boost_mysql_standalone_tests)
