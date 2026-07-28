@@ -6,6 +6,7 @@
 #
 
 import testing : compile ;
+import ac ;
 
 project : requirements
     <library>/boost/mysql//boost_mysql
