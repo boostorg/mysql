@@ -73,13 +73,6 @@ add_library(
     with_params.cpp
 )
 
-target_include_directories(
-    boost_mysql_standalone_tests
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-    ${OPENSSL_INCLUDE_DIR}
-)
-
 target_link_libraries(
     boost_mysql_standalone_tests
     PRIVATE
