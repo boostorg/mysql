@@ -23,10 +23,10 @@ inline std::size_t next_power_of_two(std::size_t n) noexcept
 {
     if (n < 2) return 1;
 
-    if (n > (std::numeric_limits<std::size_t>::max() >> 1) + 1)
-        return std::numeric_limits<std::size_t>::max();
+    if (n > ((std::numeric_limits<std::size_t>::max)() >> 1) + 1)
+        return (std::numeric_limits<std::size_t>::max)();
 
-    return std::size_t(1) << boost::core::bit_width(n - 1);
+    return static_cast<std::size_t>(1u) << boost::core::bit_width(n - 1);
 }
 
 }  // namespace detail
