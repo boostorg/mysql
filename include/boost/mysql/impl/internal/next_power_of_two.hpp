@@ -8,57 +8,25 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_NEXT_POWER_OF_TWO_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_NEXT_POWER_OF_TWO_HPP
 
-#include <boost/assert.hpp>
+#include <boost/core/bit.hpp>
 
-#include <type_traits>
 #include <limits>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template<int Shift, class UnsignedInt, bool Continue>
-struct recursive_shift_or;
-
-// Apply shift and continue to the next power of 2
-template<int Shift, class UnsignedInt>
-struct recursive_shift_or<Shift, UnsignedInt, true>
-{
-    static void apply(UnsignedInt& n)
-    {
-        n |= n >> Shift;
-        recursive_shift_or<Shift * 2, UnsignedInt, (Shift * 2 < sizeof(UnsignedInt) * 8)>::apply(n);
-    }
-};
-
-// Stop recursion when shift exceeds type width
-template<int Shift, class UnsignedInt>
-struct recursive_shift_or<Shift, UnsignedInt, false>
-{
-    static void apply(UnsignedInt&) {}
-};
-
 // Returns the smallest power of two greater than or equal to n.
-// Precondition: n must not exceed the largest power of two that fits
-// in UnsignedInt. For example:
-//   - uint8_t:  n <= 128 (2^7)
-//   - uint16_t: n <= 32768 (2^15)
-//   - uint32_t: n <= 2147483648 (2^31)
-//   - uint64_t: n <= 9223372036854775808 (2^63)
-//
-// Passing a larger value results in undefined behavior (overflow).
-// In debug builds, this is caught by BOOST_ASSERT.
-template<class UnsignedInt>
-UnsignedInt next_power_of_two(UnsignedInt n) noexcept
+// If n exceeds the largest power of two that fits in std::size_t, then
+// std::numeric_limits<std::size_t>::max() is returned.
+inline std::size_t next_power_of_two(std::size_t n) noexcept
 {
-    static_assert(std::is_unsigned<UnsignedInt>::value, "");
-    // Assert overflow (if value is bigger than maximum power)
-    BOOST_ASSERT(!(n > (std::numeric_limits<UnsignedInt>::max() >> 1) + 1));
-    if (n == 0) return 1;
-    n--;
-    // Fill all lower bits
-    recursive_shift_or<1, UnsignedInt, (1 < sizeof(UnsignedInt) * 8)>::apply(n);
-    return n + 1;
+    if (n < 2) return 1;
+
+    if (n > ((std::numeric_limits<std::size_t>::max)() >> 1) + 1)
+        return (std::numeric_limits<std::size_t>::max)();
+
+    return static_cast<std::size_t>(1u) << boost::core::bit_width(n - 1);
 }
 
 }  // namespace detail

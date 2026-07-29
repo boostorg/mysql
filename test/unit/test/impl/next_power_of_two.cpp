@@ -18,73 +18,57 @@ BOOST_AUTO_TEST_SUITE(test_next_power_of_two)
 BOOST_AUTO_TEST_CASE(basic)
 {
     // n = 0 (special case)
-    BOOST_TEST(next_power_of_two<std::size_t>(0u) == 1u);
-    
+    BOOST_TEST(next_power_of_two(0u) == 1u);
+
+    // n is bigger than largest power of two (special case)
+    BOOST_TEST(next_power_of_two((std::numeric_limits<std::size_t>::max() >> 1) + 2) == std::numeric_limits<std::size_t>::max());
+    BOOST_TEST(next_power_of_two((std::numeric_limits<std::size_t>::max() >> 1) + 1024) == std::numeric_limits<std::size_t>::max());
+    BOOST_TEST(next_power_of_two((std::numeric_limits<std::size_t>::max() >> 1) + 888) == std::numeric_limits<std::size_t>::max());
+
+    // n is largest power of two (corner case)
+    BOOST_TEST(next_power_of_two((std::numeric_limits<std::size_t>::max() >> 1) + 1 == std::numeric_limits<std::size_t>::max() >> 1) + 1);
+
     // n is already power of two
-    BOOST_TEST(next_power_of_two<std::size_t>(1u) == 1u);
-    BOOST_TEST(next_power_of_two<std::size_t>(2u) == 2u);
-    BOOST_TEST(next_power_of_two<std::size_t>(4u) == 4u);
-    BOOST_TEST(next_power_of_two<std::size_t>(8u) == 8u);
-    BOOST_TEST(next_power_of_two<std::size_t>(16u) == 16u);
-    BOOST_TEST(next_power_of_two<std::size_t>(32u) == 32u);
-    BOOST_TEST(next_power_of_two<std::size_t>(64u) == 64u);
-    BOOST_TEST(next_power_of_two<std::size_t>(128u) == 128u);
-    
+    BOOST_TEST(next_power_of_two(1u) == 1u);
+    BOOST_TEST(next_power_of_two(2u) == 2u);
+    BOOST_TEST(next_power_of_two(4u) == 4u);
+    BOOST_TEST(next_power_of_two(8u) == 8u);
+    BOOST_TEST(next_power_of_two(16u) == 16u);
+    BOOST_TEST(next_power_of_two(32u) == 32u);
+    BOOST_TEST(next_power_of_two(64u) == 64u);
+    BOOST_TEST(next_power_of_two(128u) == 128u);
+    BOOST_TEST(next_power_of_two(2048u) == 2048u);
+
     // n just below power of two
-    BOOST_TEST(next_power_of_two<std::size_t>(3u) == 4u);
-    BOOST_TEST(next_power_of_two<std::size_t>(7u) == 8u);
-    BOOST_TEST(next_power_of_two<std::size_t>(15u) == 16u);
-    BOOST_TEST(next_power_of_two<std::size_t>(31u) == 32u);
-    BOOST_TEST(next_power_of_two<std::size_t>(63u) == 64u);
-    BOOST_TEST(next_power_of_two<std::size_t>(127u) == 128u);
-    
+    BOOST_TEST(next_power_of_two(3u) == 4u);
+    BOOST_TEST(next_power_of_two(7u) == 8u);
+    BOOST_TEST(next_power_of_two(15u) == 16u);
+    BOOST_TEST(next_power_of_two(31u) == 32u);
+    BOOST_TEST(next_power_of_two(63u) == 64u);
+    BOOST_TEST(next_power_of_two(127u) == 128u);
+    BOOST_TEST(next_power_of_two(2047u) == 2048u);
+
     // n just above power of two
-    BOOST_TEST(next_power_of_two<std::size_t>(5u) == 8u);
-    BOOST_TEST(next_power_of_two<std::size_t>(9u) == 16u);
-    BOOST_TEST(next_power_of_two<std::size_t>(17u) == 32u);
-    BOOST_TEST(next_power_of_two<std::size_t>(33u) == 64u);
-    BOOST_TEST(next_power_of_two<std::size_t>(65u) == 128u);
-    BOOST_TEST(next_power_of_two<std::size_t>(129u) == 256u);
+    BOOST_TEST(next_power_of_two(5u) == 8u);
+    BOOST_TEST(next_power_of_two(9u) == 16u);
+    BOOST_TEST(next_power_of_two(17u) == 32u);
+    BOOST_TEST(next_power_of_two(33u) == 64u);
+    BOOST_TEST(next_power_of_two(65u) == 128u);
+    BOOST_TEST(next_power_of_two(129u) == 256u);
+    BOOST_TEST(next_power_of_two(2049u) == 4096u);
 
     // n is random value
-    BOOST_TEST(next_power_of_two<std::size_t>(6u) == 8u);
-    BOOST_TEST(next_power_of_two<std::size_t>(13u) == 16u);
-    BOOST_TEST(next_power_of_two<std::size_t>(21u) == 32u);
-    BOOST_TEST(next_power_of_two<std::size_t>(45u) == 64u);
-    BOOST_TEST(next_power_of_two<std::size_t>(89u) == 128u);
-    BOOST_TEST(next_power_of_two<std::size_t>(200u) == 256u);
-    BOOST_TEST(next_power_of_two<std::size_t>(300u) == 512u);
-    BOOST_TEST(next_power_of_two<std::size_t>(400u) == 512u);
-    BOOST_TEST(next_power_of_two<std::size_t>(505u) == 512u);
-    BOOST_TEST(next_power_of_two<std::size_t>(888u) == 1024u);
-}
-
-BOOST_AUTO_TEST_CASE(different_types)
-{
-    // uint8_t
-    BOOST_TEST(next_power_of_two<std::uint8_t>(0u) == 1u);
-    BOOST_TEST(next_power_of_two<std::uint8_t>(62u) == 64u);
-    BOOST_TEST(next_power_of_two<std::uint8_t>(100u) == 128u);
-    BOOST_TEST(next_power_of_two<std::uint8_t>(128u) == 128u);
-    
-    // uint16_t
-    BOOST_TEST(next_power_of_two<std::uint16_t>(0u) == 1u);
-    BOOST_TEST(next_power_of_two<std::uint16_t>(1000u) == 1024u);
-    BOOST_TEST(next_power_of_two<std::uint16_t>(16383u) == 16384u);
-    BOOST_TEST(next_power_of_two<std::uint16_t>(32768u) == 32768u);
-    
-    // uint32_t
-    BOOST_TEST(next_power_of_two<std::uint32_t>(0u) == 1u);
-    BOOST_TEST(next_power_of_two<std::uint32_t>(100000u) == 131072u);
-    BOOST_TEST(next_power_of_two<std::uint32_t>(1u << 30) == 1u << 30);
-    BOOST_TEST(next_power_of_two<std::uint32_t>((1u << 30) + 1) == 1u << 31);
-    
-    // uint64_t
-    BOOST_TEST(next_power_of_two<std::uint64_t>(0u) == 1u);
-    BOOST_TEST(next_power_of_two<std::uint64_t>(1ull << 40) == 1ull << 40);
-    BOOST_TEST(next_power_of_two<std::uint64_t>((1ull << 40) + 1) == 1ull << 41);
-    BOOST_TEST(next_power_of_two<std::uint64_t>(1ull << 62) == 1ull << 62);
-    BOOST_TEST(next_power_of_two<std::uint64_t>((1ull << 62) + 1) == 1ull << 63);
+    BOOST_TEST(next_power_of_two(6u) == 8u);
+    BOOST_TEST(next_power_of_two(13u) == 16u);
+    BOOST_TEST(next_power_of_two(21u) == 32u);
+    BOOST_TEST(next_power_of_two(45u) == 64u);
+    BOOST_TEST(next_power_of_two(89u) == 128u);
+    BOOST_TEST(next_power_of_two(200u) == 256u);
+    BOOST_TEST(next_power_of_two(300u) == 512u);
+    BOOST_TEST(next_power_of_two(400u) == 512u);
+    BOOST_TEST(next_power_of_two(505u) == 512u);
+    BOOST_TEST(next_power_of_two(888u) == 1024u);
+    BOOST_TEST(next_power_of_two(2222u) == 4096u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

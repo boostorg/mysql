@@ -147,7 +147,7 @@ public:
         if (free_size() < n)
         {
             std::size_t required_size = buffer_.size() + n - free_size();
-            std::size_t new_size = next_power_of_two<std::size_t>(required_size);
+            std::size_t new_size = next_power_of_two(required_size);
             if (new_size > max_size_)
             {
                 new_size = required_size;
