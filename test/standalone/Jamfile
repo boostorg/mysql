@@ -9,9 +9,7 @@ import testing : compile ;
 import ac ;
 
 project : requirements
-    <library>/boost/mysql//boost_mysql
-    [ ac.check-library /openssl//ssl    : <library>/openssl//ssl/<link>shared : <build>no ]
-    [ ac.check-library /openssl//crypto : <library>/openssl//crypto/<link>shared : <build>no ]
+    <library>/boost/mysql/test//boost_mysql
     ;
 
 compile any_address.cpp ;
