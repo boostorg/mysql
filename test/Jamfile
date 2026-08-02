@@ -165,3 +165,5 @@ alias launch_with_valgrind
     ;
 
 build-project unit ;
+
+build-project standalone ;

@@ -50,3 +50,6 @@ add_subdirectory(unit)
 if(BOOST_MYSQL_INTEGRATION_TESTS)
     add_subdirectory(integration)
 endif()
+
+# Standalone headers testing
+add_subdirectory(standalone)
