@@ -15,20 +15,36 @@
 #include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/any_resettable.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 #include <boost/mysql/detail/initiation_base.hpp>
+#include <boost/mysql/detail/intermediate_handler.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
 
-#include <chrono>
+#include <concepts>
 #include <memory>
 #include <utility>
 
 namespace boost {
 namespace mysql {
+
+// TODO: guard
+template <class T>
+concept pool_node_type = std::constructible_from<T, any_connection&> && requires(T& node) { node.reset(); };
+
+class simple_pool_node
+{
+public:
+    simple_pool_node(any_connection&) noexcept {}
+    void reset() {}
+};
+
+template <pool_node_type PoolNode>
+class basic_connection_pool;
 
 /**
  * \brief A proxy to a connection owned by a pool that returns it to the pool when destroyed.
@@ -60,11 +76,12 @@ namespace mysql {
  *   was created with \ref pool_params::thread_safe set to true. Otherwise, unsafe.
  * - Shared objects: always unsafe.
  */
-class pooled_connection
+template <pool_node_type PoolNode>
+class basic_pooled_connection
 {
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-    friend class detail::basic_pool_impl<any_connection, std::chrono::steady_clock, pooled_connection>;
+    friend class basic_connection_pool<PoolNode>;
 #endif
 
     struct impl_t
@@ -73,7 +90,10 @@ class pooled_connection
         std::shared_ptr<detail::pool_impl> pool;
     } impl_{};
 
-    pooled_connection(detail::connection_node& node, std::shared_ptr<detail::pool_impl> pool_impl) noexcept
+    basic_pooled_connection(
+        detail::connection_node& node,
+        std::shared_ptr<detail::pool_impl> pool_impl
+    ) noexcept
         : impl_{&node, std::move(pool_impl)}
     {
         BOOST_ASSERT(impl_.pool);
@@ -88,7 +108,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    pooled_connection() noexcept = default;
+    basic_pooled_connection() noexcept = default;
 
     /**
      * \brief Move constructor.
@@ -101,7 +121,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    pooled_connection(pooled_connection&& other) noexcept : impl_(std::move(other.impl_)) {}
+    basic_pooled_connection(basic_pooled_connection&& other) noexcept : impl_(std::move(other.impl_)) {}
 
     /**
      * \brief Move assignment.
@@ -121,7 +141,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    pooled_connection& operator=(pooled_connection&& other) noexcept
+    basic_pooled_connection& operator=(basic_pooled_connection&& other) noexcept
     {
         if (valid())
         {
@@ -132,8 +152,8 @@ public:
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    pooled_connection(const pooled_connection&) = delete;
-    pooled_connection& operator=(const pooled_connection&) = delete;
+    basic_pooled_connection(const basic_pooled_connection&) = delete;
+    basic_pooled_connection& operator=(const basic_pooled_connection&) = delete;
 #endif
 
     /**
@@ -148,7 +168,7 @@ public:
      * Thread-safe for a shared pool only if it was constructed with
      * \ref pool_params::thread_safe set to true.
      */
-    ~pooled_connection()
+    ~basic_pooled_connection()
     {
         if (valid())
             detail::return_connection(*impl_.pool, *impl_.node, true);
@@ -218,7 +238,50 @@ public:
         detail::return_connection(*impl_.pool, *impl_.node, false);
         impl_ = impl_t{};
     }
+
+    PoolNode& node() noexcept
+    {
+        BOOST_ASSERT(valid());
+        return *static_cast<PoolNode*>(detail::get_user_node(*impl_.node));
+    }
+    const PoolNode& node() const noexcept
+    {
+        BOOST_ASSERT(valid());
+        return *static_cast<const PoolNode*>(detail::get_user_node(*impl_.node));
+    }
 };
+
+using pooled_connection = basic_pooled_connection<simple_pool_node>;
+
+namespace detail {
+
+BOOST_MYSQL_DECL
+std::shared_ptr<pool_impl> make_pool_impl(
+    asio::any_io_executor ex,
+    pool_params&& params,
+    any_resettable (*state_factory)(any_connection&)
+);
+
+BOOST_MYSQL_DECL
+void async_run_erased(
+    std::shared_ptr<pool_impl> pool,
+    asio::any_completion_handler<void(error_code)> handler
+);
+
+BOOST_MYSQL_DECL
+void async_get_connection_erased(
+    std::shared_ptr<pool_impl> pool,
+    diagnostics* diag,
+    asio::any_completion_handler<void(error_code, connection_node*, std::shared_ptr<pool_impl>)> handler
+);
+
+BOOST_MYSQL_DECL
+asio::any_io_executor get_executor(pool_impl&);
+
+BOOST_MYSQL_DECL
+void cancel(pool_impl&);
+
+}  // namespace detail
 
 /**
  * \brief A pool of connections of variable size.
@@ -295,7 +358,8 @@ public:
  * will be kept alive using shared ownership semantics even after the `connection_pool`
  * object is destroyed. This results in intuitive lifetime rules.
  */
-class connection_pool
+template <pool_node_type PoolNode>
+class basic_connection_pool
 {
     std::shared_ptr<detail::pool_impl> impl_;
 
@@ -315,11 +379,23 @@ class connection_pool
         }
     };
 
-    BOOST_MYSQL_DECL
-    static void async_run_erased(
-        std::shared_ptr<detail::pool_impl> pool,
-        asio::any_completion_handler<void(error_code)> handler
-    );
+    struct get_connection_fn
+    {
+        template <class Handler>
+        void operator()(
+            Handler&& handler,
+            error_code ec,
+            detail::connection_node* node,
+            std::shared_ptr<detail::pool_impl> self
+        )
+        {
+            using pooled_connection_type = basic_pooled_connection<PoolNode>;
+            std::move(handler)(
+                ec,
+                ec ? pooled_connection_type{} : pooled_connection_type{*node, std::move(self)}
+            );
+        }
+    };
 
     struct initiate_get_connection : detail::initiation_base
     {
@@ -328,28 +404,26 @@ class connection_pool
         template <class Handler>
         void operator()(Handler&& h, diagnostics* diag, std::shared_ptr<detail::pool_impl> self)
         {
-            async_get_connection_erased(std::move(self), diag, std::forward<Handler>(h));
+            async_get_connection_erased(
+                std::move(self),
+                diag,
+                detail::make_intermediate_handler(get_connection_fn{}, std::forward<Handler>(h))
+            );
         }
     };
 
-    BOOST_MYSQL_DECL
-    static void async_get_connection_erased(
-        std::shared_ptr<detail::pool_impl> pool,
-        diagnostics* diag,
-        asio::any_completion_handler<void(error_code, pooled_connection)> handler
-    );
-
     template <class CompletionToken>
     auto async_get_connection_impl(diagnostics* diag, CompletionToken&& token)
-        -> decltype(asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
-            std::declval<initiate_get_connection>(),
-            token,
-            diag,
-            impl_
-        ))
+        -> decltype(asio::
+                        async_initiate<CompletionToken, void(error_code, basic_pooled_connection<PoolNode>)>(
+                            std::declval<initiate_get_connection>(),
+                            token,
+                            diag,
+                            impl_
+                        ))
     {
         BOOST_ASSERT(valid());
-        return asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
+        return asio::async_initiate<CompletionToken, void(error_code, basic_pooled_connection<PoolNode>)>(
             initiate_get_connection{get_executor()},
             token,
             diag,
@@ -357,8 +431,12 @@ class connection_pool
         );
     }
 
-    BOOST_MYSQL_DECL
-    connection_pool(asio::any_io_executor ex, pool_params&& params, int);
+    basic_connection_pool(asio::any_io_executor ex, pool_params&& params, int)
+        : impl_(detail::make_pool_impl(std::move(ex), std::move(params), [](any_connection& conn) {
+              return detail::any_resettable::make<PoolNode>(conn);
+          }))
+    {
+    }
 
 public:
     /**
@@ -386,8 +464,8 @@ public:
      * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
      *         pool_params.
      */
-    connection_pool(asio::any_io_executor ex, pool_params params)
-        : connection_pool(std::move(ex), std::move(params), 0)
+    basic_connection_pool(asio::any_io_executor ex, pool_params params)
+        : basic_connection_pool(std::move(ex), std::move(params), 0)
     {
     }
 
@@ -413,14 +491,14 @@ public:
             asio::any_io_executor>::value>::type
 #endif
         >
-    connection_pool(ExecutionContext& ctx, pool_params params)
-        : connection_pool(ctx.get_executor(), std::move(params), 0)
+    basic_connection_pool(ExecutionContext& ctx, pool_params params)
+        : basic_connection_pool(ctx.get_executor(), std::move(params), 0)
     {
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    connection_pool(const connection_pool&) = delete;
-    connection_pool& operator=(const connection_pool&) = delete;
+    basic_connection_pool(const basic_connection_pool&) = delete;
+    basic_connection_pool& operator=(const basic_connection_pool&) = delete;
 #endif
 
     /**
@@ -447,7 +525,7 @@ public:
      * concurrently with functions that only access the pool's internal state,
      * like returning connections.
      */
-    connection_pool(connection_pool&& other) = default;
+    basic_connection_pool(basic_connection_pool&& other) = default;
 
     /**
      * \brief Move assignment.
@@ -473,7 +551,7 @@ public:
      * concurrently with functions that only access the pool's internal state,
      * like returning connections.
      */
-    connection_pool& operator=(connection_pool&& other) = default;
+    basic_connection_pool& operator=(basic_connection_pool&& other) = default;
 
     /**
      * \brief Destructor.
@@ -491,7 +569,7 @@ public:
      * with functions that only access the pool's internal state,
      * like returning connections.
      */
-    ~connection_pool()
+    ~basic_connection_pool()
     {
         if (valid())
             cancel();
@@ -534,8 +612,7 @@ public:
      * If the pool was built with thread-safety enabled, it can be called
      * concurrently with other functions that don't modify the state handle.
      */
-    BOOST_MYSQL_DECL
-    executor_type get_executor() noexcept;
+    executor_type get_executor() noexcept { return detail::get_executor(*impl_); }
 
     /**
      * \brief Runs the pool task in charge of managing connections.
@@ -600,13 +677,14 @@ public:
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
-    auto async_run(CompletionToken&& token = {})
-        BOOST_MYSQL_RETURN_TYPE(decltype(asio::async_initiate<CompletionToken, void(error_code)>(
+    auto async_run(CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
+        decltype(asio::async_initiate<CompletionToken, void(error_code)>(
             std::declval<initiate_run>(),
             token,
             static_cast<diagnostics*>(nullptr),
             impl_
-        )))
+        ))
+    )
     {
         BOOST_ASSERT(valid());
         return asio::async_initiate<CompletionToken, void(error_code)>(
@@ -696,8 +774,9 @@ public:
      * concurrently with other functions that don't modify the state handle.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken = with_diagnostics_t<asio::deferred_t>>
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(
+            void(::boost::mysql::error_code, ::boost::mysql::basic_pooled_connection<PoolNode>)
+        ) CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_get_connection(CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
         decltype(async_get_connection_impl(nullptr, std::forward<CompletionToken>(token)))
     )
@@ -707,8 +786,9 @@ public:
 
     /// \copydoc async_get_connection
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken = with_diagnostics_t<asio::deferred_t>>
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(
+            void(::boost::mysql::error_code, ::boost::mysql::basic_pooled_connection<PoolNode>)
+        ) CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_get_connection(diagnostics& diag, CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
         decltype(async_get_connection_impl(nullptr, std::forward<CompletionToken>(token)))
     )
@@ -742,9 +822,14 @@ public:
      * If the pool was built with thread-safety enabled, it can be called
      * concurrently with other functions that don't modify the state handle.
      */
-    BOOST_MYSQL_DECL
-    void cancel();
+    void cancel()
+    {
+        BOOST_ASSERT(valid());
+        detail::cancel(*impl_);
+    }
 };
+
+using connection_pool = basic_connection_pool<simple_pool_node>;
 
 }  // namespace mysql
 }  // namespace boost

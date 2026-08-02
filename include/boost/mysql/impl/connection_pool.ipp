@@ -10,8 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
 
+#include <boost/mysql/detail/any_resettable.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
@@ -29,43 +31,49 @@ void boost::mysql::detail::return_connection(
     pool.return_connection(node, should_reset);
 }
 
-boost::mysql::any_connection& boost::mysql::detail::get_connection(boost::mysql::detail::connection_node& node
+boost::mysql::any_connection& boost::mysql::detail::get_connection(
+    boost::mysql::detail::connection_node& node
 ) noexcept
 {
     return node.connection();
 }
 
-boost::mysql::connection_pool::connection_pool(asio::any_io_executor ex, pool_params&& params, int)
-    : impl_(std::make_shared<detail::pool_impl>(std::move(ex), std::move(params)))
+void* boost::mysql::detail::get_user_node(boost::mysql::detail::connection_node& node)
 {
+    return node.user_state().get();
 }
 
-boost::mysql::connection_pool::executor_type boost::mysql::connection_pool::get_executor() noexcept
+std::shared_ptr<boost::mysql::detail::pool_impl> boost::mysql::detail::make_pool_impl(
+    asio::any_io_executor ex,
+    pool_params&& params,
+    any_resettable (*state_factory)(any_connection&)
+)
 {
-    return impl_->get_executor();
+    return std::make_shared<detail::pool_impl>(std::move(ex), std::move(params), state_factory);
 }
 
-void boost::mysql::connection_pool::async_run_erased(
-    std::shared_ptr<detail::pool_impl> pool,
+boost::asio::any_io_executor boost::mysql::detail::get_executor(boost::mysql::detail::pool_impl& pool)
+{
+    return pool.get_executor();
+}
+
+void boost::mysql::detail::async_run_erased(
+    std::shared_ptr<pool_impl> pool,
     asio::any_completion_handler<void(error_code)> handler
 )
 {
     pool->async_run(std::move(handler));
 }
 
-void boost::mysql::connection_pool::async_get_connection_erased(
+void boost::mysql::detail::async_get_connection_erased(
     std::shared_ptr<detail::pool_impl> pool,
     diagnostics* diag,
-    asio::any_completion_handler<void(error_code, pooled_connection)> handler
+    asio::any_completion_handler<void(error_code, connection_node*, std::shared_ptr<pool_impl>)> handler
 )
 {
     pool->async_get_connection(diag, std::move(handler));
 }
 
-void boost::mysql::connection_pool::cancel()
-{
-    BOOST_ASSERT(valid());
-    impl_->cancel();
-}
+void boost::mysql::detail::cancel(boost::mysql::detail::pool_impl& pool) { pool.cancel(); }
 
 #endif

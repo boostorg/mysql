@@ -16,6 +16,7 @@
 #include <boost/mysql/pipeline.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/any_resettable.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
@@ -31,6 +32,7 @@
 #include <boost/intrusive/list_hook.hpp>
 
 #include <chrono>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -99,6 +101,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
     std::vector<stage_response> reset_pipeline_res_;
+    any_resettable user_state_;
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -187,6 +190,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 );
                 break;
             case next_connection_action::reset:
+                node_.user_state_.reset();
                 node_.run_with_timeout(
                     node_.conn_.async_run_pipeline(
                         node_.params_->reset_pipeline,
@@ -218,13 +222,15 @@ public:
         internal_pool_params& params,
         boost::asio::any_io_executor pool_ex,
         boost::asio::any_io_executor conn_ex,
-        conn_shared_state<ConnectionType, ClockType>& shared_st
+        conn_shared_state<ConnectionType, ClockType>& shared_st,
+        any_resettable (*state_factory)(ConnectionType&)  // TODO: I don't like this
     )
         : params_(&params),
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
           timer_(pool_ex),
-          collection_timer_(pool_ex, (std::chrono::steady_clock::time_point::max)())
+          collection_timer_(pool_ex, (std::chrono::steady_clock::time_point::max)()),
+          user_state_(state_factory(conn_))
     {
     }
 
@@ -255,8 +261,9 @@ public:
         );
     }
 
-    // Getter, used by pooled_connection
+    // Getters, used by pooled_connection
     ConnectionType& connection() noexcept { return conn_; }
+    any_resettable& user_state() noexcept { return user_state_; }
 
     // Exposed for testing
     collection_state get_collection_state() const noexcept { return collection_state_; }

@@ -97,6 +97,7 @@ add_simple_example(prepared_statements          ARGS ${REGULAR_ARGS} "HGS")
 add_simple_example(pipeline                     ARGS ${REGULAR_ARGS} "HGS")
 add_simple_example(multi_function               ARGS ${REGULAR_ARGS})
 add_simple_example(source_script                ARGS ${REGULAR_ARGS} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql)
+add_simple_example(pool_statement_cache         ARGS ${SERVER_HOST}  PYTHON_RUNNER run_tutorial_connection_pool.py LIBS Boost::pfr)
 
 # UNIX sockets. Don't run the example on Windows machines
 if (NOT WIN32)

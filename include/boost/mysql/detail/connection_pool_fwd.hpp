@@ -15,7 +15,6 @@
 namespace boost {
 namespace mysql {
 
-class pooled_connection;
 class any_connection;
 
 namespace detail {
@@ -23,14 +22,15 @@ namespace detail {
 template <class ConnectionType, class ClockType>
 class basic_connection_node;
 
-template <class ConnectionType, class ClockType, class ConnectionWrapper>
+template <class ConnectionType, class ClockType>
 class basic_pool_impl;
 
 using connection_node = basic_connection_node<any_connection, std::chrono::steady_clock>;
-using pool_impl = basic_pool_impl<any_connection, std::chrono::steady_clock, pooled_connection>;
+using pool_impl = basic_pool_impl<any_connection, std::chrono::steady_clock>;
 
 BOOST_MYSQL_DECL void return_connection(pool_impl& pool, connection_node& node, bool should_reset) noexcept;
 BOOST_MYSQL_DECL any_connection& get_connection(connection_node& node) noexcept;
+BOOST_MYSQL_DECL void* get_user_node(connection_node& node);
 
 }  // namespace detail
 }  // namespace mysql
