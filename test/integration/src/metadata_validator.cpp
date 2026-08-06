@@ -14,10 +14,7 @@
 
 using namespace boost::mysql::test;
 
-#define MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(getter) \
-    {                                             \
-        #getter, &boost::mysql::metadata::getter  \
-    }
+#define MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(getter) {#getter, &boost::mysql::metadata::getter}
 
 static struct flag_entry
 {
@@ -77,6 +74,12 @@ void meta_validator::validate(const boost::mysql::metadata& value) const
         {
             BOOST_TEST(!(value.*entry.getter)(), entry.name);
         }
+    }
+
+    // Column length
+    if (length_.has_value())
+    {
+        BOOST_TEST(length_.value() == value.column_length());
     }
 }
 

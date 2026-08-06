@@ -36,6 +36,7 @@ target_link_libraries(
     boost_mysql_compiled
     Boost::unit_test_framework
     Boost::pfr
+    Boost::decimal
 )
 target_include_directories(
     boost_mysql_testing
