@@ -35,7 +35,6 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <exception>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -46,7 +45,6 @@
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_integration/run_coro.hpp"
 #include "test_integration/server_features.hpp"
 
