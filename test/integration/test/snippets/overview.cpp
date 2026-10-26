@@ -22,6 +22,7 @@
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/eager.hpp>
 #include <boost/asio/experimental/cancellation_condition.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/io_context.hpp>
@@ -240,13 +241,14 @@ asio::awaitable<void> overview_coro(mysql::any_connection& conn)
         // You need to call async_run on the pool before doing anything useful with it.
         // async_run creates connections and keeps them healthy. It must be called
         // only once per pool.
-        // The detached completion token means that we don't want to be notified when
-        // the operation ends. It's similar to a no-op callback.
-        pool.async_run(asio::detached);
+        // The eager completion token starts the operation in the background.
+        // It can later be used to wait for the operation to finish (e.g. using co_await)
+        auto run_op = pool.async_run(asio::eager);
         //]
 
-        // If we don't use the pool, we may leave unfinished work in the context
-        co_await pool.async_get_connection();
+        // Cleanup
+        pool.cancel();
+        co_await std::move(run_op);
     }
 }
 
