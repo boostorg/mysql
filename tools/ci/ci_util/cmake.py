@@ -266,7 +266,7 @@ def bench_build(
     )
 
     # Setup DB
-    db_setup_bench(source_dir)
+    db_setup_bench(source_dir, server_host)
 
     # Build the benchmark code
     runner = _CMakeRunner(generator='Ninja', build_type='Release')
