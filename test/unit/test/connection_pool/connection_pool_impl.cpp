@@ -1001,7 +1001,9 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            fixture fix(pool_params{});
+            pool_params params;
+            params.thread_safe = tc.thread_safe;
+            fixture fix(std::move(params));
             diagnostics diag;
 
             fix.wait_for_num_nodes(1);
@@ -1020,6 +1022,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
                 common_server_errc::er_bad_db_error,
                 create_server_diag("Bad db")
             );
+            fix.wait_for_status(*fix.pool().nodes().begin(), node_status::sleep_connect_failed_in_progress);
 
             // The request gets cancelled. Appropriate diagnostics are returned
             task.cancel(tc.cancel_type);
