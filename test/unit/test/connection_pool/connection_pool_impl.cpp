@@ -34,12 +34,12 @@
 #include <boost/asio/bind_immediate_executor.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/cancellation_type.hpp>
+#include <boost/asio/channel.hpp>
+#include <boost/asio/channel_error.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/asio/experimental/channel.hpp>
-#include <boost/asio/experimental/channel_error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -117,16 +117,14 @@ class mock_connection
 {
     struct impl_t
     {
-        asio::experimental::channel<void(error_code, fn_type)> to_test_chan_;
-        asio::experimental::channel<void(error_code, diagnostics)> from_test_chan_;
+        asio::channel<void(error_code, fn_type)> to_test_chan_;
+        asio::channel<void(error_code, diagnostics)> from_test_chan_;
 
         // Transforms the channel-specific cancel code into asio::error::operation_aborted,
         // which is returned by connections when operations get cancelled
         static error_code transform_ec(error_code input)
         {
-            return input == asio::experimental::channel_errc::channel_cancelled
-                       ? asio::error::operation_aborted
-                       : input;
+            return input == asio::channel_errc::channel_cancelled ? asio::error::operation_aborted : input;
         }
 
         // Code shared between all mocked ops
@@ -1001,7 +999,9 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            fixture fix(pool_params{});
+            pool_params params;
+            params.thread_safe = tc.thread_safe;
+            fixture fix(std::move(params));
             diagnostics diag;
 
             fix.wait_for_num_nodes(1);
@@ -1020,6 +1020,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
                 common_server_errc::er_bad_db_error,
                 create_server_diag("Bad db")
             );
+            fix.wait_for_status(*fix.pool().nodes().begin(), node_status::sleep_connect_failed_in_progress);
 
             // The request gets cancelled. Appropriate diagnostics are returned
             task.cancel(tc.cancel_type);

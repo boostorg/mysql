@@ -26,6 +26,7 @@
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/eager.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -235,7 +236,7 @@ BOOST_FIXTURE_TEST_CASE(section_tutorial_connection_pool, snippets_fixture)
 {
     run_coro(ctx, [&]() -> asio::awaitable<void> {
         mysql::connection_pool pool(ctx, create_pool_params());
-        pool.async_run(asio::detached);
+        auto run_op = pool.async_run(asio::eager);
 
         //[tutorial_connection_pool_get_connection
         // Get a connection from the pool.
@@ -244,6 +245,9 @@ BOOST_FIXTURE_TEST_CASE(section_tutorial_connection_pool, snippets_fixture)
         // the object is destroyed
         mysql::pooled_connection conn = co_await pool.async_get_connection();
         //]
+
+        pool.cancel();
+        co_await std::move(run_op);
     });
 }
 

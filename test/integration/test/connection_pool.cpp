@@ -22,17 +22,19 @@
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/eager.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/asio/this_coro.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <exception>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -43,7 +45,6 @@
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_integration/run_coro.hpp"
 #include "test_integration/server_features.hpp"
 
@@ -65,15 +66,6 @@ pool_params create_pool_params(std::size_t max_size = 151)
     res.ssl = ssl_mode::disable;
     res.max_size = max_size;
     return res;
-}
-
-static void check_run(error_code ec)
-{
-    // Should complete successfully
-    BOOST_TEST(ec == error_code());
-
-    // Should never complete immediately
-    BOOST_TEST(!is_initiation_function());
 }
 
 struct fixture : io_context_fixture
@@ -623,7 +615,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
     constexpr std::chrono::seconds timeout(10);
 
     connection_pool pool(ctx, create_pool_params());
-    pool.async_run(asio::cancel_after(timeout, check_run));
+    auto run_result = pool.async_run(asio::cancel_after(timeout, as_netresult));
 
     // Get a connection
     auto conn = pool.async_get_connection(diag, asio::cancel_after(timeout, asio::deferred))(as_netresult)
@@ -632,6 +624,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
 
     // Cleanup the pool
     pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 // Spotcheck: per-operation cancellation works with async_run
@@ -688,10 +681,7 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
         );
 
         // Run the pool
-        std::move(run_op)([](std::exception_ptr exc) {
-            if (exc)
-                std::rethrow_exception(exc);
-        });
+        auto run_aw = std::move(run_op)(asio::eager);
 
         // Success case
         auto conn = co_await pool.async_get_connection();
@@ -699,6 +689,7 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 
         // Finish
         pool.cancel();
+        co_await std::move(run_aw);
     });
 }
 
@@ -709,15 +700,12 @@ BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
         connection_pool pool(ctx, create_pool_params(1));
 
         // Run can be used with cancel_after
-        asio::co_spawn(
+        auto run_aw = asio::co_spawn(
             ctx,
             [&]() -> asio::awaitable<void> {
                 co_await pool.async_run(asio::cancel_after(std::chrono::seconds(1)));
             },
-            [](std::exception_ptr exc) {
-                if (exc)
-                    std::rethrow_exception(exc);
-            }
+            asio::eager
         );
 
         // Success case
@@ -737,6 +725,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
 
         // Finish
         pool.cancel();
+        co_await std::move(run_aw);
     });
 }
 
