@@ -20,9 +20,9 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
-#include <boost/asio/channel.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/eager.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -683,12 +683,7 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
         );
 
         // Run the pool
-        asio::channel<void(error_code)> run_finished{co_await asio::this_coro::executor, 1u};
-        std::move(run_op)([&](std::exception_ptr exc) {
-            run_finished.try_send(error_code());
-            if (exc)
-                std::rethrow_exception(exc);
-        });
+        auto run_aw = std::move(run_op)(asio::eager);
 
         // Success case
         auto conn = co_await pool.async_get_connection();
@@ -696,7 +691,7 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 
         // Finish
         pool.cancel();
-        co_await run_finished.async_receive();
+        co_await std::move(run_aw);
     });
 }
 
@@ -707,17 +702,12 @@ BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
         connection_pool pool(ctx, create_pool_params(1));
 
         // Run can be used with cancel_after
-        asio::channel<void(error_code)> run_finished{co_await asio::this_coro::executor, 1u};
-        asio::co_spawn(
+        auto run_aw = asio::co_spawn(
             ctx,
             [&]() -> asio::awaitable<void> {
                 co_await pool.async_run(asio::cancel_after(std::chrono::seconds(1)));
             },
-            [&](std::exception_ptr exc) {
-                run_finished.try_send(error_code());
-                if (exc)
-                    std::rethrow_exception(exc);
-            }
+            asio::eager
         );
 
         // Success case
@@ -737,7 +727,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
 
         // Finish
         pool.cancel();
-        co_await run_finished.async_receive();
+        co_await std::move(run_aw);
     });
 }
 
