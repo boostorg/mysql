@@ -10,9 +10,16 @@ from typing import List, Dict
 from pathlib import Path
 import subprocess
 import os
+import time
 from .common import IS_WINDOWS
 from enum import Enum
 import re
+
+
+# In CI, the DB server runs in a container that is launched in parallel to ours,
+# so it may not be ready by the time we try to load the data into it
+_SERVER_WAIT_TIMEOUT_SECONDS = 180
+_SERVER_WAIT_INTERVAL_SECONDS = 2
 
 
 class _DbSystemType(Enum):
@@ -36,6 +43,30 @@ def _run_piped_stdout(args: List[str]) -> str:
 
 def _run_sql_file(fname: Path) -> None:
     _run_piped_stdin(['mysql', '-u', 'root'], fname)
+
+
+def _is_server_ready(server_host: str) -> bool:
+    # Force TCP: while the server is initializing, the official containers launch a
+    # temporary server that is reachable through the UNIX socket, but not by TCP.
+    # We're not interested in such a server
+    res = subprocess.run(
+        ['mysql', '-u', 'root', '-h', server_host, '--protocol=tcp', '-e', 'SELECT 1'],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    return res.returncode == 0
+
+
+def _wait_for_server(server_host: str) -> None:
+    print('+ Waiting for the DB server to become ready', flush=True)
+    deadline = time.monotonic() + _SERVER_WAIT_TIMEOUT_SECONDS
+    while not _is_server_ready(server_host):
+        if time.monotonic() >= deadline:
+            raise RuntimeError('The DB server was not ready after {} seconds'.format(
+                _SERVER_WAIT_TIMEOUT_SECONDS
+            ))
+        time.sleep(_SERVER_WAIT_INTERVAL_SECONDS)
+    print('+ The DB server is ready', flush=True)
 
 
 def _get_server_version() -> str:
@@ -89,6 +120,9 @@ def db_setup(
     source_dir: Path,
     server_host: str,
 ) -> None:
+    # The server may still be starting up
+    _wait_for_server(server_host)
+
     # Get the server version
     db = _get_server_version()
     print('+ Server version: {}'.format(db), flush=True)
@@ -113,5 +147,6 @@ def db_setup(
 
 
 # Loads benchmark data. This takes around 15s, so we don't do it unless necessary
-def db_setup_bench(source_dir: Path) -> None:
+def db_setup_bench(source_dir: Path, server_host: str) -> None:
+    _wait_for_server(server_host)
     _run_sql_file(source_dir.joinpath('bench', 'db_setup.sql'))
