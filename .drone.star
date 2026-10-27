@@ -324,7 +324,7 @@ def find_package_b2_linux(name):
 
 def find_package_b2_windows(name):
     command = _find_package_b2_command(source_dir='$Env:DRONE_WORKSPACE', generator='Visual Studio 18 2026')
-    return _pipeline(name=name, image=_image('build-msvc14_3:2'), os='windows', command=command, db=None)
+    return _pipeline(name=name, image=_image('build-msvc14_5:2'), os='windows', command=command, db=None)
 
 
 def bench(name):
