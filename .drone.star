@@ -127,15 +127,18 @@ def _pipeline(
     # Set up the database and certificates
     cert_dir = "C:\\\\ssl\\\\" if os == "windows" else "/tls/"
     if os == "windows":
-        # Generate certificates
-        steps.append({
-            "name": "Generate certificates",
-            "image": image,
-            "pull": "if-not-exists",
-            "commands": [
-                "python tools/ci/gen-certificates.py {}".format(cert_dir)
-            ]
-        })
+        # TODO: certificate generation temporarily disabled for Windows builds.
+        # The images ship certificates in C:\ssl, which is what the server uses
+        pass
+        # # Generate certificates
+        # steps.append({
+        #     "name": "Generate certificates",
+        #     "image": image,
+        #     "pull": "if-not-exists",
+        #     "commands": [
+        #         "python tools/ci/gen-certificates.py {}".format(cert_dir)
+        #     ]
+        # })
 
     elif db != None:
         # Generate certificates
