@@ -310,7 +310,7 @@ def windows_cmake(
     )
     return _pipeline(
         name=name,
-        image=_image('build-msvc14_3:2'),
+        image=_image('build-msvc14_5:2'),
         os='windows',
         command=command,
         db=None
