@@ -6,14 +6,9 @@
 #
 
 _triggers = { "branch": [ "master", "develop" ] }
-_win_container_tag = 'e7bd656c3515263f9b3c69a2d73d045f6a0fed72'
-
 
 def _image(name):
     return 'ghcr.io/anarthal/cpp-ci-containers/{}'.format(name)
-
-def _win_image(name):
-    return 'ghcr.io/anarthal-containers/{}:{}'.format(name, _win_container_tag)
 
 
 def _b2_command(
@@ -324,7 +319,7 @@ def windows_cmake(
     )
     return _pipeline(
         name=name,
-        image=_win_image('build-msvc14_3'),
+        image=_image('build-msvc14_3:2'),
         os='windows',
         command=command,
         db=None
@@ -338,7 +333,7 @@ def find_package_b2_linux(name):
 
 def find_package_b2_windows(name):
     command = _find_package_b2_command(source_dir='$Env:DRONE_WORKSPACE', generator='Visual Studio 17 2022')
-    return _pipeline(name=name, image=_win_image('build-msvc14_3'), os='windows', command=command, db=None)
+    return _pipeline(name=name, image=_image('build-msvc14_3:2'), os='windows', command=command, db=None)
 
 
 def bench(name):
@@ -426,11 +421,11 @@ def main(ctx):
         linux_b2('Linux B2 noopenssl',            _image('build-noopenssl:1'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
 
         # B2 Windows
-        windows_b2('Windows B2 msvc14.1 32-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
-        windows_b2('Windows B2 msvc14.1 64-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='14,17',    variant='release'),
-        windows_b2('Windows B2 msvc14.2',             _win_image('build-msvc14_2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release'),
-        windows_b2('Windows B2 msvc14.3',             _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release'),
-        windows_b2('Windows B2 msvc14.3-ts-executor', _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
+        windows_b2('Windows B2 msvc14.1 32-bit',      _image('build-msvc14_1:2'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
+        windows_b2('Windows B2 msvc14.1 64-bit',      _image('build-msvc14_1:2'), toolset='msvc-14.1', cxxstd='14,17',    variant='release'),
+        windows_b2('Windows B2 msvc14.2',             _image('build-msvc14_2:2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release'),
+        windows_b2('Windows B2 msvc14.3',             _image('build-msvc14_3:2'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release'),
+        windows_b2('Windows B2 msvc14.3-ts-executor', _image('build-msvc14_3:2'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
 
         # Benchmarks
         bench('Benchmarks'),
