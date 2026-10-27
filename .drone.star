@@ -399,8 +399,10 @@ def main(ctx):
         linux_b2('Linux B2 clang-12',             _image('build-clang12:2'),       toolset='clang-12',  cxxstd='20', variant='debug', stdlib='libc++', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-13',             _image('build-clang13:1'),       toolset='clang-13',  cxxstd='20', db='mysql:9.4.0'),
         linux_b2('Linux B2 clang-14',             _image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', variant='debug'),
-        linux_b2('Linux B2 clang-15',             _image('build-clang15:1'),       toolset='clang-15',  cxxstd='20', variant='debug'),
-        linux_b2('Linux B2 clang-16',             _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        # TODO: re-enable when Asio fixes https://github.com/chriskohlhoff/asio/issues/1778
+        #    https://github.com/boostorg/mysql/issues/523
+        # linux_b2('Linux B2 clang-15',             _image('build-clang15:1'),       toolset='clang-15',  cxxstd='20', variant='debug'),
+        # linux_b2('Linux B2 clang-16',             _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-17-honly-rls',   _image('build-clang17:1'),       toolset='clang-17',  cxxstd='20', variant='release', separate_compilation=0),
         linux_b2('Linux B2 clang-18-honly-dbg',   _image('build-clang18:1'),       toolset='clang-18',  cxxstd='20', variant='debug', separate_compilation=0),
         linux_b2('Linux B2 clang-19-libc++',      _image('build-clang19:1'),       toolset='clang-19',  cxxstd='23', stdlib='libc++'),
