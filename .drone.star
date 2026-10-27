@@ -71,12 +71,10 @@ def _find_package_b2_command(source_dir, generator):
 
 
 def _make_entrypoint(db):
-    # TODO: verify that this is true
-    # fs.aio-max-nr is a host-wide, non-namespaced limit shared by all containers
-    # in the Drone agent. When it's exhausted, InnoDB's io_setup() fails with EAGAIN
-    # and the server refuses to start. Simulated AIO doesn't need kernel AIO contexts,
-    # and the performance difference is irrelevant for CI.
-    no_native_aio = "--innodb-use-native-aio=OFF "
+    # We disable InnoDB's native aio because it doesn't work well in Drone.
+    # It can cause the server to not start at all because io_setup() fails with EAGAIN.
+    # This is because native aio allocates host-wide resources. When fs.aio-max-nr is reached,
+    # calls fail. Simulated aio is slower (but this is CI, we don't care), but doesn't have this problem.
 
     if db.startswith('mysql:'):
         # MySQL generic. Sanitize UNIX socket permissions and launch the server with the adequate TLS files
@@ -84,7 +82,7 @@ def _make_entrypoint(db):
                     "--ssl-ca=/tls/ca-cert.pem " + \
                     "--ssl-cert=/tls/server-cert.pem " + \
                     "--ssl-key=/tls/server-key.pem " + \
-                    no_native_aio
+                    "--innodb-use-native-aio=OFF "
         if db.startswith('mysql:8.'):
             # v8.x needs this flag to enable mysql_native_password
             res += "--mysql-native-password=ON"
@@ -94,7 +92,7 @@ def _make_entrypoint(db):
                     "--ssl-ca=/tls/ca-cert.pem " + \
                     "--ssl-cert=/tls/server-cert.pem " + \
                     "--ssl-key=/tls/server-key.pem " + \
-                    no_native_aio + \
+                    "--innodb-use-native-aio=OFF " + \
                     "--socket=/var/run/mysqld/mysqld.sock"
 
     return res
