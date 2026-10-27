@@ -124,23 +124,11 @@ def _pipeline(
             "commands": ["echo 0 | tee /proc/sys/kernel/randomize_va_space"]
         })
 
-    # Set up the database and certificates
+    # Set up the database and certificates.
+    # Windows builds use the certificates shipped by the image, since the server
+    # is started by the image, before any step has had the chance to generate them
     cert_dir = "C:\\\\ssl\\\\" if os == "windows" else "/tls/"
-    if os == "windows":
-        # TODO: certificate generation temporarily disabled for Windows builds.
-        # The images ship certificates in C:\ssl, which is what the server uses
-        pass
-        # # Generate certificates
-        # steps.append({
-        #     "name": "Generate certificates",
-        #     "image": image,
-        #     "pull": "if-not-exists",
-        #     "commands": [
-        #         "python tools/ci/gen-certificates.py {}".format(cert_dir)
-        #     ]
-        # })
-
-    elif db != None:
+    if db != None:
         # Generate certificates
         steps.append({
             "name": "Generate certificates",
