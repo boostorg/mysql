@@ -75,9 +75,9 @@ def install_boost(
     else:
         run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
     
-    # Bootstrap
+    # Bootstrap. TODO: this is temporary
     if IS_WINDOWS:
-        run(['cmd', '/q', '/c', 'bootstrap.bat'])
+        run(['cmd', '/q', '/c', 'call C:\\vcvars.bat amd64 && bootstrap.bat'])
     else:
         run(['bash', 'bootstrap.sh'])
     run(['b2', 'headers'])
