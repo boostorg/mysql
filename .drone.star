@@ -382,7 +382,9 @@ def main(ctx):
         #   Ubuntu 20.04: gcc9,  clang 10
         #   Ubuntu 22.04: gcc11, clang 14
         #   Ubuntu 24.04: gcc13, clang 18
-        linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
+        # TODO: re-enable when Asio fixes https://github.com/chriskohlhoff/asio/issues/1777
+        #    https://github.com/boostorg/mysql/issues/521
+        # linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
         linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14', separate_compilation=0),
         linux_b2('Linux B2 clang-6',              _image('build-clang6:1'),        toolset='clang-6',   cxxstd='14'),
         linux_b2('Linux B2 clang-7',              _image('build-clang7:2'),        toolset='clang-7',   cxxstd='14,17'),
