@@ -9,6 +9,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/metadata_mode.hpp>
@@ -164,11 +165,13 @@ BOOST_AUTO_TEST_CASE(error_read_resultset_head)
             // Otherwise, the operation is started and finished straight away
             algo_test()
                 .expect_write(create_query_frame(0, "SELECT 1"))
-                .expect_read(err_builder()
-                                 .seqnum(1)
-                                 .code(common_server_errc::er_syntax_error)
-                                 .message("Some error")
-                                 .build_frame())
+                .expect_read(
+                    err_builder()
+                        .seqnum(1)
+                        .code(common_server_errc::er_syntax_error)
+                        .message("Some error")
+                        .build_frame()
+                )
                 .check(fix, common_server_errc::er_syntax_error, create_server_diag("Some error"));
         }
     }
@@ -278,7 +281,7 @@ BOOST_AUTO_TEST_CASE(with_params_success)
     const std::array<format_arg, 2> args{
         {{"", "abc"}, {"", 42}}
     };
-    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fixture fix(any_execution_request({constant_string_view("SELECT {}, {}"), args}));
     fix.st.current_charset = utf8mb4_charset;
 
     // Run the algo
@@ -300,7 +303,7 @@ BOOST_AUTO_TEST_CASE(with_params_error_unknown_charset)
     const std::array<format_arg, 2> args{
         {{"", "abc"}, {"", 42}}
     };
-    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fixture fix(any_execution_request({constant_string_view("SELECT {}, {}"), args}));
     fix.st.current_charset = {};
 
     // The algo fails immediately
@@ -311,7 +314,7 @@ BOOST_AUTO_TEST_CASE(with_params_error_formatting)
 {
     // Setup
     const std::array<format_arg, 1> args{{{"", "abc"}}};
-    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fixture fix(any_execution_request({constant_string_view("SELECT {}, {}"), args}));
     fix.st.current_charset = utf8mb4_charset;
 
     // The algo fails immediately
