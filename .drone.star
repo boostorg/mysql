@@ -19,6 +19,7 @@ def _b2_command(
     server_host='127.0.0.1',
     stdlib='native',
     address_model='64',
+    architecture=None,
     separate_compilation=1,
     use_ts_executor=0,
     address_sanitizer=0,
@@ -35,6 +36,7 @@ def _b2_command(
                 '--variant={} '.format(variant) + \
                 '--stdlib={} '.format(stdlib) + \
                 '--address-model={} '.format(address_model) + \
+                ('--architecture={} '.format(architecture) if architecture != None else '') + \
                 '--separate-compilation={} '.format(separate_compilation) + \
                 '--use-ts-executor={} '.format(use_ts_executor) + \
                 '--address-sanitizer={} '.format(address_sanitizer) + \
@@ -213,6 +215,7 @@ def linux_b2(
     variant='debug,release',
     stdlib='native',
     address_model='64',
+    architecture=None,
     separate_compilation=1,
     use_ts_executor = 0,
     address_sanitizer=0,
@@ -229,6 +232,7 @@ def linux_b2(
         variant=variant,
         stdlib=stdlib,
         address_model=address_model,
+        architecture=architecture,
         server_host='mysql',
         separate_compilation=separate_compilation,
         use_ts_executor=use_ts_executor,
@@ -402,7 +406,7 @@ def main(ctx):
         linux_b2('Linux B2 clang-19-libc++',      _image('build-clang19:1'),       toolset='clang-19',  cxxstd='23', stdlib='libc++'),
         linux_b2('Linux B2 clang-20',             _image('build-clang20:1'),       toolset='clang-20',  cxxstd='23'),
         linux_b2('Linux B2 clang-sanit',          _image('build-clang20:1'),       toolset='clang-20',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', architecture='x86', address_sanitizer=1, undefined_sanitizer=1),
 
         linux_b2('Linux B2 gcc-5',                _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
         # TODO: re-enable after Asio fixes https://github.com/chriskohlhoff/asio/issues/1780
