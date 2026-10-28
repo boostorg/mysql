@@ -6,14 +6,9 @@
 #
 
 _triggers = { "branch": [ "master", "develop" ] }
-_win_container_tag = 'e7bd656c3515263f9b3c69a2d73d045f6a0fed72'
-
 
 def _image(name):
     return 'ghcr.io/anarthal/cpp-ci-containers/{}'.format(name)
-
-def _win_image(name):
-    return 'ghcr.io/anarthal-containers/{}:{}'.format(name, _win_container_tag)
 
 
 def _b2_command(
@@ -76,12 +71,18 @@ def _find_package_b2_command(source_dir, generator):
 
 
 def _make_entrypoint(db):
+    # We disable InnoDB's native aio because it doesn't work well in Drone.
+    # It can cause the server to not start at all because io_setup() fails with EAGAIN.
+    # This is because native aio allocates host-wide resources. When fs.aio-max-nr is reached,
+    # calls fail. Simulated aio is slower (but this is CI, we don't care), but doesn't have this problem.
+
     if db.startswith('mysql:'):
         # MySQL generic. Sanitize UNIX socket permissions and launch the server with the adequate TLS files
         res = "chown -R mysql:mysql /var/run/mysqld && /usr/local/bin/docker-entrypoint.sh mysqld " + \
                     "--ssl-ca=/tls/ca-cert.pem " + \
                     "--ssl-cert=/tls/server-cert.pem " + \
-                    "--ssl-key=/tls/server-key.pem "
+                    "--ssl-key=/tls/server-key.pem " + \
+                    "--innodb-use-native-aio=OFF "
         if db.startswith('mysql:8.'):
             # v8.x needs this flag to enable mysql_native_password
             res += "--mysql-native-password=ON"
@@ -91,6 +92,7 @@ def _make_entrypoint(db):
                     "--ssl-ca=/tls/ca-cert.pem " + \
                     "--ssl-cert=/tls/server-cert.pem " + \
                     "--ssl-key=/tls/server-key.pem " + \
+                    "--innodb-use-native-aio=OFF " + \
                     "--socket=/var/run/mysqld/mysqld.sock"
 
     return res
@@ -129,20 +131,11 @@ def _pipeline(
             "commands": ["echo 0 | tee /proc/sys/kernel/randomize_va_space"]
         })
 
-    # Set up the database and certificates
+    # Set up the database and certificates.
+    # Windows builds use the certificates shipped by the image, since the server
+    # is started by the image, before any step has had the chance to generate them
     cert_dir = "C:\\\\ssl\\\\" if os == "windows" else "/tls/"
-    if os == "windows":
-        # Generate certificates
-        steps.append({
-            "name": "Generate certificates",
-            "image": image,
-            "pull": "if-not-exists",
-            "commands": [
-                "python tools/ci/gen-certificates.py {}".format(cert_dir)
-            ]
-        })
-
-    elif db != None:
+    if db != None:
         # Generate certificates
         steps.append({
             "name": "Generate certificates",
@@ -319,12 +312,12 @@ def windows_cmake(
     command = _cmake_command(
         source_dir='$Env:DRONE_WORKSPACE',
         build_shared_libs=build_shared_libs,
-        generator='Visual Studio 17 2022',
+        generator='Visual Studio 18 2026',
         server_host='127.0.0.1'
     )
     return _pipeline(
         name=name,
-        image=_win_image('build-msvc14_3'),
+        image=_image('build-msvc14_5:2'),
         os='windows',
         command=command,
         db=None
@@ -337,8 +330,8 @@ def find_package_b2_linux(name):
 
 
 def find_package_b2_windows(name):
-    command = _find_package_b2_command(source_dir='$Env:DRONE_WORKSPACE', generator='Visual Studio 17 2022')
-    return _pipeline(name=name, image=_win_image('build-msvc14_3'), os='windows', command=command, db=None)
+    command = _find_package_b2_command(source_dir='$Env:DRONE_WORKSPACE', generator='Visual Studio 18 2026')
+    return _pipeline(name=name, image=_image('build-msvc14_5:2'), os='windows', command=command, db=None)
 
 
 def bench(name):
@@ -366,10 +359,14 @@ def main(ctx):
         # CMake Linux
         linux_cmake('Linux CMake MySQL 5.x',      _image('build-gcc14:1'), db='mysql:5.7.41',   build_shared_libs=0),
         linux_cmake('Linux CMake MariaDB',        _image('build-gcc14:1'), db='mariadb:11.4.2', build_shared_libs=1),
-        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8:3'), cxxstd='11', install_test=0),
+        # TODO: re-enable when Boost.Pfr merges https://github.com/boostorg/pfr/pull/242
+        #   https://github.com/boostorg/mysql/issues/522
+        # linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8:3'), cxxstd='11', install_test=0),
         linux_cmake('Linux CMake gcc Release',    _image('build-gcc14:1'), cmake_build_type='Release'),
         linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc14:1'), cmake_build_type='MinSizeRel'),
-        linux_cmake_noopenssl('Linux CMake no OpenSSL'),
+        # TODO: re-enable when Boost.Pfr merges https://github.com/boostorg/pfr/pull/242
+        #   https://github.com/boostorg/mysql/issues/522
+        # linux_cmake_noopenssl('Linux CMake no OpenSSL'),
         linux_cmake_nointeg('Linux CMake without integration tests'),
 
         # CMake Windows
@@ -408,7 +405,9 @@ def main(ctx):
         linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
 
         linux_b2('Linux B2 gcc-5',                _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
-        linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
+        # TODO: re-enable after Asio fixes https://github.com/chriskohlhoff/asio/issues/1780
+        #    https://github.com/boostorg/mysql/issues/524
+        # linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
         linux_b2('Linux B2 gcc-6-honly-dbg',      _image('build-gcc6:1'),          toolset='gcc-6',     cxxstd='14', variant='debug', separate_compilation=0),
         linux_b2('Linux B2 gcc-7',                _image('build-gcc7:1'),          toolset='gcc-7',     cxxstd='14,17', variant='debug'),
         linux_b2('Linux B2 gcc-8',                _image('build-gcc8:1'),          toolset='gcc-8',     cxxstd='17'),
@@ -426,11 +425,13 @@ def main(ctx):
         linux_b2('Linux B2 noopenssl',            _image('build-noopenssl:1'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
 
         # B2 Windows
-        windows_b2('Windows B2 msvc14.1 32-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
-        windows_b2('Windows B2 msvc14.1 64-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='14,17',    variant='release'),
-        windows_b2('Windows B2 msvc14.2',             _win_image('build-msvc14_2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release'),
-        windows_b2('Windows B2 msvc14.3',             _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release'),
-        windows_b2('Windows B2 msvc14.3-ts-executor', _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
+        windows_b2('Windows B2 msvc14.1 32-bit',      _image('build-msvc14_1:2'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
+        windows_b2('Windows B2 msvc14.1 64-bit',      _image('build-msvc14_1:2'), toolset='msvc-14.1', cxxstd='14,17',    variant='release'),
+        windows_b2('Windows B2 msvc14.2',             _image('build-msvc14_2:2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release'),
+        windows_b2('Windows B2 msvc14.3',             _image('build-msvc14_3:2'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release'),
+        # TODO: re-enable after Asio fixes https://github.com/chriskohlhoff/asio/issues/1780
+        #    https://github.com/boostorg/mysql/issues/524
+        # windows_b2('Windows B2 msvc14.3-ts-executor', _image('build-msvc14_3:2'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
 
         # Benchmarks
         bench('Benchmarks'),

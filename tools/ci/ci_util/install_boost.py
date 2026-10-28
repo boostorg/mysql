@@ -77,7 +77,8 @@ def install_boost(
     
     # Bootstrap
     if IS_WINDOWS:
-        run(['cmd', '/q', '/c', 'bootstrap.bat'])
+        # All of our Windows CI images have a C:\\vcvars.bat to select the correct compiler.
+        run(['cmd', '/q', '/c', 'call C:\\vcvars.bat amd64 && bootstrap.bat'])
     else:
         run(['bash', 'bootstrap.sh'])
     run(['b2', 'headers'])
