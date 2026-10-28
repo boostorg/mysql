@@ -384,11 +384,9 @@ def main(ctx):
         #   Ubuntu 20.04: gcc9,  clang 10
         #   Ubuntu 22.04: gcc11, clang 14
         #   Ubuntu 24.04: gcc13, clang 18
-        # TODO: re-enable when Asio fixes https://github.com/chriskohlhoff/asio/issues/1777
-        #    https://github.com/boostorg/mysql/issues/521
-        # linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
-        # linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14', separate_compilation=0),
-        # linux_b2('Linux B2 clang-6',              _image('build-clang6:1'),        toolset='clang-6',   cxxstd='14'),
+        linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
+        linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14', separate_compilation=0),
+        linux_b2('Linux B2 clang-6',              _image('build-clang6:1'),        toolset='clang-6',   cxxstd='14'),
         linux_b2('Linux B2 clang-7',              _image('build-clang7:2'),        toolset='clang-7',   cxxstd='14,17'),
         linux_b2('Linux B2 clang-8',              _image('build-clang8:2'),        toolset='clang-8',   cxxstd='14', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-9',              _image('build-clang9:2'),        toolset='clang-9',   cxxstd='17', variant='release'),
@@ -397,10 +395,8 @@ def main(ctx):
         linux_b2('Linux B2 clang-12',             _image('build-clang12:2'),       toolset='clang-12',  cxxstd='20', variant='debug', stdlib='libc++', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-13',             _image('build-clang13:1'),       toolset='clang-13',  cxxstd='20', db='mysql:9.4.0'),
         linux_b2('Linux B2 clang-14',             _image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', variant='debug'),
-        # TODO: re-enable when Asio fixes https://github.com/chriskohlhoff/asio/issues/1778
-        #    https://github.com/boostorg/mysql/issues/523
-        # linux_b2('Linux B2 clang-15',             _image('build-clang15:1'),       toolset='clang-15',  cxxstd='20', variant='debug'),
-        # linux_b2('Linux B2 clang-16',             _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-15',             _image('build-clang15:1'),       toolset='clang-15',  cxxstd='20', variant='debug'),
+        linux_b2('Linux B2 clang-16',             _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-17-honly-rls',   _image('build-clang17:1'),       toolset='clang-17',  cxxstd='20', variant='release', separate_compilation=0),
         linux_b2('Linux B2 clang-18-honly-dbg',   _image('build-clang18:1'),       toolset='clang-18',  cxxstd='20', variant='debug', separate_compilation=0),
         linux_b2('Linux B2 clang-19-libc++',      _image('build-clang19:1'),       toolset='clang-19',  cxxstd='23', stdlib='libc++'),
@@ -408,10 +404,8 @@ def main(ctx):
         linux_b2('Linux B2 clang-sanit',          _image('build-clang20:1'),       toolset='clang-20',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
 
-        # TODO: re-enable when Asio fixes https://github.com/chriskohlhoff/asio/issues/1777
-        #    https://github.com/boostorg/mysql/issues/521
-        # linux_b2('Linux B2 gcc-5',                _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
-        # linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
+        linux_b2('Linux B2 gcc-5',                _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
+        linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
         linux_b2('Linux B2 gcc-6-honly-dbg',      _image('build-gcc6:1'),          toolset='gcc-6',     cxxstd='14', variant='debug', separate_compilation=0),
         linux_b2('Linux B2 gcc-7',                _image('build-gcc7:1'),          toolset='gcc-7',     cxxstd='14,17', variant='debug'),
         linux_b2('Linux B2 gcc-8',                _image('build-gcc8:1'),          toolset='gcc-8',     cxxstd='17'),
