@@ -49,6 +49,11 @@ for test in $(tests)
             <toolset>gcc-6:<build>no
             <toolset>gcc-7:<build>no
             <toolset>clang-4:<build>no
+            # TSan is not compatible with ASan or UBSan
+            <undefined-sanitizer>on:<build>no
+            <undefined-sanitizer>norecover:<build>no
+            <address-sanitizer>on:<build>no
+            <address-sanitizer>norecover:<build>no
             $(libcpp_exclusion)
             <thread-sanitizer>norecover
         : target-name $(test)
