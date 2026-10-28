@@ -28,6 +28,7 @@
 #include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/bind_executor.hpp>
+#include <boost/asio/bind_immediate_executor.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
@@ -93,9 +94,14 @@ class basic_pool_impl
     // Create and run one connection
     void create_connection()
     {
-        // Connection tasks always run in the pool's executor
+        // Connection tasks always run in the pool's executor.
+        // We need to bind the immediate executor too because, by default,
+        // immediate completions bypass the bound executor and run on the I/O object's executor,
+        // which results in race conditions in thread-safe mode.
         all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_);
-        all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
+        all_conns_.back().async_run(
+            asio::bind_immediate_executor(pool_ex_, asio::bind_executor(pool_ex_, asio::detached))
+        );
     }
 
     // Create and run connections as required by the current config and state
