@@ -42,6 +42,7 @@ def b2_build(
     variant: str,
     stdlib: str,
     address_model: str,
+    architecture: Optional[str],
     boost_branch: str,
     server_host: str,
     separate_compilation: bool,
@@ -74,6 +75,8 @@ def b2_build(
         'toolset={}'.format(toolset),
         'cxxstd={}'.format(cxxstd),
         'address-model={}'.format(address_model),
+        # TODO: remove this once this is fixed: https://github.com/bfgroup/b2/issues/623
+        _conditional('architecture={}'.format(architecture), architecture is not None),
         'variant={}'.format(variant),
         'stdlib={}'.format(stdlib),
         'boost.mysql.separate-compilation={}'.format('on' if separate_compilation else 'off'),

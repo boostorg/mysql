@@ -79,6 +79,7 @@ def main():
     subp.add_argument('--variant', default='release')
     subp.add_argument('--stdlib', choices=['native', 'libc++'], default='native')
     subp.add_argument('--address-model', choices=['32', '64'], default='64')
+    subp.add_argument('--architecture', default=None) # None means "let b2 deduce it"
     subp.add_argument('--separate-compilation', type=_str2bool, default=True)
     subp.add_argument('--use-ts-executor', type=_str2bool, default=False)
     subp.add_argument('--disable-local-sockets', default=None)
