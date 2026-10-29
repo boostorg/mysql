@@ -9,6 +9,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/metadata_mode.hpp>
@@ -274,11 +275,11 @@ BOOST_AUTO_TEST_CASE(stmt_error_num_params)
 
 BOOST_AUTO_TEST_CASE(with_params_success)
 {
-    // Setup
+    // Setup. runtime() workarounds a MSVC 14.3 bug
     const std::array<format_arg, 2> args{
         {{"", "abc"}, {"", 42}}
     };
-    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fixture fix(any_execution_request({runtime("SELECT {}, {}"), args}));
     fix.st.current_charset = utf8mb4_charset;
 
     // Run the algo
@@ -296,11 +297,11 @@ BOOST_AUTO_TEST_CASE(with_params_success)
 
 BOOST_AUTO_TEST_CASE(with_params_error_unknown_charset)
 {
-    // Setup
+    // Setup. runtime() workarounds a MSVC 14.3 bug
     const std::array<format_arg, 2> args{
         {{"", "abc"}, {"", 42}}
     };
-    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fixture fix(any_execution_request({runtime("SELECT {}, {}"), args}));
     fix.st.current_charset = {};
 
     // The algo fails immediately
@@ -309,9 +310,9 @@ BOOST_AUTO_TEST_CASE(with_params_error_unknown_charset)
 
 BOOST_AUTO_TEST_CASE(with_params_error_formatting)
 {
-    // Setup
+    // Setup. runtime() workarounds a MSVC 14.3 bug
     const std::array<format_arg, 1> args{{{"", "abc"}}};
-    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fixture fix(any_execution_request({runtime("SELECT {}, {}"), args}));
     fix.st.current_charset = utf8mb4_charset;
 
     // The algo fails immediately
