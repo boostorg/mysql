@@ -28,7 +28,6 @@
 #include "test_common/has_ranges.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/source_location.hpp"
 #include "test_integration/snippets/snippets_fixture.hpp"
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
@@ -98,7 +97,7 @@ namespace {
 void run_query(
     mysql::any_connection& conn,
     mysql::string_view q,
-    boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    boost::source_location loc = BOOST_CURRENT_LOCATION
 )
 {
     mysql::results r;
@@ -187,15 +186,12 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         std::string query = format_sql(
             conn.format_opts().value(),
             "INSERT INTO employee (first_name, last_name, company_id) VALUES {}",
-            mysql::sequence(
-                employees,
-                [](const employee& e, mysql::format_context_base& ctx) {
-                    // This function will be called for each element in employees,
-                    // and should format a single element into the passed ctx.
-                    // Commas will be inserted separating elements.
-                    format_sql_to(ctx, "({}, {}, {})", e.first_name, e.last_name, e.company_id);
-                }
-            )
+            mysql::sequence(employees, [](const employee& e, mysql::format_context_base& ctx) {
+                // This function will be called for each element in employees,
+                // and should format a single element into the passed ctx.
+                // Commas will be inserted separating elements.
+                format_sql_to(ctx, "({}, {}, {})", e.first_name, e.last_name, e.company_id);
+            })
         );
         BOOST_TEST(
             query ==

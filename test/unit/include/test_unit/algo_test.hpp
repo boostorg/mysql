@@ -18,6 +18,7 @@
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
+#include <boost/assert/source_location.hpp>
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
 #include <boost/optional/optional.hpp>
@@ -25,8 +26,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
-
-#include "test_common/source_location.hpp"
 
 namespace boost {
 namespace mysql {
@@ -227,14 +226,14 @@ public:
         AlgoFixture& fix,
         error_code expected_ec = {},
         const diagnostics& expected_diag = {},
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     ) const
     {
         check_impl(fix.algo, fix.st, expected_ec, expected_diag, loc);
     }
 
     template <class AlgoFixture>
-    void check_network_errors(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
+    void check_network_errors(source_location loc = BOOST_CURRENT_LOCATION) const
     {
         for (std::size_t i = 0; i < num_steps(); ++i)
         {

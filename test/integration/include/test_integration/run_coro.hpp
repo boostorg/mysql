@@ -10,10 +10,9 @@
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/assert/source_location.hpp>
 
 #include <functional>
-
-#include "test_common/source_location.hpp"
 
 namespace boost {
 namespace mysql {
@@ -23,7 +22,7 @@ namespace test {
 void run_coro(
     asio::io_context& ctx,
     std::function<boost::asio::awaitable<void>(void)> fn,
-    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    source_location loc = BOOST_CURRENT_LOCATION
 );
 #endif
 

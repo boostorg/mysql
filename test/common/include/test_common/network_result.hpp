@@ -20,6 +20,7 @@
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/integral.hpp>
@@ -36,7 +37,6 @@
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/poll_until.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/source_location.hpp"
 #include "test_common/tracker_executor.hpp"
 
 namespace boost {
@@ -57,40 +57,40 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
 
     network_result_base(error_code ec = {}, diagnostics d = {}) noexcept : err(ec), diag(std::move(d)) {}
 
-    void validate_immediate(bool expect_immediate, source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
+    void validate_immediate(bool expect_immediate, source_location loc = BOOST_CURRENT_LOCATION) const;
 
-    void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
+    void validate_no_error(source_location loc = BOOST_CURRENT_LOCATION) const;
 
     // Use for functions without a diagnostics& parameter
-    void validate_no_error_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
+    void validate_no_error_nodiag(source_location loc = BOOST_CURRENT_LOCATION) const;
 
     void validate_error(
         error_code expected_err,
         const diagnostics& expected_diag = {},
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     ) const;
 
     void validate_error(
         common_server_errc expected_err,
         string_view expected_msg = {},
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     );
 
     void validate_error(
         client_errc expected_err,
         string_view expected_msg = {},
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     );
 
     // Use when the exact message isn't known, but some of its contents are
     void validate_error_contains(
         error_code expected_err,
         const std::vector<std::string>& pieces,
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     );
 
     // Use when you don't care or can't determine the kind of error
-    void validate_any_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
+    void validate_any_error(source_location loc = BOOST_CURRENT_LOCATION) const;
 };
 
 template <class R>
@@ -106,24 +106,21 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result : network_result_base
     }
 
     // Allow chaining
-    network_result<R>& validate_immediate(
-        bool expect_immediate,
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-    )
+    network_result<R>& validate_immediate(bool expect_immediate, source_location loc = BOOST_CURRENT_LOCATION)
     {
         network_result_base::validate_immediate(expect_immediate, loc);
         return *this;
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    value_type get(source_location loc = BOOST_CURRENT_LOCATION) &&
     {
         validate_no_error(loc);
         return std::move(value);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    value_type get_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    value_type get_nodiag(source_location loc = BOOST_CURRENT_LOCATION) &&
     {
         validate_no_error_nodiag(loc);
         return std::move(value);
@@ -153,18 +150,18 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
 
     asio::io_context& context() { return impl->ctx; }
 
-    network_result<R> run(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    network_result<R> run(source_location loc = BOOST_CURRENT_LOCATION) &&
     {
         poll_until(context(), &impl->done, loc);
         return std::move(impl->netres);
     }
 
-    void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    void validate_no_error(source_location loc = BOOST_CURRENT_LOCATION) &&
     {
         std::move(*this).run(loc).validate_no_error(loc);
     }
 
-    void validate_no_error_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    void validate_no_error_nodiag(source_location loc = BOOST_CURRENT_LOCATION) &&
     {
         std::move(*this).run(loc).validate_no_error_nodiag(loc);
     }
@@ -172,7 +169,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_error(
         error_code expected_err,
         const diagnostics& expected_diag = {},
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     ) &&
     {
         std::move(*this).run(loc).validate_error(expected_err, expected_diag, loc);
@@ -181,7 +178,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_error(
         common_server_errc expected_err,
         string_view expected_msg = {},
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     ) &&
     {
         std::move(*this).run(loc).validate_error(expected_err, expected_msg, loc);
@@ -190,7 +187,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_error(
         client_errc expected_err,
         string_view expected_msg = {},
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     ) &&
     {
         std::move(*this).run(loc).validate_error(expected_err, expected_msg, loc);
@@ -200,26 +197,26 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_error_contains(
         error_code expected_err,
         const std::vector<std::string>& pieces,
-        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        source_location loc = BOOST_CURRENT_LOCATION
     ) &&
     {
         std::move(*this).run(loc).validate_error_contains(expected_err, pieces, loc);
     }
 
     // Use when you don't care or can't determine the kind of error
-    void validate_any_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    void validate_any_error(source_location loc = BOOST_CURRENT_LOCATION) &&
     {
         std::move(*this).run(loc).validate_any_error(loc);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    typename network_result<R>::value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    typename network_result<R>::value_type get(source_location loc = BOOST_CURRENT_LOCATION) &&
     {
         return std::move(*this).run(loc).get(loc);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    typename network_result<R>::value_type get_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    typename network_result<R>::value_type get_nodiag(source_location loc = BOOST_CURRENT_LOCATION) &&
     {
         return std::move(*this).run(loc).get_nodiag(loc);
     }
