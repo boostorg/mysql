@@ -14,7 +14,7 @@ on:
   pull_request:
   workflow_dispatch:
   schedule:
-    - cron: "25 00 * * *"
+    - cron: "39 04 * * *"
 
 jobs:
   fuzz:
