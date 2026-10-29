@@ -13,6 +13,8 @@ on:
     tags: ["*"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "39 04 * * *"
 
 jobs:
   osx:
