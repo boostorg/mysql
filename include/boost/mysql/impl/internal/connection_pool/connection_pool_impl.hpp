@@ -95,9 +95,8 @@ class basic_pool_impl
     void create_connection()
     {
         // Connection tasks always run in the pool's executor.
-        // We need to bind the immediate executor too because, by default,
-        // immediate completions bypass the bound executor and run on the I/O object's executor,
-        // which results in race conditions in thread-safe mode.
+        // TODO: this bind_immediate_executor should not be required.
+        //   It is a workaround for https://github.com/chriskohlhoff/asio/issues/1781
         all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_);
         all_conns_.back().async_run(
             asio::bind_immediate_executor(pool_ex_, asio::bind_executor(pool_ex_, asio::detached))

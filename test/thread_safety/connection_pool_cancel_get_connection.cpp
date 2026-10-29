@@ -13,6 +13,7 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/bind_executor.hpp>
+#include <boost/asio/bind_immediate_executor.hpp>
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -94,7 +95,17 @@ public:
                 start_get_connection();
             }
         };
-        conn_->async_execute("SELECT 1", r_, diag_, asio::bind_executor(strand_, std::move(callback)));
+        conn_->async_execute(
+            "SELECT 1",
+            r_,
+            diag_,
+            // TODO: this bind_immediate_executor should not be required.
+            //   It is a workaround for https://github.com/chriskohlhoff/asio/issues/1781
+            //   The workaround is required for operations that might trigger an I/O immediate
+            //   completion (e.g. read with data available) and go through type-erased handlers
+            //   dispatch() and post() don't need it
+            asio::bind_immediate_executor(strand_, asio::bind_executor(strand_, std::move(callback)))
+        );
     }
 
     bool had_cancellations() const { return timeout_.count() > 1; }
