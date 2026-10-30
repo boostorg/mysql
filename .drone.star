@@ -429,10 +429,13 @@ def main(ctx):
         linux_b2('Linux B2 noopenssl',            _image('build-noopenssl:1'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
 
         # B2 Windows
-        windows_b2('Windows B2 msvc14.1 32-bit',      _image('build-msvc14_1:2'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
+        # TODO: re-enable after Asio fixes https://github.com/chriskohlhoff/asio/issues/1782
+        #    https://github.com/boostorg/mysql/issues/530
+        # windows_b2('Windows B2 msvc14.1 32-bit',      _image('build-msvc14_1:2'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
         windows_b2('Windows B2 msvc14.1 64-bit',      _image('build-msvc14_1:2'), toolset='msvc-14.1', cxxstd='14,17',    variant='release'),
         windows_b2('Windows B2 msvc14.2',             _image('build-msvc14_2:2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release'),
         windows_b2('Windows B2 msvc14.3',             _image('build-msvc14_3:2'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release'),
+        windows_b2('Windows B2 msvc14.5',             _image('build-msvc14_5:2'), toolset='msvc-14.5', cxxstd='23',       variant='debug,release'),
         # TODO: re-enable after Asio fixes https://github.com/chriskohlhoff/asio/issues/1780
         #    https://github.com/boostorg/mysql/issues/524
         # windows_b2('Windows B2 msvc14.3-ts-executor', _image('build-msvc14_3:2'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
