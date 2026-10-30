@@ -61,7 +61,6 @@
 #include "test_common/network_result.hpp"
 #include "test_common/poll_until.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/source_location.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/mock_timer.hpp"
 #include "test_unit/printing.hpp"
@@ -385,7 +384,7 @@ class get_connection_task
         mock_node* expected_node,
         error_code expected_ec,
         bool expect_immediate,
-        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        boost::source_location loc = BOOST_CURRENT_LOCATION
     )
     {
         auto& ctx = static_cast<asio::io_context&>(impl_->pool.get_executor().context());
@@ -420,7 +419,7 @@ public:
     void wait(
         mock_node& expected_node,
         bool expect_immediate,
-        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        boost::source_location loc = BOOST_CURRENT_LOCATION
     )
     {
         wait_impl(&expected_node, error_code(), expect_immediate, loc);
@@ -429,7 +428,7 @@ public:
     void wait(
         error_code expected_ec,
         bool expect_immediate,
-        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        boost::source_location loc = BOOST_CURRENT_LOCATION
     )
     {
         wait_impl(nullptr, expected_ec, expect_immediate, loc);
@@ -498,14 +497,14 @@ public:
     void wait_for_status(
         mock_node& node,
         node_status status,
-        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        boost::source_location loc = BOOST_CURRENT_LOCATION
     )
     {
         poll_until(ctx, [&node, status]() { return node.status() == status; }, loc);
     }
 
     // Waits until there is at least num_nodes connections in the list
-    void wait_for_num_nodes(std::size_t num_nodes, boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION)
+    void wait_for_num_nodes(std::size_t num_nodes, boost::source_location loc = BOOST_CURRENT_LOCATION)
     {
         poll_until(ctx, [this, num_nodes]() { return pool_->nodes().size() == num_nodes; }, loc);
     }
@@ -516,7 +515,7 @@ public:
         fn_type next_act,
         error_code ec = {},
         diagnostics diag = {},
-        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+        boost::source_location loc = BOOST_CURRENT_LOCATION
     )
     {
         node.connection().step(next_act, as_netresult, ec, diag).validate_no_error_nodiag(loc);

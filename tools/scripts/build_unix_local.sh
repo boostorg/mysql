@@ -10,8 +10,8 @@ set -e
 
 repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
-BK=docs
-IMAGE=build-docs
+BK=b2
+IMAGE=build-gcc7
 IMAGE_VERSION=1
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal/cpp-ci-containers/$IMAGE:$IMAGE_VERSION
@@ -21,13 +21,14 @@ docker start $CONTAINER || docker run -dit \
     --network host \
     -v "$repo_base:/opt/boost-mysql" \
     -v /var/run/mysqld:/var/run/mysqld \
+    -v /opt/ci-tls-mysql:/opt/ci-tls-mysql \
     $FULL_IMAGE
 
 # Command line
 case $BK in
-    b2) cmd="--toolset=clang
-            --cxxstd=11
-            --variant=release
+    b2) cmd="--toolset=gcc-7
+            --cxxstd=14
+            --variant=debug
             --stdlib=native
             --address-model=64
             --separate-compilation=1
