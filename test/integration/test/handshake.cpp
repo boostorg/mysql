@@ -39,7 +39,6 @@
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
-#include "test_common/source_location.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/server_features.hpp"
@@ -104,7 +103,7 @@ auto all_transports = make_all_transports();
 
 // Check whether the connection is using SSL or not
 template <class Conn>
-void check_ssl(Conn& conn, bool expected, boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION)
+void check_ssl(Conn& conn, bool expected, boost::source_location loc = BOOST_CURRENT_LOCATION)
 {
     BOOST_TEST_CONTEXT("Called from " << loc)
     {

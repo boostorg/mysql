@@ -31,6 +31,7 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/this_coro.hpp>
+#include <boost/asio/write.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/test/unit_test.hpp>
