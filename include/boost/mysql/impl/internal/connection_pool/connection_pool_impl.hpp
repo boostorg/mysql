@@ -95,12 +95,8 @@ class basic_pool_impl
     void create_connection()
     {
         // Connection tasks always run in the pool's executor.
-        // TODO: this bind_immediate_executor should not be required.
-        //   It is a workaround for https://github.com/chriskohlhoff/asio/issues/1781
         all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_);
-        all_conns_.back().async_run(
-            asio::bind_immediate_executor(pool_ex_, asio::bind_executor(pool_ex_, asio::detached))
-        );
+        all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
     }
 
     // Create and run connections as required by the current config and state
