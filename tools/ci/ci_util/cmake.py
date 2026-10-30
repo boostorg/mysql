@@ -8,16 +8,11 @@
 
 from pathlib import Path
 import os
-from typing import Optional, Dict
-from .common import run, BOOST_ROOT, IS_WINDOWS, mkdir_and_cd
+from typing import Dict
+from .common import run, BOOST_ROOT, mkdir_and_cd
 from .db_setup import db_setup, db_setup_bench
 from .install_boost import install_boost
 from .bench import run_benchmarks
-
-
-def _cmake_prefix_path(extra_path: Optional[Path] = None) -> str:
-    prefix_path_args = [extra_path, 'C:\\openssl-64' if IS_WINDOWS else None]
-    return ';'.join(str(p) for p in prefix_path_args if p is not None)
 
 
 def _cmake_bool(value: bool) -> str:
@@ -92,7 +87,6 @@ def cmake_build(
         source_dir=BOOST_ROOT,
         binary_dir=bin_dir,
         variables={
-            'CMAKE_PREFIX_PATH': _cmake_prefix_path(),
             'BOOST_INCLUDE_LIBRARIES': 'mysql',
             'BUILD_SHARED_LIBS': _cmake_bool(build_shared_libs),
             'CMAKE_INSTALL_PREFIX': str(cmake_distro),
@@ -111,7 +105,6 @@ def cmake_build(
         source_dir=test_folder,
         binary_dir=test_folder.joinpath('__build_add_subdirectory'),
         variables={
-            'CMAKE_PREFIX_PATH': _cmake_prefix_path(),
             'BOOST_CI_INSTALL_TEST': 'OFF',
             'BUILD_SHARED_LIBS': _cmake_bool(build_shared_libs)
         }
@@ -129,7 +122,7 @@ def cmake_build(
             variables={
                 'BOOST_CI_INSTALL_TEST': 'ON',
                 'BUILD_SHARED_LIBS': _cmake_bool(build_shared_libs),
-                'CMAKE_PREFIX_PATH': _cmake_prefix_path(cmake_distro)
+                'CMAKE_PREFIX_PATH': str(cmake_distro)
             }
         )
         runner.build_all()
@@ -189,7 +182,6 @@ def cmake_nointeg_build(
         source_dir=BOOST_ROOT,
         binary_dir=bin_dir,
         variables={
-            'CMAKE_PREFIX_PATH': _cmake_prefix_path(),
             'BOOST_INCLUDE_LIBRARIES': 'mysql',
             'BUILD_TESTING': 'ON'
         }
@@ -207,7 +199,7 @@ def find_package_b2_test(
 ) -> None:
     # Config
     b2_distro = Path(os.path.expanduser('~')).joinpath('b2-distro')
-    prefix_path = _cmake_prefix_path(b2_distro)
+    prefix_path = str(b2_distro)
     runner = _CMakeRunner(generator=generator, build_type='Release')
 
     # Get Boost
