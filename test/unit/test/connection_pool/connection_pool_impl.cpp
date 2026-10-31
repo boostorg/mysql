@@ -1270,6 +1270,36 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
+BOOST_AUTO_TEST_CASE(get_connection_cancel_edge)
+{
+    // Setup
+    pool_params params;
+    params.initial_size = 1;
+    params.max_size = 1;
+    fixture fix(std::move(params));
+
+    // Issue a request
+    auto task1 = fix.create_task();
+
+    // Wait until everything settles
+    fix.wait_for_num_nodes(1);
+    poll_until(fix.ctx, [&]() { return fix.num_pending_requests() == 1u; });
+
+    // The connection gets ready and notifies the task
+    auto node1 = &fix.pool().nodes().front();
+    fix.step(*node1, fn_type::connect);
+    fix.wait_for_status(*node1, node_status::idle);
+    BOOST_TEST(fix.num_pending_requests() == 1u);
+
+    // Immediately after this, cancel the 1st task.
+    // The task hasn't processed the notification about the new connection yet.
+    // It should complete even after cancellation was requested.
+    // Otherwise, it 'eats' the notification and doesn't allow other tasks to advance.
+    task1.cancel();
+    task1.wait(*node1, false);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
+}
+
 BOOST_AUTO_TEST_CASE(get_connection_supports_cancel_type)
 {
     using ct = asio::cancellation_type_t;
