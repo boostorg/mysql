@@ -405,6 +405,8 @@ def main(ctx):
         linux_b2('Linux B2 clang-18-honly-dbg',   _image('build-clang18:1'),       toolset='clang-18',  cxxstd='20', variant='debug', separate_compilation=0),
         linux_b2('Linux B2 clang-19-libc++',      _image('build-clang19:1'),       toolset='clang-19',  cxxstd='23', stdlib='libc++'),
         linux_b2('Linux B2 clang-20',             _image('build-clang20:1'),       toolset='clang-20',  cxxstd='23'),
+        linux_b2('Linux B2 clang-21',             _image('build-clang21:1'),       toolset='clang-21',  cxxstd='23'),
+        linux_b2('Linux B2 clang-22',             _image('build-clang22:1'),       toolset='clang-22',  cxxstd='23'),
         linux_b2('Linux B2 clang-sanit',          _image('build-clang20:1'),       toolset='clang-20',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', architecture='x86', address_sanitizer=1, undefined_sanitizer=1),
 
@@ -421,7 +423,8 @@ def main(ctx):
         linux_b2('Linux B2 gcc-12',               _image('build-gcc12:1'),         toolset='gcc-12',    cxxstd='20,23', variant='debug'),
         linux_b2('Linux B2 gcc-13',               _image('build-gcc13:1'),         toolset='gcc-13',    cxxstd='20', db='mysql:9.4.0'),
         linux_b2('Linux B2 gcc-14',               _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23'),
-        linux_b2('Linux B2 gcc-15',               _image('build-gcc15:1'),         toolset='gcc-15',    cxxstd='23'),
+        linux_b2('Linux B2 gcc-15',               _image('build-gcc15:2'),         toolset='gcc-15',    cxxstd='23'),
+        linux_b2('Linux B2 gcc-16',               _image('build-gcc16:1'),         toolset='gcc-16',    cxxstd='23'),
         linux_b2('Linux B2 gcc-sanit',            _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 gcc-valgrind',         _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', valgrind=1),
         linux_b2('Linux B2 gcc-11-arm64',         _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20', arch='arm64', variant='release'),
