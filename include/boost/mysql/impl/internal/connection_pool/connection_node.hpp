@@ -72,7 +72,13 @@ struct conn_shared_state
     {
     }
 
-    void on_connection_start() { ++num_running_connections; }
+    void on_connection_start()
+    {
+        // Closing idle connections may have left no connection running and the
+        // latch expired. Re-arm it, so async_run waits for this connection, too
+        if (num_running_connections++ == 0u)
+            conns_finished_cv.expires_at((ClockType::time_point::max)());
+    }
 
     void on_connection_finish()
     {
@@ -99,6 +105,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
     std::vector<stage_response> reset_pipeline_res_;
+    typename ClockType::time_point idle_since_{};  // Start of the current idle period
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -107,13 +114,24 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     friend class sansio_connection_node<this_type>;
     void entering_idle()
     {
+        // status() still holds the status we're leaving. Pings don't restart the idle period,
+        // otherwise an idle_timeout longer than ping_interval could never elapse
+        if (this->status() != node_status::ping_in_progress)
+            idle_since_ = ClockType::now();
         shared_st_->idle_list.push_back(*this);
         shared_st_->idle_connections_cv.cancel_one();
     }
     void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
-    bool should_close_idle() const { return false; }  // Idle connections are never closed yet
+
+    // Checking the idle list (rather than the connection count) is race-free:
+    // a closing connection leaves the list at once
+    bool should_close_idle() const
+    {
+        return params_->idle_timeout.count() > 0 && shared_st_->idle_list.size() > params_->initial_size &&
+               ClockType::now() - idle_since_ >= params_->idle_timeout;
+    }
 
     // Helpers
     void propagate_connect_diag(error_code ec)
@@ -202,6 +220,13 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 node_.run_with_timeout(
                     node_.collection_timer_.async_wait(asio::deferred),
                     node_.params_->ping_interval,
+                    self
+                );
+                break;
+            case next_connection_action::close:
+                node_.run_with_timeout(
+                    node_.conn_.async_close(asio::deferred),
+                    node_.params_->ping_timeout,
                     self
                 );
                 break;
