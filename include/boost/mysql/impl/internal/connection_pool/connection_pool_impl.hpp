@@ -32,7 +32,6 @@
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
-#include <boost/asio/detached.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/immediate.hpp>
@@ -95,8 +94,28 @@ class basic_pool_impl
     void create_connection()
     {
         // Connection tasks always run in the pool's executor.
-        all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_);
-        all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
+        auto it = all_conns_.emplace(all_conns_.end(), params_, pool_ex_, conn_ex_, shared_st_);
+        auto self = shared_from_this_wrapper();
+        it->async_run(asio::bind_executor(pool_ex_, [self, it](error_code) {
+            self->on_connection_task_exit(it);
+        }));
+    }
+
+    // A connection task exited. Posted because the completion runs inside the
+    // node's own I/O handlers, where the node must not be destroyed
+    void on_connection_task_exit(typename std::list<node_type>::iterator it)
+    {
+        auto self = shared_from_this_wrapper();
+        asio::post(pool_ex_, [self, it]() {
+            // After cancellation, nodes are kept: pooled_connection objects may still point at them
+            if (self->state_ != state_t::running)
+                return;
+
+            // While running, only connections closed for being idle exit. Replace the
+            // connection if initial_size or a request waiting at max_size requires it
+            self->all_conns_.erase(it);
+            self->create_connections();
+        });
     }
 
     // Create and run connections as required by the current config and state
