@@ -46,6 +46,10 @@ enum class node_status
     // Connection has been handed to the user
     in_use,
 
+    // Connection has been idle for too long and is being closed.
+    // Doesn't count as pending, since it will never become idle again.
+    close_in_progress,
+
     // After cancel
     terminated,
 };
@@ -71,6 +75,9 @@ enum class next_connection_action
 
     // Issue a ping
     ping,
+
+    // Issue a close
+    close,
 };
 
 // A collection_state represents the possibility that a connection
@@ -87,7 +94,8 @@ enum class collection_state
     needs_collect_with_reset
 };
 
-// CRTP. Derived should implement the entering_xxx and exiting_xxx hook functions.
+// CRTP. Derived should implement the entering_xxx and exiting_xxx hook functions,
+// and should_close_idle(), telling whether an idle connection is no longer needed.
 // Derived must derive from this class
 template <class Derived>
 class sansio_connection_node
@@ -97,7 +105,8 @@ class sansio_connection_node
     inline bool is_pending(node_status status) noexcept
     {
         return status != node_status::initial && status != node_status::idle &&
-               status != node_status::in_use && status != node_status::terminated;
+               status != node_status::in_use && status != node_status::close_in_progress &&
+               status != node_status::terminated;
     }
 
     inline static next_connection_action status_to_action(node_status status) noexcept
@@ -109,6 +118,7 @@ class sansio_connection_node
             return next_connection_action::sleep_connect_failed;
         case node_status::ping_in_progress: return next_connection_action::ping;
         case node_status::reset_in_progress: return next_connection_action::reset;
+        case node_status::close_in_progress: return next_connection_action::close;
         case node_status::idle:
         case node_status::in_use: return next_connection_action::idle_wait;
         default: return next_connection_action::none;
@@ -163,8 +173,10 @@ public:
             return set_status(node_status::connect_in_progress);
         case node_status::idle:
             // The wait finished with no interruptions, and the connection
-            // is still idle. Time to ping.
-            return set_status(node_status::ping_in_progress);
+            // is still idle. Time to ping, or to close it if it's no longer needed
+            return static_cast<Derived&>(*this).should_close_idle()
+                       ? set_status(node_status::close_in_progress)
+                       : set_status(node_status::ping_in_progress);
         case node_status::in_use:
             // If col_st != none, the user has notified us to collect the connection.
             // This happens after they return the connection to the pool.
@@ -188,6 +200,9 @@ public:
         case node_status::reset_in_progress:
             // Reconnect if there was an error. Otherwise, we're idle
             return ec ? set_status(node_status::connect_in_progress) : set_status(node_status::idle);
+        case node_status::close_in_progress:
+            // Closing is best-effort: the connection is terminated even if it failed
+            return set_status(node_status::terminated);
         case node_status::terminated:
         default: return next_connection_action::none;
         }

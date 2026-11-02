@@ -113,6 +113,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
+    bool should_close_idle() const { return false; }  // Idle connections are never closed yet
 
     // Helpers
     void propagate_connect_diag(error_code ec)

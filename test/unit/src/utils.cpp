@@ -773,6 +773,7 @@ static const char* to_string(detail::node_status v)
     case detail::node_status::ping_in_progress: return "node_status::ping_in_progress";
     case detail::node_status::idle: return "node_status::idle";
     case detail::node_status::in_use: return "node_status::in_use";
+    case detail::node_status::close_in_progress: return "node_status::close_in_progress";
     default: return "<unknown node_status>";
     }
 }
@@ -811,6 +812,7 @@ static const char* to_string(detail::next_connection_action v)
     case detail::next_connection_action::idle_wait: return "next_connection_action::idle_wait";
     case detail::next_connection_action::reset: return "next_connection_action::reset";
     case detail::next_connection_action::ping: return "next_connection_action::ping";
+    case detail::next_connection_action::close: return "next_connection_action::close";
     default: return "<unknown next_connection_action>";
     }
 }

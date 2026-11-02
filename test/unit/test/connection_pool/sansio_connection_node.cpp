@@ -51,11 +51,13 @@ struct mock_node : public sansio_connection_node<mock_node>
     std::size_t num_exiting_idle{};
     std::size_t num_entering_pending{};
     std::size_t num_exiting_pending{};
+    bool close_idle{false};
 
     void entering_idle() { ++num_entering_idle; }
     void exiting_idle() { ++num_exiting_idle; }
     void entering_pending() { ++num_entering_pending; }
     void exiting_pending() { ++num_exiting_pending; }
+    bool should_close_idle() const { return close_idle; }
 
     void clear_hooks()
     {
@@ -157,6 +159,36 @@ BOOST_AUTO_TEST_CASE(ping_success)
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
     nod.check(node_status::idle, exit_pending | enter_idle);
+}
+
+// Closing idle connections
+BOOST_AUTO_TEST_CASE(close_idle)
+{
+    // Connection idle, and no longer needed
+    mock_node nod(node_status::idle);
+    nod.close_idle = true;
+
+    // Time elapses and the connection is not taken by the user.
+    // Closing doesn't count as pending
+    auto act = nod.resume(error_code(), collection_state::none);
+    BOOST_TEST(act == next_connection_action::close);
+    nod.check(node_status::close_in_progress, exit_idle);
+
+    // Close succeeds. The connection is terminated
+    act = nod.resume(error_code(), collection_state::none);
+    BOOST_TEST(act == next_connection_action::none);
+    nod.check(node_status::terminated, 0);
+}
+
+BOOST_AUTO_TEST_CASE(close_idle_error)
+{
+    // Connection being closed
+    mock_node nod(node_status::close_in_progress);
+
+    // Close fails. The error is ignored and the connection is terminated anyway
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
+    BOOST_TEST(act == next_connection_action::none);
+    nod.check(node_status::terminated, 0);
 }
 
 // Error state transitions
@@ -284,6 +316,7 @@ BOOST_AUTO_TEST_CASE(cancel)
         {node_status::in_use,                           0           },
         {node_status::ping_in_progress,                 exit_pending},
         {node_status::reset_in_progress,                exit_pending},
+        {node_status::close_in_progress,                0           },
     };
 
     for (const auto& tc : test_cases)
