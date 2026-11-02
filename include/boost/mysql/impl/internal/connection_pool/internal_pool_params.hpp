@@ -43,6 +43,7 @@ struct internal_pool_params
     std::chrono::steady_clock::duration ping_timeout;
     std::chrono::steady_clock::duration retry_interval;
     std::chrono::steady_clock::duration ping_interval;
+    std::chrono::steady_clock::duration idle_timeout;
     bool thread_safe;
 
     any_connection_params make_ctor_params() noexcept
@@ -69,6 +70,8 @@ inline void check_validity(const pool_params& params)
         msg = "pool_params::ping_interval must not be negative";
     else if (params.ping_timeout.count() < 0)
         msg = "pool_params::ping_timeout must not be negative";
+    else if (params.idle_timeout.count() < 0)
+        msg = "pool_params::idle_timeout must not be negative";
 
     if (msg != nullptr)
     {
@@ -111,6 +114,7 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
         params.ping_timeout,
         params.retry_interval,
         params.ping_interval,
+        params.idle_timeout,
         params.thread_safe,
     };
 }

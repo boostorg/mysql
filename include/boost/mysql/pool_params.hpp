@@ -241,7 +241,8 @@ struct pool_params
      * If a connection becomes idle and hasn't been handed to the user for
      * `ping_interval`, a health-check will be performed (using \ref any_connection::async_ping).
      * Pings will be sent with a periodicity of `ping_interval` until the connection
-     * is handed to the user, or a ping fails.
+     * is handed to the user, a ping fails, or the connection is closed because of
+     * \ref idle_timeout.
      *
      * Health checks serve two purposes:
      *
@@ -262,10 +263,11 @@ struct pool_params
     std::chrono::steady_clock::duration ping_interval{std::chrono::seconds(10)};
 
     /**
-     * \brief The timeout to use for pings and session resets.
+     * \brief The timeout to use for pings, session resets and closes.
      * \details
-     * If pings (as per \ref any_connection::async_ping) or session resets
-     * (as per \ref any_connection::async_reset_connection) take longer than this
+     * If pings (as per \ref any_connection::async_ping), session resets
+     * (as per \ref any_connection::async_reset_connection) or closes caused by
+     * \ref idle_timeout (as per \ref any_connection::async_close) take longer than this
      * timeout, they will be cancelled, and the operation will be considered failed.
      * \n
      * Set this timeout to zero to disable it.
@@ -273,6 +275,22 @@ struct pool_params
      * This value must not be negative.
      */
     std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
+
+    /**
+     * \brief The time a connection may stay idle before being closed.
+     * \details
+     * If a connection stays idle for at least this value, and the pool has more
+     * than \ref initial_size idle connections, the connection is closed and removed
+     * from the pool.
+     * \n
+     * Idle connections are checked every \ref ping_interval, so the close may happen
+     * up to one interval late, and never happens if pings are disabled.
+     * \n
+     * Set this value to zero (the default) to never close idle connections.
+     * \n
+     * This value must not be negative.
+     */
+    std::chrono::steady_clock::duration idle_timeout{};
 
     /**
      * \brief Enables or disables thread-safety.

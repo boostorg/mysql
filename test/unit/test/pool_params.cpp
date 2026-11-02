@@ -89,6 +89,16 @@ BOOST_AUTO_TEST_CASE(invalid_params)
             [](pool_params& p) { p.ping_timeout = (std::chrono::steady_clock::duration::min)(); },
             "pool_params::ping_timeout must not be negative"
         },
+        {
+            "idle_timeout < 0",
+            [](pool_params& p) { p.idle_timeout = std::chrono::seconds(-1); },
+            "pool_params::idle_timeout must not be negative"
+        },
+        {
+            "idle_timeout < 0 min",
+            [](pool_params& p) { p.idle_timeout = (std::chrono::steady_clock::duration::min)(); },
+            "pool_params::idle_timeout must not be negative"
+        },
         // clang-format on
     };
 
@@ -147,6 +157,14 @@ BOOST_AUTO_TEST_CASE(valid_params)
         {
             "ping_timeout == max",
             [](pool_params& p) { p.ping_timeout = (std::chrono::steady_clock::duration::max)(); },
+        },
+        {
+            "idle_timeout == 0",
+            [](pool_params& p) { p.idle_timeout = std::chrono::seconds(0); },
+        },
+        {
+            "idle_timeout == max",
+            [](pool_params& p) { p.idle_timeout = (std::chrono::steady_clock::duration::max)(); },
         },
         {
             "thread_safe == true",
