@@ -280,8 +280,8 @@ struct pool_params
      * \brief The time a connection may stay idle before being closed.
      * \details
      * If a connection stays idle for at least this value, and the pool has more
-     * than \ref initial_size idle connections, the connection is closed and removed
-     * from the pool.
+     * than \ref initial_size connections (in any state), the connection is closed
+     * and removed from the pool. The pool never shrinks below \ref initial_size connections.
      * \n
      * Idle connections are checked every \ref ping_interval, so the close may happen
      * up to one interval late, and never happens if pings are disabled.

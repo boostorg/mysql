@@ -94,9 +94,9 @@ enum class collection_state
     needs_collect_with_reset
 };
 
-// CRTP. Derived should implement the entering_xxx and exiting_xxx hook functions,
-// and should_close_idle(), telling whether an idle connection is no longer needed.
-// Derived must derive from this class
+// CRTP. Derived should implement the entering_xxx and exiting_xxx hook functions
+// (for the idle, pending and closing statuses), and should_close_idle(), telling
+// whether an idle connection is no longer needed. Derived must derive from this class
 template <class Derived>
 class sansio_connection_node
 {
@@ -140,6 +140,12 @@ class sansio_connection_node
             derived.entering_pending();
         else if (is_pending(status_) && !is_pending(new_status))
             derived.exiting_pending();
+
+        // Notify we're entering/leaving the closing status
+        if (new_status == node_status::close_in_progress && status_ != node_status::close_in_progress)
+            derived.entering_closing();
+        else if (new_status != node_status::close_in_progress && status_ == node_status::close_in_progress)
+            derived.exiting_closing();
 
         // Actually update status
         status_ = new_status;
@@ -208,7 +214,6 @@ public:
         }
     }
 
-    // Exposed for testing
     node_status status() const noexcept { return status_; }
 };
 

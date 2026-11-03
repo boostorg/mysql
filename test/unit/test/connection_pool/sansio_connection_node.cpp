@@ -41,6 +41,8 @@ enum hooks_t : int
     exit_idle = 2,
     enter_pending = 4,
     exit_pending = 8,
+    enter_closing = 16,
+    exit_closing = 32,
 };
 
 struct mock_node : public sansio_connection_node<mock_node>
@@ -51,12 +53,16 @@ struct mock_node : public sansio_connection_node<mock_node>
     std::size_t num_exiting_idle{};
     std::size_t num_entering_pending{};
     std::size_t num_exiting_pending{};
+    std::size_t num_entering_closing{};
+    std::size_t num_exiting_closing{};
     bool close_idle{false};
 
     void entering_idle() { ++num_entering_idle; }
     void exiting_idle() { ++num_exiting_idle; }
     void entering_pending() { ++num_entering_pending; }
     void exiting_pending() { ++num_exiting_pending; }
+    void entering_closing() { ++num_entering_closing; }
+    void exiting_closing() { ++num_exiting_closing; }
     bool should_close_idle() const { return close_idle; }
 
     void clear_hooks()
@@ -65,6 +71,8 @@ struct mock_node : public sansio_connection_node<mock_node>
         num_exiting_idle = 0;
         num_entering_pending = 0;
         num_exiting_pending = 0;
+        num_entering_closing = 0;
+        num_exiting_closing = 0;
     }
 
     void check(node_status expected_status, int hooks)
@@ -74,6 +82,8 @@ struct mock_node : public sansio_connection_node<mock_node>
         BOOST_TEST(num_exiting_idle == (hooks & exit_idle ? 1u : 0u));
         BOOST_TEST(num_entering_pending == (hooks & enter_pending ? 1u : 0u));
         BOOST_TEST(num_exiting_pending == (hooks & exit_pending ? 1u : 0u));
+        BOOST_TEST(num_entering_closing == (hooks & enter_closing ? 1u : 0u));
+        BOOST_TEST(num_exiting_closing == (hooks & exit_closing ? 1u : 0u));
         clear_hooks();
     }
 };
@@ -172,12 +182,12 @@ BOOST_AUTO_TEST_CASE(close_idle)
     // Closing doesn't count as pending
     auto act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::close);
-    nod.check(node_status::close_in_progress, exit_idle);
+    nod.check(node_status::close_in_progress, exit_idle | enter_closing);
 
     // Close succeeds. The connection is terminated
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::none);
-    nod.check(node_status::terminated, 0);
+    nod.check(node_status::terminated, exit_closing);
 }
 
 BOOST_AUTO_TEST_CASE(close_idle_error)
@@ -188,7 +198,7 @@ BOOST_AUTO_TEST_CASE(close_idle_error)
     // Close fails. The error is ignored and the connection is terminated anyway
     auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::none);
-    nod.check(node_status::terminated, 0);
+    nod.check(node_status::terminated, exit_closing);
 }
 
 // Error state transitions
@@ -316,7 +326,7 @@ BOOST_AUTO_TEST_CASE(cancel)
         {node_status::in_use,                           0           },
         {node_status::ping_in_progress,                 exit_pending},
         {node_status::reset_in_progress,                exit_pending},
-        {node_status::close_in_progress,                0           },
+        {node_status::close_in_progress,                exit_closing},
     };
 
     for (const auto& tc : test_cases)

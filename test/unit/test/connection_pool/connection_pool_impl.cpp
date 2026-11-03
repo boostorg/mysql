@@ -921,6 +921,50 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_initial_size)
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_in_use_counts)
+{
+    // Setup. initial_size bounds the number of connections in any state, not just idle ones
+    pool_params params;
+    params.initial_size = 1;
+    params.max_size = 2;
+    params.ping_interval = std::chrono::seconds(100);
+    params.idle_timeout = std::chrono::seconds(100);
+    fixture fix(std::move(params));
+
+    // The initial connection is handed to the user, and a second request creates another one
+    auto task1 = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node1 = fix.pool().nodes().front();
+    fix.step(node1, fn_type::connect);
+    task1.wait(node1, false);
+
+    auto task2 = fix.create_task();
+    fix.wait_for_num_nodes(2);
+    auto& node2 = fix.pool().nodes().back();
+    fix.step(node2, fn_type::connect);
+    task2.wait(node2, false);
+
+    // Only the second connection is returned
+    fix.pool().return_connection(node2, false);
+    fix.wait_for_status(node2, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 1);
+
+    // idle_timeout elapses. The connection in use counts towards initial_size,
+    // so the idle one is surplus and closes, although it's the only idle one
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.step(node2, fn_type::close);
+    fix.wait_for_num_nodes(1);
+    fix.check_shared_st(diagnostics(), 0, 0);
+
+    // The connection in use is returned. It's required by initial_size, so it never closes
+    fix.pool().return_connection(node1, false);
+    fix.wait_for_status(node1, node_status::idle);
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.step(node1, fn_type::ping);
+    fix.wait_for_status(node1, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 1);
+}
+
 BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_request_while_closing)
 {
     // Setup. max_size = 1, so a closing connection blocks the creation of new ones
@@ -1001,13 +1045,13 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_surplus)
     fix.wait_for_status(node3, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 3);
 
-    // idle_timeout elapses for the first connection. There are more idle connections
-    // than initial_size, so it closes, leaving the idle list at once
+    // idle_timeout elapses for the first connection. The pool has more connections
+    // than initial_size, so it closes
     mock_clock::advance_time_by(std::chrono::seconds(98));
     fix.wait_for_status(node1, node_status::close_in_progress);
     fix.check_shared_st(diagnostics(), 0, 2);
 
-    // Same for the second one, even though the first close hasn't finished yet
+    // Same for the second one: the first one is still closing, but it no longer counts
     mock_clock::advance_time_by(std::chrono::seconds(1));
     fix.wait_for_status(node2, node_status::close_in_progress);
     fix.check_shared_st(diagnostics(), 0, 1);
@@ -1024,6 +1068,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_surplus)
     fix.step(node3, fn_type::ping);
     fix.wait_for_status(node3, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
+    BOOST_TEST(fix.pool().shared_state().num_closing_connections == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_close_timeout)

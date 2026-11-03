@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
         params.initial_size = 10;
         params.max_size = 1000;
 
-        // Close connections that have been idle for 10 minutes, keeping at least 10 of them
+        // Close connections that have been idle for 10 minutes, but never shrink below initial_size
         params.idle_timeout = std::chrono::minutes(10);
 
         mysql::connection_pool pool(ctx, std::move(params));

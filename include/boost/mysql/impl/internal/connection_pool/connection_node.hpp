@@ -63,6 +63,10 @@ struct conn_shared_state
     // The number of running connections, to track when they exit
     std::size_t num_running_connections{0};
 
+    // The number of running connections that are closing because they were idle for too long.
+    // Required to compute the pool size when deciding whether to close more idle connections.
+    std::size_t num_closing_connections{0};
+
     // Timer acting as a condition variable to wait for all connections to exit.
     // Expired while no connection is running
     asio::basic_waitable_timer<ClockType> conns_finished_cv;
@@ -124,12 +128,16 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
+    void entering_closing() { ++shared_st_->num_closing_connections; }
+    void exiting_closing() { --shared_st_->num_closing_connections; }
 
-    // Checking the idle list (rather than the connection count) is race-free:
-    // a closing connection leaves the list at once
+    // Connections already closing are discounted, so simultaneous checks
+    // can't shrink the pool below initial_size
     bool should_close_idle() const
     {
-        return params_->idle_timeout.count() > 0 && shared_st_->idle_list.size() > params_->initial_size &&
+        return params_->idle_timeout.count() > 0 &&
+               shared_st_->num_running_connections - shared_st_->num_closing_connections >
+                   params_->initial_size &&
                ClockType::now() - idle_since_ >= params_->idle_timeout;
     }
 
