@@ -56,6 +56,7 @@ struct mock_node : public sansio_connection_node<mock_node>
     std::size_t num_entering_closing{};
     std::size_t num_exiting_closing{};
     bool close_idle{false};
+    bool ping_due{true};
 
     void entering_idle() { ++num_entering_idle; }
     void exiting_idle() { ++num_exiting_idle; }
@@ -64,6 +65,7 @@ struct mock_node : public sansio_connection_node<mock_node>
     void entering_closing() { ++num_entering_closing; }
     void exiting_closing() { ++num_exiting_closing; }
     bool should_close_idle() const { return close_idle; }
+    bool should_ping() const { return ping_due; }
 
     void clear_hooks()
     {
@@ -169,6 +171,19 @@ BOOST_AUTO_TEST_CASE(ping_success)
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
     nod.check(node_status::idle, exit_pending | enter_idle);
+}
+
+BOOST_AUTO_TEST_CASE(idle_wait_nothing_due)
+{
+    // Connection idle, still needed, and no ping due
+    // (e.g. idle_timeout elapsed, but the connection is required by initial_size)
+    mock_node nod(node_status::idle);
+    nod.ping_due = false;
+
+    // The wait finishes. The connection keeps waiting, with no status change
+    auto act = nod.resume(error_code(), collection_state::none);
+    BOOST_TEST(act == next_connection_action::idle_wait);
+    nod.check(node_status::idle, 0);
 }
 
 // Closing idle connections

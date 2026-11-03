@@ -192,8 +192,8 @@ In short:
   Otherwise, it becomes `pending_connect` to be reconnected. Pings can be disabled by
   setting [refmem pool_params ping_interval] to zero.
 * If [refmem pool_params idle_timeout] is set, an `idle` connection that has been idle for
-  at least this value is closed and removed from the pool instead of being pinged,
-  as long as the pool has more than `initial_size` connections (in any state).
+  at least this value is closed and removed from the pool, as long as the pool has
+  more than `initial_size` connections (in any state).
 
 
 [heading:thread_safe Thread-safety]

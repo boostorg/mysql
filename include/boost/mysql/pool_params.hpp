@@ -283,9 +283,6 @@ struct pool_params
      * than \ref initial_size connections (in any state), the connection is closed
      * and removed from the pool. The pool never shrinks below \ref initial_size connections.
      * \n
-     * Idle connections are checked every \ref ping_interval, so the close may happen
-     * up to one interval late, and never happens if pings are disabled.
-     * \n
      * Set this value to zero (the default) to never close idle connections.
      * \n
      * This value must not be negative.

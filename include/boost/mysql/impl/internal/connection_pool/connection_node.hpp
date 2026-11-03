@@ -30,6 +30,7 @@
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/list_hook.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <utility>
 #include <vector>
@@ -109,7 +110,9 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
     std::vector<stage_response> reset_pipeline_res_;
-    typename ClockType::time_point idle_since_{};  // Start of the current idle period
+    typename ClockType::time_point idle_since_{};     // Start of the current idle period
+    typename ClockType::time_point last_activity_{};  // Last connect, reset, ping or return. Pings are
+                                                      // due ping_interval after it
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -118,10 +121,14 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     friend class sansio_connection_node<this_type>;
     void entering_idle()
     {
+        auto now = ClockType::now();
+
         // status() still holds the status we're leaving. Pings don't restart the idle period,
         // otherwise an idle_timeout longer than ping_interval could never elapse
         if (this->status() != node_status::ping_in_progress)
-            idle_since_ = ClockType::now();
+            idle_since_ = now;
+        last_activity_ = now;
+
         shared_st_->idle_list.push_back(*this);
         shared_st_->idle_connections_cv.cancel_one();
     }
@@ -139,6 +146,25 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                shared_st_->num_running_connections - shared_st_->num_closing_connections >
                    params_->initial_size &&
                ClockType::now() - idle_since_ >= params_->idle_timeout;
+    }
+
+    bool should_ping() const
+    {
+        return params_->ping_interval.count() > 0 &&
+               ClockType::now() - last_activity_ >= params_->ping_interval;
+    }
+
+    // How long an idle connection waits before pinging, or before closing itself if
+    // idle_timeout elapses first. Once elapsed, idle_timeout is only checked again at pings:
+    // re-arming a zero wait would spin for a connection kept because of initial_size.
+    // Subtracting can't overflow; a negative result fires at once, and max() never does
+    std::chrono::steady_clock::duration idle_wait_timeout() const
+    {
+        auto now = ClockType::now();
+        auto until_ping = params_->ping_interval.count() > 0 ? params_->ping_interval - (now - last_activity_)
+                                                             : (std::chrono::steady_clock::duration::max)();
+        auto until_close = params_->idle_timeout - (now - idle_since_);
+        return until_close.count() > 0 ? (std::min)(until_ping, until_close) : until_ping;
     }
 
     // Helpers
@@ -225,11 +251,24 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 );
                 break;
             case next_connection_action::idle_wait:
-                node_.run_with_timeout(
-                    node_.collection_timer_.async_wait(asio::deferred),
-                    node_.params_->ping_interval,
-                    self
-                );
+                if (node_.status() == node_status::idle)
+                {
+                    // Wake up to ping, or to close the connection if idle_timeout elapses first.
+                    // Not run_with_timeout: a zero timeout here means "now", not "never"
+                    node_.collection_timer_.async_wait(
+                        asio::cancel_after(node_.timer_, node_.idle_wait_timeout(), std::move(self))
+                    );
+                }
+                else
+                {
+                    // In use. Keep waking up every ping_interval: the collection
+                    // notification may fail (see return_connection)
+                    node_.run_with_timeout(
+                        node_.collection_timer_.async_wait(asio::deferred),
+                        node_.params_->ping_interval,
+                        self
+                    );
+                }
                 break;
             case next_connection_action::close:
                 node_.run_with_timeout(

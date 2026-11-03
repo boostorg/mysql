@@ -67,7 +67,7 @@ enum class next_connection_action
     // Connect failed, issue a sleep
     sleep_connect_failed,
 
-    // Wait until a collection request is issued or the ping interval elapses
+    // Wait until a collection request is issued, a ping is due or the idle timeout elapses
     idle_wait,
 
     // Issue a reset
@@ -95,8 +95,9 @@ enum class collection_state
 };
 
 // CRTP. Derived should implement the entering_xxx and exiting_xxx hook functions
-// (for the idle, pending and closing statuses), and should_close_idle(), telling
-// whether an idle connection is no longer needed. Derived must derive from this class
+// (for the idle, pending and closing statuses), should_close_idle(), telling whether
+// an idle connection is no longer needed, and should_ping(), telling whether an idle
+// connection is due for a ping. Derived must derive from this class
 template <class Derived>
 class sansio_connection_node
 {
@@ -169,6 +170,8 @@ public:
 
     next_connection_action resume(error_code ec, collection_state col_st)
     {
+        auto& derived = static_cast<Derived&>(*this);
+
         switch (status_)
         {
         case node_status::initial: return set_status(node_status::connect_in_progress);
@@ -178,11 +181,14 @@ public:
         case node_status::sleep_connect_failed_in_progress:
             return set_status(node_status::connect_in_progress);
         case node_status::idle:
-            // The wait finished with no interruptions, and the connection
-            // is still idle. Time to ping, or to close it if it's no longer needed
-            return static_cast<Derived&>(*this).should_close_idle()
-                       ? set_status(node_status::close_in_progress)
-                       : set_status(node_status::ping_in_progress);
+            // The wait finished with no interruptions, and the connection is still idle.
+            // Close it if it's no longer needed, ping it if a ping is due, or keep waiting
+            if (derived.should_close_idle())
+                return set_status(node_status::close_in_progress);
+            else if (derived.should_ping())
+                return set_status(node_status::ping_in_progress);
+            else
+                return next_connection_action::idle_wait;
         case node_status::in_use:
             // If col_st != none, the user has notified us to collect the connection.
             // This happens after they return the connection to the pool.
