@@ -1676,6 +1676,26 @@ BOOST_FIXTURE_TEST_CASE(run_waits_for_connections_created_after_all_exited, io_c
     poll_until(ctx, &run_finished);
 }
 
+// Cancelling a pool that never created a connection (initial_size = 0) completes async_run
+BOOST_FIXTURE_TEST_CASE(run_cancel_without_connections, io_context_fixture)
+{
+    // Create a pool that only creates connections on demand
+    pool_params params;
+    params.initial_size = 0;
+    auto pool = create_mock_pool(ctx, std::move(params));
+
+    // Run
+    bool run_finished = false;
+    pool->async_run([&run_finished](error_code ec) {
+        run_finished = true;
+        BOOST_TEST(ec == error_code());
+    });
+
+    // Cancel. There are no connections to wait for, so run finishes
+    pool->cancel();
+    poll_until(ctx, &run_finished);
+}
+
 // pool size 0 works
 BOOST_AUTO_TEST_CASE(initial_size_0)
 {

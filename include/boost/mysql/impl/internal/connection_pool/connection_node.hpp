@@ -63,19 +63,19 @@ struct conn_shared_state
     // The number of running connections, to track when they exit
     std::size_t num_running_connections{0};
 
-    // Timer acting as a condition variable to wait for all connections to exit
+    // Timer acting as a condition variable to wait for all connections to exit.
+    // Expired while no connection is running
     asio::basic_waitable_timer<ClockType> conns_finished_cv;
 
     conn_shared_state(asio::any_io_executor ex)
         : idle_connections_cv(ex, (ClockType::time_point::max)()),
-          conns_finished_cv(std::move(ex), (ClockType::time_point::max)())
+          conns_finished_cv(std::move(ex), (ClockType::time_point::min)())
     {
     }
 
     void on_connection_start()
     {
-        // Closing idle connections may have left no connection running and the
-        // latch expired. Re-arm it, so async_run waits for this connection, too
+        // Re-arm the latch, so async_run waits for this connection, too
         if (num_running_connections++ == 0u)
             conns_finished_cv.expires_at((ClockType::time_point::max)());
     }
