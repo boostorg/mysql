@@ -101,21 +101,17 @@ class basic_pool_impl
         }));
     }
 
-    // A connection task exited. Posted because the completion runs inside the
-    // node's own I/O handlers, where the node must not be destroyed
+    // A connection task exited
     void on_connection_task_exit(typename std::list<node_type>::iterator it)
     {
-        auto self = shared_from_this_wrapper();
-        asio::post(pool_ex_, [self, it]() {
-            // After cancellation, nodes are kept: pooled_connection objects may still point at them
-            if (self->state_ != state_t::running)
-                return;
+        // After cancellation, nodes are kept: pooled_connection objects may still point at them
+        if (state_ != state_t::running)
+            return;
 
-            // While running, only connections closed for being idle exit. Replace the
-            // connection if initial_size or a request waiting at max_size requires it
-            self->all_conns_.erase(it);
-            self->create_connections();
-        });
+        // While running, only connections closed for being idle exit. Replace the
+        // connection if initial_size or a request waiting at max_size requires it
+        all_conns_.erase(it);
+        create_connections();
     }
 
     // Create and run connections as required by the current config and state
