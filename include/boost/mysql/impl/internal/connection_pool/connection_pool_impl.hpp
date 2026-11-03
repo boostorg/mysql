@@ -321,13 +321,27 @@ class basic_pool_impl
                 // connection
                 while (true)
                 {
+                    // If the pool has been cancelled, exit as soon as possible.
                     if (obj->state_ == state_t::cancelled)
                     {
                         // The pool was cancelled
                         result_ec = client_errc::pool_cancelled;
                         break;
                     }
-                    else if (get_connection_supports_cancel_type(self.cancelled()))
+
+                    // Try to get a connection. This is checked before per-operation
+                    // cancellation to prevent race conditions between notification and completion.
+                    // I.e. if a notification about an idle connection arrives (wait_for_connections awakes),
+                    // and there is an available connection, we have the responsibility to consume it.
+                    // Otherwise, the notification is lost, and other tasks won't make progress.
+                    if ((result_conn = obj->try_get_connection()) != nullptr)
+                    {
+                        // There was a connection
+                        break;
+                    }
+
+                    // Check for per-operation cancellation
+                    if (get_connection_supports_cancel_type(self.cancelled()))
                     {
                         // The operation was cancelled. Try to provide diagnostics
                         if (obj->state_ == state_t::initial)
@@ -344,13 +358,6 @@ class basic_pool_impl
                         break;
                     }
 
-                    // Try to get a connection
-                    if ((result_conn = obj->try_get_connection()) != nullptr)
-                    {
-                        // There was a connection
-                        break;
-                    }
-
                     // No luck. Record that we're waiting for a connection.
                     obj->enter_request_pending();
 
@@ -363,6 +370,10 @@ class basic_pool_impl
                     // Remember that we have waited, so completions are dispatched
                     // correctly
                     has_waited = true;
+
+                    // We might have received a notification. We have the responsibility
+                    // to consume an available connection (unless the pool has been cancelled,
+                    // in which case we don't care)
                 }
 
                 // Perform any required dispatching before completing
