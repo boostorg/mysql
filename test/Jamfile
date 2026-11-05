@@ -73,8 +73,9 @@ local requirements =
         # gcc-13+ complains about TSAN not supporting std::atomic_thread_fence,
         # used by Asio old net-ts type-erased executors.
         <toolset>gcc,<thread-sanitizer>norecover:<cxxflags>-Wno-tsan
-        # gcc-11 emits spurious warnings for valid vector::insert ops
+        # Some gcc versions emit spurious warnings for valid vector::insert ops
         <toolset>gcc-11:<cxxflags>-Wno-stringop-overflow
+        <toolset>gcc-16:<cxxflags>-Wno-stringop-overflow
         # gcc-15 emits spurious warnings about uninitialized variables in coroutines
         <toolset>gcc-15:<cxxflags>-Wno-maybe-uninitialized
         # gcc < 12 ignores __attribute__((unused)) on non-static data members,
