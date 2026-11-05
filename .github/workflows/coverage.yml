@@ -20,6 +20,10 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     steps:
+      - name: Disable ASLR
+        run: |
+          echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
+
       - name: Fetch code
         uses: actions/checkout@v6
 
