@@ -77,6 +77,16 @@ local requirements =
         <toolset>gcc-11:<cxxflags>-Wno-stringop-overflow
         # gcc-15 emits spurious warnings about uninitialized variables in coroutines
         <toolset>gcc-15:<cxxflags>-Wno-maybe-uninitialized
+        # gcc < 12 ignores __attribute__((unused)) on non-static data members,
+        # as used by Asio's BOOST_ASIO_UNUSED_VARIABLE
+        # TODO: remove when https://github.com/chriskohlhoff/asio/issues/1784 is fixed
+        <toolset>gcc-5:<cxxflags>-Wno-attributes
+        <toolset>gcc-6:<cxxflags>-Wno-attributes
+        <toolset>gcc-7:<cxxflags>-Wno-attributes
+        <toolset>gcc-8:<cxxflags>-Wno-attributes
+        <toolset>gcc-9:<cxxflags>-Wno-attributes
+        <toolset>gcc-10:<cxxflags>-Wno-attributes
+        <toolset>gcc-11:<cxxflags>-Wno-attributes
         # TODO: remove when PFR unused warnings are fixed
         # https://github.com/boostorg/pfr/pull/187
         <toolset>gcc:<cxxflags>-Wno-unused-parameter
