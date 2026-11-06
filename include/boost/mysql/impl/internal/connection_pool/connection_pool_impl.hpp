@@ -104,30 +104,33 @@ class basic_pool_impl
     // A connection task exited
     void on_connection_task_exit(typename std::list<node_type>::iterator it)
     {
-        // After cancellation, nodes are kept: pooled_connection objects may still point at them
-        if (state_ != state_t::running)
+        // Connections closed for being idle were never handed to the user, so they can be removed.
+        // Others exit because the pool was cancelled: pooled_connection objects may still point at them
+        if (it->status() != node_status::closed)
             return;
 
-        // While running, only connections closed for being idle exit. Replace the
-        // connection if initial_size or a request waiting at max_size requires it
+        // Closing connections were already discounted from the pool size, so no replacement is needed
+        --shared_st_.num_closing_connections;
         all_conns_.erase(it);
-        create_connections();
     }
 
     // Create and run connections as required by the current config and state
     void create_connections()
     {
+        // Closing connections will never be handed out again, so they don't count
+        std::size_t current_connections = all_conns_.size() - shared_st_.num_closing_connections;
+
         // Calculate how many we should create
         std::size_t n = num_connections_to_create(
             params_.initial_size,
             params_.max_size,
-            all_conns_.size(),
+            current_connections,
             shared_st_.num_pending_connections,
             shared_st_.num_pending_requests
         );
 
         // Create them
-        BOOST_ASSERT((all_conns_.size() + n) <= params_.max_size);
+        BOOST_ASSERT((current_connections + n) <= params_.max_size);
         for (std::size_t i = 0; i < n; ++i)
             create_connection();
     }

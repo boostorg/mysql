@@ -1038,7 +1038,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_in_use_counts)
 
 BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_request_while_closing)
 {
-    // Setup. max_size = 1, so a closing connection blocks the creation of new ones
+    // Setup. max_size = 1, but closing connections don't count towards it
     pool_params params;
     params.initial_size = 0;
     params.max_size = 1;
@@ -1059,21 +1059,18 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_request_while_closing)
     mock_clock::advance_time_by(std::chrono::seconds(100));
     fix.wait_for_status(node1, node_status::close_in_progress);
 
-    // A request arrives while the connection is closing. max_size has been reached, so it waits
+    // A request arrives while the connection is closing. A new connection is created
+    // right away, without waiting for the close to finish
     auto task2 = fix.create_task();
-    fix.ctx.poll();
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 1u);
-
-    // Once the close finishes, the closed connection is replaced, and the request is fulfilled
-    fix.step(node1, fn_type::close);
-    poll_until(fix.ctx, [&]() {
-        return fix.pool().nodes().size() == 1u &&
-               fix.pool().nodes().front().status() == node_status::connect_in_progress;
-    });
-    auto& node2 = fix.pool().nodes().front();
+    fix.wait_for_num_nodes(2);
+    auto& node2 = fix.pool().nodes().back();
     fix.step(node2, fn_type::connect);
     task2.wait(node2, false);
+
+    // Once the close finishes, the closed connection is removed
+    fix.step(node1, fn_type::close);
+    fix.wait_for_num_nodes(1);
+    BOOST_TEST(&fix.pool().nodes().front() == &node2);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_surplus)
@@ -1194,10 +1191,10 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_cancel_while_closing)
     fix.wait_for_status(node, node_status::close_in_progress);
 
     // The pool is cancelled while the connection is closing. The close is interrupted
-    // and run finishes. The node is kept, as after any cancellation
+    // and run finishes. The node was never handed to the user, so it's removed
     fix.pool().cancel();
     poll_until(fix.ctx, [&]() { return fix.run_finished(); });
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.pool().nodes().size() == 0u);
 }
 
 // async_get_connection. Some cases are run with/without binding a cancel slot,

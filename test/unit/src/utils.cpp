@@ -774,6 +774,7 @@ static const char* to_string(detail::node_status v)
     case detail::node_status::idle: return "node_status::idle";
     case detail::node_status::in_use: return "node_status::in_use";
     case detail::node_status::close_in_progress: return "node_status::close_in_progress";
+    case detail::node_status::closed: return "node_status::closed";
     default: return "<unknown node_status>";
     }
 }

@@ -64,8 +64,9 @@ struct conn_shared_state
     // The number of running connections, to track when they exit
     std::size_t num_running_connections{0};
 
-    // The number of running connections that are closing because they were idle for too long.
-    // Required to compute the pool size when deciding whether to close more idle connections.
+    // The number of connections closing because they were idle for too long, until they're
+    // removed from the pool. They will never be handed out again, so they don't count
+    // towards the pool size, neither when creating connections nor when closing more.
     std::size_t num_closing_connections{0};
 
     // Timer acting as a condition variable to wait for all connections to exit.
@@ -136,7 +137,6 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
     void entering_closing() { ++shared_st_->num_closing_connections; }
-    void exiting_closing() { --shared_st_->num_closing_connections; }
 
     // Connections already closing are discounted, so simultaneous checks
     // can't shrink the pool below initial_size
