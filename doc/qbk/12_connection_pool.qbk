@@ -61,9 +61,9 @@ The resizing algorithm works like this:
   new one is created, until `max_size` is reached. 
 * If a connection is requested, and there are `max_size` connections in use,
   [refmem connection_pool async_get_connection] waits for a connection to become available.
-* Connections are never removed from the pool unless [refmem pool_params idle_timeout] is set.
-  Then, connections that have been idle for at least this value are closed and removed,
-  as long as the pool has more than `initial_size` connections. The most recently returned
+* By default, connections are never removed from the pool. If [refmem pool_params idle_timeout]
+  is set to a non-zero value, connections that have been idle for at least this value are closed
+  and removed, as long as the pool has more than `initial_size` connections. The most recently returned
   connection is handed out first, so connections that aren't needed stay idle and get closed.
 
 By default, [refmem pool_params max_size] is 151, which is
@@ -192,9 +192,10 @@ In short:
   At this point, the connection is probed. If it's alive, it will return to being `idle`.
   Otherwise, it becomes `pending_connect` to be reconnected. Pings can be disabled by
   setting [refmem pool_params ping_interval] to zero.
-* If [refmem pool_params idle_timeout] is set, an `idle` connection that has been idle for
-  at least this value is closed and removed from the pool, as long as the pool has
-  more than `initial_size` connections (in any state).
+* If [refmem pool_params idle_timeout] is set to a non-zero value (it's disabled by default),
+  an `idle` connection that has been idle for at least this value becomes `pending_close`,
+  as long as the pool has more than `initial_size` connections (in any state).
+  The connection is closed and removed from the pool, even if closing fails.
 
 
 [heading:thread_safe Thread-safety]
