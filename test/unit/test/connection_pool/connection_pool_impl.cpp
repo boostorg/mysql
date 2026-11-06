@@ -1233,6 +1233,31 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_cancel_while_closing)
     BOOST_TEST(fix.pool().nodes().size() == 0u);
 }
 
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_and_pings_disabled)
+{
+    // Setup. With initial_size = 0, any idle connection would be surplus
+    pool_params params;
+    params.initial_size = 0;
+    params.ping_interval = std::chrono::seconds(0);
+    params.idle_timeout = std::chrono::seconds(0);
+    fixture fix(std::move(params));
+
+    // A request creates a connection, which is handed to the user and returned
+    auto task = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+    task.wait(node, false);
+    fix.pool().return_connection(node, false);
+    fix.wait_for_status(node, node_status::idle);
+
+    // The connection is neither pinged nor closed, regardless of how much time we wait
+    mock_clock::advance_time_by(std::chrono::hours(9999));
+    fix.check_status_after_polling(node, node_status::idle);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    fix.check_shared_st(diagnostics(), 0, 1);
+}
+
 // async_get_connection. Some cases are run with/without binding a cancel slot,
 // and in thread-safe/unsafe mode
 BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
