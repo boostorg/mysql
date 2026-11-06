@@ -454,6 +454,17 @@ std::shared_ptr<mock_pool> create_mock_pool(asio::io_context& ctx, pool_params&&
     return std::make_shared<mock_pool>(ctx.get_executor(), std::move(params));
 }
 
+// Runs the handlers that are ready at the current mock time, to check that nothing else happens.
+// Expired timers are collected together, so once an already expired sentinel timer completes,
+// the others have run, too
+void poll_ready_handlers(asio::io_context& ctx, boost::source_location loc = BOOST_CURRENT_LOCATION)
+{
+    auto sentinel_done = std::make_shared<bool>(false);
+    mock_timer sentinel(ctx, mock_clock::now());
+    sentinel.async_wait([sentinel_done](error_code) { *sentinel_done = true; });
+    poll_until(ctx, sentinel_done.get(), loc);
+}
+
 class fixture : public io_context_fixture
 {
 private:
@@ -513,17 +524,15 @@ public:
         poll_until(ctx, [&node, status]() { return node.status() == status; }, loc);
     }
 
-    // Checks the status of a node after running for a while, when nothing is expected
-    // to happen. Running for a while rather than polling once: already expired timers
-    // are delivered through the reactor's timerfd, which may not be readable yet on a single poll()
-    void check_status_after_running(
+    // Checks the status of a node after running the handlers that are ready at the current
+    // mock time, when nothing else is expected to happen
+    void check_status_after_polling(
         mock_node& node,
         node_status status,
         boost::source_location loc = BOOST_CURRENT_LOCATION
     )
     {
-        ctx.restart();
-        ctx.run_for(std::chrono::milliseconds(50));
+        poll_ready_handlers(ctx, loc);
         BOOST_TEST_CONTEXT("Called from " << loc) { BOOST_TEST(node.status() == status); }
     }
 
@@ -895,12 +904,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_in_use_notification_lost)
     // The connection is handed to the user. The wait started while idle ends, and a new one starts
     fix.create_task().wait(node, true);
     mock_clock::advance_time_by(std::chrono::seconds(100));
-    fix.check_status_after_running(node, node_status::in_use);
+    fix.check_status_after_polling(node, node_status::in_use);
 
     // The connection is returned, but the notification is lost
     node.mark_as_collectable(false);
     mock_clock::advance_time_by(std::chrono::minutes(59));
-    fix.check_status_after_running(node, node_status::in_use);
+    fix.check_status_after_polling(node, node_status::in_use);
 
     // An hour after the wait started, the connection notices it was returned
     mock_clock::advance_time_by(std::chrono::minutes(1));
@@ -960,7 +969,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_initial_size)
 
     // idle_timeout elapses. The connection is neither closed nor pinged early
     mock_clock::advance_time_by(std::chrono::seconds(60));
-    fix.check_status_after_running(node, node_status::idle);
+    fix.check_status_after_polling(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 
     // ping_interval elapses. The connection pings on schedule
@@ -1015,7 +1024,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_pings_disabled)
     // idle_timeout elapses for the second one. It's required by initial_size, and there
     // are no pings, so it stays idle, regardless of how much time we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
-    fix.check_status_after_running(node2, node_status::idle);
+    fix.check_status_after_polling(node2, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -1846,11 +1855,8 @@ BOOST_FIXTURE_TEST_CASE(run_waits_for_connections_created_after_all_exited, io_c
     pool->cancel();
     task2.wait(client_errc::pool_cancelled, false);
 
-    // run doesn't finish until the connection task exits. Run for a while instead of
-    // polling once: an already expired wait on conns_finished_cv is delivered through
-    // the reactor's timerfd, which may not be readable yet on a single poll()
-    ctx.restart();
-    ctx.run_for(std::chrono::milliseconds(50));
+    // run doesn't finish until the connection task exits
+    poll_ready_handlers(ctx);
     BOOST_TEST(!run_finished);
     node2.connection().step(fn_type::connect, as_netresult).validate_no_error_nodiag();
     poll_until(ctx, &run_finished);
