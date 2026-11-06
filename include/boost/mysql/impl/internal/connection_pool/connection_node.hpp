@@ -33,6 +33,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -131,7 +132,13 @@ class basic_connection_node : public intrusive::list_base_hook<>,
             close_deadline_ = deadline_after(now, params_->idle_timeout);
         ping_deadline_ = deadline_after(now, params_->ping_interval);
 
-        shared_st_->idle_list.push_back(*this);
+        // Keep the list ordered by return time, so the back is the most recently returned
+        // connection (see try_get_connection). close_deadline_ encodes it while idle_timeout
+        // is enabled, and pings don't change it, so a pinged connection goes back to its place
+        auto pos = shared_st_->idle_list.end();
+        while (pos != shared_st_->idle_list.begin() && std::prev(pos)->close_deadline_ > close_deadline_)
+            --pos;
+        shared_st_->idle_list.insert(pos, *this);
         shared_st_->idle_connections_cv.cancel_one();
     }
     void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
