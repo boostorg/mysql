@@ -99,6 +99,16 @@ BOOST_AUTO_TEST_CASE(invalid_params)
             [](pool_params& p) { p.idle_timeout = (std::chrono::steady_clock::duration::min)(); },
             "pool_params::idle_timeout must not be negative"
         },
+        {
+            "close_timeout < 0",
+            [](pool_params& p) { p.close_timeout = std::chrono::seconds(-1); },
+            "pool_params::close_timeout must not be negative"
+        },
+        {
+            "close_timeout < 0 min",
+            [](pool_params& p) { p.close_timeout = (std::chrono::steady_clock::duration::min)(); },
+            "pool_params::close_timeout must not be negative"
+        },
         // clang-format on
     };
 
@@ -165,6 +175,14 @@ BOOST_AUTO_TEST_CASE(valid_params)
         {
             "idle_timeout == max",
             [](pool_params& p) { p.idle_timeout = (std::chrono::steady_clock::duration::max)(); },
+        },
+        {
+            "close_timeout == 0",
+            [](pool_params& p) { p.close_timeout = std::chrono::seconds(0); },
+        },
+        {
+            "close_timeout == max",
+            [](pool_params& p) { p.close_timeout = (std::chrono::steady_clock::duration::max)(); },
         },
         {
             "thread_safe == true",

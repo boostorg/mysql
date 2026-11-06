@@ -263,11 +263,10 @@ struct pool_params
     std::chrono::steady_clock::duration ping_interval{std::chrono::seconds(10)};
 
     /**
-     * \brief The timeout to use for pings, session resets and closes.
+     * \brief The timeout to use for pings and session resets.
      * \details
-     * If pings (as per \ref any_connection::async_ping), session resets
-     * (as per \ref any_connection::async_reset_connection) or closes caused by
-     * \ref idle_timeout (as per \ref any_connection::async_close) take longer than this
+     * If pings (as per \ref any_connection::async_ping) or session resets
+     * (as per \ref any_connection::async_reset_connection) take longer than this
      * timeout, they will be cancelled, and the operation will be considered failed.
      * \n
      * Set this timeout to zero to disable it.
@@ -288,6 +287,18 @@ struct pool_params
      * This value must not be negative.
      */
     std::chrono::steady_clock::duration idle_timeout{};
+
+    /**
+     * \brief The timeout to use when closing connections because of \ref idle_timeout.
+     * \details
+     * If closing a connection (as per \ref any_connection::async_close) takes longer
+     * than this timeout, the close is cancelled. The connection is removed from the pool anyway.
+     * \n
+     * Set this timeout to zero to disable it.
+     * \n
+     * This value must not be negative.
+     */
+    std::chrono::steady_clock::duration close_timeout{std::chrono::seconds(10)};
 
     /**
      * \brief Enables or disables thread-safety.

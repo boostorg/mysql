@@ -1148,8 +1148,8 @@ BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_close_timeout)
     pool_params params;
     params.initial_size = 0;
     params.ping_interval = std::chrono::seconds(100);
-    params.ping_timeout = std::chrono::seconds(2);
     params.idle_timeout = std::chrono::seconds(100);
+    params.close_timeout = std::chrono::seconds(2);
     fixture fix(std::move(params));
 
     // A request creates a connection, which is handed to the user and returned

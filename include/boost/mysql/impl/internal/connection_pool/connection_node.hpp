@@ -273,7 +273,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
             case next_connection_action::close:
                 node_.run_with_timeout(
                     node_.conn_.async_close(asio::deferred),
-                    node_.params_->ping_timeout,
+                    node_.params_->close_timeout,
                     self
                 );
                 break;
