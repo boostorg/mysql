@@ -32,7 +32,6 @@
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
-#include <boost/asio/detached.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/immediate.hpp>
@@ -95,24 +94,43 @@ class basic_pool_impl
     void create_connection()
     {
         // Connection tasks always run in the pool's executor.
-        all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_);
-        all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
+        auto it = all_conns_.emplace(all_conns_.end(), params_, pool_ex_, conn_ex_, shared_st_);
+        auto self = shared_from_this_wrapper();
+        it->async_run(asio::bind_executor(pool_ex_, [self, it](error_code) {
+            self->on_connection_task_exit(it);
+        }));
+    }
+
+    // A connection task exited
+    void on_connection_task_exit(typename std::list<node_type>::iterator it)
+    {
+        // Connections closed for being idle were never handed to the user, so they can be removed.
+        // Others exit because the pool was cancelled: pooled_connection objects may still point at them
+        if (it->status() != node_status::closed)
+            return;
+
+        // Closing connections were already discounted from the pool size, so no replacement is needed
+        --shared_st_.num_closing_connections;
+        all_conns_.erase(it);
     }
 
     // Create and run connections as required by the current config and state
     void create_connections()
     {
+        // Closing connections will never be handed out again, so they don't count
+        std::size_t current_connections = all_conns_.size() - shared_st_.num_closing_connections;
+
         // Calculate how many we should create
         std::size_t n = num_connections_to_create(
             params_.initial_size,
             params_.max_size,
-            all_conns_.size(),
+            current_connections,
             shared_st_.num_pending_connections,
             shared_st_.num_pending_requests
         );
 
         // Create them
-        BOOST_ASSERT((all_conns_.size() + n) <= params_.max_size);
+        BOOST_ASSERT((current_connections + n) <= params_.max_size);
         for (std::size_t i = 0; i < n; ++i)
             create_connection();
     }
@@ -142,7 +160,9 @@ class basic_pool_impl
     {
         if (!shared_st_.idle_list.empty())
         {
-            node_type& res = shared_st_.idle_list.front();
+            // Hand out the most recently returned connection. Under light load, the
+            // others stay idle, so idle_timeout can shrink the pool to what's being used
+            node_type& res = shared_st_.idle_list.back();
             res.mark_as_in_use();
             return &res;
         }
@@ -444,7 +464,7 @@ class basic_pool_impl
     };
 
     // Not thread-safe
-    void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
+    void cancel_unsafe() { cancel_timer_.expires_at((ClockType::time_point::min)()); }
 
 public:
     basic_pool_impl(asio::any_io_executor ex, pool_params&& params)
@@ -453,7 +473,7 @@ public:
           conn_ex_(params.connection_executor ? std::move(params.connection_executor) : original_pool_ex_),
           params_(make_internal_pool_params(std::move(params))),
           shared_st_(pool_ex_),
-          cancel_timer_(pool_ex_, (std::chrono::steady_clock::time_point::max)())
+          cancel_timer_(pool_ex_, (ClockType::time_point::max)())
     {
     }
 
@@ -568,7 +588,7 @@ public:
             };
 
             // If, for any reason, this notification fails, the connection will
-            // be collected when the next ping is due.
+            // be collected by the connection's periodic in-use check.
             try
             {
                 asio::dispatch(dispatch_handler{shared_from_this_wrapper(), &node});

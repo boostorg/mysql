@@ -540,14 +540,14 @@ public:
     /**
      * \brief Runs the pool task in charge of managing connections.
      * \details
-     * This function creates and connects new connections, and resets and pings
-     * already created ones. You need to call this function for \ref async_get_connection
-     * to succeed.
+     * This function creates and connects new connections, resets and pings
+     * already created ones, and closes idle ones when \ref pool_params::idle_timeout is set.
+     * You need to call this function for \ref async_get_connection to succeed.
      *
      * The async operation will run indefinitely, until the pool is cancelled
      * (by calling \ref cancel or using per-operation cancellation on the `async_run` operation).
      * The operation completes once all internal connection operations
-     * (including connects, pings and resets) complete.
+     * (including connects, pings, resets and closes) complete.
      *
      * It is safe to call this function after calling \ref cancel.
      *
