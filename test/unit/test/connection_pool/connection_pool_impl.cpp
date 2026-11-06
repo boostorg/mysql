@@ -880,6 +880,33 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
+BOOST_AUTO_TEST_CASE(lifecycle_in_use_notification_lost)
+{
+    // Setup
+    pool_params params;
+    params.ping_interval = std::chrono::seconds(100);
+    fixture fix(std::move(params));
+
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, node_status::idle);
+
+    // The connection is handed to the user. The wait started while idle ends, and a new one starts
+    fix.create_task().wait(node, true);
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.check_status_after_running(node, node_status::in_use);
+
+    // The connection is returned, but the notification is lost
+    node.mark_as_collectable(false);
+    mock_clock::advance_time_by(std::chrono::minutes(59));
+    fix.check_status_after_running(node, node_status::in_use);
+
+    // An hour after the wait started, the connection notices it was returned
+    mock_clock::advance_time_by(std::chrono::minutes(1));
+    fix.wait_for_status(node, node_status::idle);
+}
+
 BOOST_DATA_TEST_CASE(lifecycle_idle_timeout, data::make({false, true}))
 {
     // Setup. With initial_size = 0, any idle connection is surplus. Also run in thread-safe mode

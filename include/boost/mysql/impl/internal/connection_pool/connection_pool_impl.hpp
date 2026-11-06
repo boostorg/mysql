@@ -462,7 +462,7 @@ class basic_pool_impl
     };
 
     // Not thread-safe
-    void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
+    void cancel_unsafe() { cancel_timer_.expires_at((ClockType::time_point::min)()); }
 
 public:
     basic_pool_impl(asio::any_io_executor ex, pool_params&& params)
@@ -471,7 +471,7 @@ public:
           conn_ex_(params.connection_executor ? std::move(params.connection_executor) : original_pool_ex_),
           params_(make_internal_pool_params(std::move(params))),
           shared_st_(pool_ex_),
-          cancel_timer_(pool_ex_, (std::chrono::steady_clock::time_point::max)())
+          cancel_timer_(pool_ex_, (ClockType::time_point::max)())
     {
     }
 
@@ -586,7 +586,7 @@ public:
             };
 
             // If, for any reason, this notification fails, the connection will
-            // be collected when the next ping is due.
+            // be collected by the connection's periodic in-use check.
             try
             {
                 asio::dispatch(dispatch_handler{shared_from_this_wrapper(), &node});

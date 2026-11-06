@@ -24,6 +24,7 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/asio/cancel_after.hpp>
+#include <boost/asio/cancel_at.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
@@ -101,6 +102,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
 {
     using this_type = basic_connection_node<ConnectionType, ClockType>;
     using timer_type = asio::basic_waitable_timer<ClockType>;
+    using time_point = typename ClockType::time_point;
 
     // Not thread-safe
     const internal_pool_params* params_;
@@ -111,9 +113,8 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
     std::vector<stage_response> reset_pipeline_res_;
-    typename ClockType::time_point idle_since_{};     // Start of the current idle period
-    typename ClockType::time_point last_activity_{};  // Last connect, reset, ping or return. Pings are
-                                                      // due ping_interval after it
+    time_point close_deadline_{};  // When to close the connection if it's still idle and no longer needed
+    time_point ping_deadline_{};   // When the next ping is due
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -127,8 +128,8 @@ class basic_connection_node : public intrusive::list_base_hook<>,
         // status() still holds the status we're leaving. Pings don't restart the idle period,
         // otherwise an idle_timeout longer than ping_interval could never elapse
         if (this->status() != node_status::ping_in_progress)
-            idle_since_ = now;
-        last_activity_ = now;
+            close_deadline_ = deadline_after(now, params_->idle_timeout);
+        ping_deadline_ = deadline_after(now, params_->ping_interval);
 
         shared_st_->idle_list.push_back(*this);
         shared_st_->idle_connections_cv.cancel_one();
@@ -138,33 +139,37 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     void exiting_pending() { --shared_st_->num_pending_connections; }
     void entering_closing() { ++shared_st_->num_closing_connections; }
 
+    // now + interval, or never if the interval is zero (disabled). pool_params accepts
+    // duration::max, so the addition saturates instead of overflowing
+    static time_point deadline_after(time_point now, std::chrono::steady_clock::duration interval)
+    {
+        bool never = interval.count() == 0 ||
+                     now.time_since_epoch() >= (time_point::duration::max)() - interval;
+        return never ? (time_point::max)() : now + interval;
+    }
+
     // Connections already closing are discounted, so simultaneous checks
     // can't shrink the pool below initial_size
     bool should_close_idle() const
     {
-        return params_->idle_timeout.count() > 0 &&
-               shared_st_->num_running_connections - shared_st_->num_closing_connections >
+        return shared_st_->num_running_connections - shared_st_->num_closing_connections >
                    params_->initial_size &&
-               ClockType::now() - idle_since_ >= params_->idle_timeout;
+               ClockType::now() >= close_deadline_;
     }
 
-    bool should_ping() const
-    {
-        return params_->ping_interval.count() > 0 &&
-               ClockType::now() - last_activity_ >= params_->ping_interval;
-    }
+    bool should_ping() const { return ClockType::now() >= ping_deadline_; }
 
-    // How long an idle connection waits before pinging, or before closing itself if
-    // idle_timeout elapses first. Once elapsed, idle_timeout is only checked again at pings:
-    // re-arming a zero wait would spin for a connection kept because of initial_size.
-    // Subtracting can't overflow; a negative result fires at once, and max() never does
-    std::chrono::steady_clock::duration idle_wait_timeout() const
+    // When the idle wait should end. An idle connection wakes up when a ping is due, or when
+    // idle_timeout elapses if that comes first. Once the close deadline has passed, and the
+    // connection was kept because of initial_size, only pings wake it up: waiting for a past
+    // deadline would spin. A connection in use only waits for the collection notification, but
+    // wakes up every hour just in case it was lost (see return_connection)
+    time_point wait_deadline() const
     {
         auto now = ClockType::now();
-        auto until_ping = params_->ping_interval.count() > 0 ? params_->ping_interval - (now - last_activity_)
-                                                             : (std::chrono::steady_clock::duration::max)();
-        auto until_close = params_->idle_timeout - (now - idle_since_);
-        return until_close.count() > 0 ? (std::min)(until_ping, until_close) : until_ping;
+        if (this->status() != node_status::idle)
+            return now + std::chrono::hours(1);
+        return close_deadline_ > now ? (std::min)(ping_deadline_, close_deadline_) : ping_deadline_;
     }
 
     // Helpers
@@ -251,24 +256,10 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 );
                 break;
             case next_connection_action::idle_wait:
-                if (node_.status() == node_status::idle)
-                {
-                    // Wake up to ping, or to close the connection if idle_timeout elapses first.
-                    // Not run_with_timeout: a zero timeout here means "now", not "never"
-                    node_.collection_timer_.async_wait(
-                        asio::cancel_after(node_.timer_, node_.idle_wait_timeout(), std::move(self))
-                    );
-                }
-                else
-                {
-                    // In use. Keep waking up every ping_interval: the collection
-                    // notification may fail (see return_connection)
-                    node_.run_with_timeout(
-                        node_.collection_timer_.async_wait(asio::deferred),
-                        node_.params_->ping_interval,
-                        self
-                    );
-                }
+                // Wait for a collection notification, or until wait_deadline() wakes us up
+                node_.collection_timer_.async_wait(
+                    asio::cancel_at(node_.timer_, node_.wait_deadline(), std::move(self))
+                );
                 break;
             case next_connection_action::close:
                 node_.run_with_timeout(
@@ -297,7 +288,7 @@ public:
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
           timer_(pool_ex),
-          collection_timer_(pool_ex, (std::chrono::steady_clock::time_point::max)())
+          collection_timer_(pool_ex, (ClockType::time_point::max)())
     {
     }
 

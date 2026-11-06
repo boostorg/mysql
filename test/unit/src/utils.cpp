@@ -430,7 +430,7 @@ std::vector<std::uint8_t> boost::mysql::test::serialize_text_row_impl(span<const
 // mock_timer.hpp
 //
 // The current time
-static thread_local steady_clock::time_point g_mock_now{};
+static thread_local boost::mysql::test::mock_clock::time_point g_mock_now{};
 
 boost::mysql::test::mock_clock::time_point boost::mysql::test::mock_clock::now() { return g_mock_now; }
 
