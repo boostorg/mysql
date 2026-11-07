@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,14 +21,13 @@
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/sansio/buffer_writer.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 
 #include <boost/assert.hpp>
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
-#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -93,11 +92,11 @@ struct connection_state_data
     // The current character set, or a value-initialized one if unknown
     character_set current_charset{};
 
-    // The write buffer
-    std::vector<std::uint8_t> write_buffer;
-
     // Reader
     message_reader reader;
+
+    // The write buffer
+    buffer_writer write_buffer;
 
     std::size_t max_buffer_size() const { return reader.max_buffer_size(); }
 
@@ -106,7 +105,9 @@ struct connection_state_data
         std::size_t max_buff_size = static_cast<std::size_t>(-1),
         bool transport_supports_ssl = false
     )
-        : tls_supported(transport_supports_ssl), reader(read_buffer_size, max_buff_size)
+        : tls_supported(transport_supports_ssl),
+        reader(read_buffer_size, max_buff_size),
+        write_buffer(reader.internal_buffer().buffer())
     {
     }
 

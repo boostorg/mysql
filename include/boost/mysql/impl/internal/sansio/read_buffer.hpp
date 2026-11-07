@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -54,6 +54,9 @@ public:
         pending_offset_ = 0;
         free_offset_ = 0;
     }
+
+    // Exposed for buffer_writer
+    std::vector<std::uint8_t>& buffer() { return buffer_; }
 
     // Whole buffer accessors
     const std::uint8_t* first() const noexcept { return buffer_.data(); }

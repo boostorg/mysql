@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,6 +12,7 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/impl/internal/protocol/frame_header.hpp>
+#include <boost/mysql/impl/internal/sansio/buffer_writer.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/core/ignore_unused.hpp>
@@ -43,7 +44,7 @@ BOOST_INLINE_CONSTEXPR std::size_t disable_framing = static_cast<std::size_t>(-1
 // Once set, serializing is a no-op. This pattern allows us to check for errors just once.
 class serialization_context
 {
-    std::vector<std::uint8_t>& buffer_;
+    buffer_writer& buffer_;
     std::size_t max_buffer_size_;
     std::size_t max_frame_size_;
     std::size_t next_header_offset_;
@@ -107,7 +108,7 @@ class serialization_context
 
 public:
     serialization_context(
-        std::vector<std::uint8_t>& buff,
+        buffer_writer& buff,
         std::size_t max_buffer_size = static_cast<std::size_t>(-1),
         std::size_t max_frame_size = max_packet_size
     )

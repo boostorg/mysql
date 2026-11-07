@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -134,7 +134,7 @@ struct serialize_top_level_result
 template <class Serializable>
 inline serialize_top_level_result serialize_top_level(
     const Serializable& input,
-    std::vector<std::uint8_t>& to,
+    buffer_writer& to,
     std::uint8_t seqnum = 0,
     std::size_t max_buffer_size = static_cast<std::size_t>(-1),
     std::size_t max_frame_size = max_packet_size
@@ -153,7 +153,7 @@ inline serialize_top_level_result serialize_top_level(
 template <class Serializable>
 inline std::uint8_t serialize_top_level_checked(
     const Serializable& input,
-    std::vector<std::uint8_t>& to,
+    buffer_writer& to,
     std::uint8_t seqnum = 0,
     std::size_t max_frame_size = max_packet_size
 )

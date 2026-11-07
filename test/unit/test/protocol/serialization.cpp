@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -51,7 +51,8 @@ BOOST_AUTO_TEST_CASE(serialize_top_level_multiframe)
                                              4,  5,  6,  7,  8,  3, 0, 0, 43, 9, 10, 11};
 
     std::vector<std::uint8_t> buff{80, 81, 82, 83, 85};
-    auto result = serialize_top_level(mock_message{payload}, buff, 42, 0xffff, frame_size);
+    buffer_writer writer{buff};
+    auto result = serialize_top_level(mock_message{payload}, writer, 42, 0xffff, frame_size);
     BOOST_TEST(result.err == error_code());
     BOOST_TEST(result.seqnum == 44u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
@@ -64,7 +65,8 @@ BOOST_AUTO_TEST_CASE(serialize_top_level_error_max_size)
         {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
     };
     std::vector<std::uint8_t> buff;
-    auto result = serialize_top_level(mock_message{payload}, buff, 42, 8u);
+    buffer_writer writer{buff};
+    auto result = serialize_top_level(mock_message{payload}, writer, 42, 8u);
     BOOST_TEST(result.err == boost::mysql::client_errc::max_buffer_size_exceeded);
     BOOST_TEST(result.seqnum == 0u);
 }

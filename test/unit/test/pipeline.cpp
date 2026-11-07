@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -202,7 +202,7 @@ void check_pipeline(
     boost::span<const detail::pipeline_request_stage> expected_stages
 )
 {
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(detail::access::get_impl(req).buffer_, expected_buffer);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(detail::access::get_impl(req).write_buffer_, expected_buffer);
     BOOST_TEST(detail::access::get_impl(req).stages_ == expected_stages, per_element());
 }
 

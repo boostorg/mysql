@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,6 +21,8 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
+
+#include <boost/mysql/impl/internal/sansio/buffer_writer.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/core/span.hpp>
@@ -261,6 +263,7 @@ class pipeline_request
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
+        detail::buffer_writer write_buffer_{buffer_};
         std::vector<detail::pipeline_request_stage> stages_;
     } impl_;
 
@@ -421,7 +424,7 @@ public:
      */
     void clear() noexcept
     {
-        impl_.buffer_.clear();
+        impl_.write_buffer_.clear();
         impl_.stages_.clear();
     }
 };
