@@ -264,7 +264,7 @@ class pipeline_request
     struct impl_t
     {
     private:
-        std::unique_ptr<std::vector<std::uint8_t>> buffer_ = std::make_unique<std::vector<std::uint8_t>>();
+        std::unique_ptr<std::vector<std::uint8_t>> buffer_{new std::vector<std::uint8_t>()};
     public:
         detail::buffer_writer write_buffer_{*buffer_};
         std::vector<detail::pipeline_request_stage> stages_;
