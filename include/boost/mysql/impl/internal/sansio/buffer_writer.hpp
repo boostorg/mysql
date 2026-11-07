@@ -56,8 +56,9 @@ public:
 
     inline void push_back(std::uint8_t x)
     {
+        std::size_t old_offset = offset_;
         resize(offset_ + 1u);
-        std::memcpy(data(), &x, 1u);
+        std::memcpy(data() + old_offset, &x, 1u);
     }
 
     inline operator span<const std::uint8_t> () const noexcept
