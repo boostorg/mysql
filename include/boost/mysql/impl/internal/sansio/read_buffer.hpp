@@ -26,6 +26,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Ignore false positive on GCC 15+
+#if defined(BOOST_GCC) && BOOST_GCC >= 150000
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
 // Custom buffer type optimized for read operations performed in the MySQL protocol.
 // The buffer is a single, resizable chunk of memory with four areas:
 //   - Reserved area: messages that have already been read but are kept alive,
@@ -162,6 +167,9 @@ public:
         return error_code();
     }
 };
+#if defined(BOOST_GCC) && BOOST_GCC >= 150000
+#pragma GCC diagnostic pop
+#endif
 
 }  // namespace detail
 }  // namespace mysql

@@ -11,6 +11,7 @@
 #include <boost/mysql/impl/internal/next_power_of_two.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -22,6 +23,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Ignore false positive on GCC 15+
+#if defined(BOOST_GCC) && BOOST_GCC >= 150000
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
 class buffer_writer
 {
     std::vector<std::uint8_t>& buffer_;
@@ -66,6 +72,9 @@ public:
         return span<const std::uint8_t>{buffer_.data(), size()};
     }
 };
+#if defined(BOOST_GCC) && BOOST_GCC >= 150000
+#pragma GCC diagnostic pop
+#endif
 
 }  // namespace detail
 }  // namespace mysql
