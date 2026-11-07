@@ -278,7 +278,7 @@ BOOST_AUTO_TEST_CASE(disable_framing)
 
     // We didn't add any framing
     const std::vector<std::uint8_t> expected{42, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
     BOOST_TEST(ctx.error() == error_code());
 }
 
@@ -322,7 +322,7 @@ BOOST_AUTO_TEST_CASE(subsequent_header_exceeds_maxsize)
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Add data triggering a header that can't fit
     ctx.add(std::vector<std::uint8_t>{7, 8});
@@ -351,12 +351,12 @@ BOOST_AUTO_TEST_CASE(error_by_one_byte)
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Adding more data fails. No data is written to the buffer
     ctx.add(std::vector<std::uint8_t>{1});
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 }
 
 // Spotcheck: adding a single byte triggers the same behavior
@@ -371,12 +371,12 @@ BOOST_AUTO_TEST_CASE(error_add_u8)
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Adding more data fails. No data is written to the buffer
     ctx.add(42);
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 }
 
 // Edge case: if the input buffer exceeded the max size, we fail
@@ -400,12 +400,12 @@ BOOST_AUTO_TEST_CASE(buffer_with_previous_contents)
     ctx.add(42);
     std::vector<std::uint8_t> expected{1, 2, 3, 0, 0, 0, 0, 42};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Past max size
     ctx.add(80);
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 }
 
 BOOST_AUTO_TEST_CASE(several_errors)
@@ -419,17 +419,17 @@ BOOST_AUTO_TEST_CASE(several_errors)
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Adding more data fails. No data is written to the buffer
     ctx.add(std::vector<std::uint8_t>{6, 7, 8, 9});
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Adding more data again does nothing
     ctx.add(std::vector<std::uint8_t>{10, 11, 12});
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 }
 
 BOOST_AUTO_TEST_CASE(success_after_error)
@@ -443,17 +443,17 @@ BOOST_AUTO_TEST_CASE(success_after_error)
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Adding more data fails. No data is written to the buffer
     ctx.add(std::vector<std::uint8_t>{6, 7, 8, 9});
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Adding more data again does nothing, even if the data would fit
     ctx.add(1);
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 }
 
 BOOST_AUTO_TEST_CASE(add_error)
@@ -467,26 +467,26 @@ BOOST_AUTO_TEST_CASE(add_error)
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Add an error
     ctx.add_error(client_errc::invalid_encoding);
     BOOST_TEST(ctx.error() == client_errc::invalid_encoding);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Adding further data with the error set does nothing
     ctx.add(std::vector<std::uint8_t>{8, 9, 10});
     BOOST_TEST(ctx.error() == client_errc::invalid_encoding);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     // Adding another error does nothing
     ctx.add_error(client_errc::protocol_value_error);
     BOOST_TEST(ctx.error() == client_errc::invalid_encoding);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 
     ctx.add_error(error_code());
     BOOST_TEST(ctx.error() == client_errc::invalid_encoding);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

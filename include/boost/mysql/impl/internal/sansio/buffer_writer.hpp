@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <vector>
 
 namespace boost {
@@ -38,33 +39,28 @@ public:
 
     inline void resize(std::size_t n)
     {
-        buffer_.resize(next_power_of_two(n));
+        if (n > buffer_.size())
+            buffer_.resize(next_power_of_two(n));
         offset_ = n;
     }
 
-    inline void insert(const std::uint8_t* pos, const std::uint8_t* first, const std::uint8_t* last)
+    inline void insert(std::uint8_t* pos, const std::uint8_t* first, const std::uint8_t* last)
     {
         BOOST_ASSERT(first < last);
-        std::size_t insert_idx = pos - data();
         std::size_t count = std::distance(first, last);
         std::size_t new_offset = offset_ + count;
-        if (new_offset > buffer_.size())
-        {
-            buffer_.resize(new_offset);
-        }
-        std::uint8_t* write_pos = data() + insert_idx;
-        std::memcpy(write_pos, first, count);
-
-        offset_ = new_offset;
+        std::size_t insert_idx = pos - data();
+        resize(new_offset);
+        std::memcpy(data() + insert_idx, first, count);
     }
 
     inline void push_back(std::uint8_t x)
     {
+        resize(offset_ + 1u);
         std::memcpy(data(), &x, 1u);
-        offset_++;
     }
 
-    operator span<const std::uint8_t> () const noexcept
+    inline operator span<const std::uint8_t> () const noexcept
     {
         return span<const std::uint8_t>{buffer_.data(), size()};
     }

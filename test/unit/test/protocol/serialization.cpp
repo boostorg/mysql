@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(serialize_top_level_multiframe)
     auto result = serialize_top_level(mock_message{payload}, writer, 42, 0xffff, frame_size);
     BOOST_TEST(result.err == error_code());
     BOOST_TEST(result.seqnum == 44u);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(writer, expected);
 }
 
 // spotcheck: max size correctly propagated
