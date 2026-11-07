@@ -262,7 +262,9 @@ class pipeline_request
 #ifndef BOOST_MYSQL_DOXYGEN
     struct impl_t
     {
+    private:
         std::vector<std::uint8_t> buffer_;
+    public:
         detail::buffer_writer write_buffer_{buffer_};
         std::vector<detail::pipeline_request_stage> stages_;
     } impl_;

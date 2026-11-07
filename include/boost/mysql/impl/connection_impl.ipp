@@ -107,7 +107,7 @@ boost::mysql::detail::run_pipeline_algo_params boost::mysql::detail::connection_
 )
 {
     const auto& req_impl = access::get_impl(req);
-    return {req_impl.buffer_, req_impl.stages_, &response};
+    return {req_impl.write_buffer_, req_impl.stages_, &response};
 }
 
 template <class AlgoParams>
