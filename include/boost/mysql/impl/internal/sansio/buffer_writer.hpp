@@ -29,7 +29,7 @@ class buffer_writer
 
 public:
     buffer_writer() = delete;
-    buffer_writer(std::vector<std::uint8_t>& buffer)
+    explicit buffer_writer(std::vector<std::uint8_t>& buffer)
      : buffer_(buffer), offset_(buffer_.size()) {}
 
     inline std::uint8_t* data() noexcept { return buffer_.data(); }

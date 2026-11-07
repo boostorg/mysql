@@ -30,6 +30,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -263,9 +264,9 @@ class pipeline_request
     struct impl_t
     {
     private:
-        std::vector<std::uint8_t> buffer_;
+        std::unique_ptr<std::vector<std::uint8_t>> buffer_ = std::make_unique<std::vector<std::uint8_t>>();
     public:
-        detail::buffer_writer write_buffer_{buffer_};
+        detail::buffer_writer write_buffer_{*buffer_};
         std::vector<detail::pipeline_request_stage> stages_;
     } impl_;
 
