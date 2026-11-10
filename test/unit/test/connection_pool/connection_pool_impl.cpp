@@ -456,13 +456,15 @@ std::shared_ptr<mock_pool> create_mock_pool(asio::io_context& ctx, pool_params&&
 
 // Runs the handlers that are ready at the current mock time, to check that nothing else happens.
 // Expired timers are collected together, so once an already expired sentinel timer completes,
-// the others have run, too
+// the others have completed, too. Their handlers may post others, which Asio may leave
+// for the next poll, so we then poll until there is nothing left to run
 void poll_ready_handlers(asio::io_context& ctx, boost::source_location loc = BOOST_CURRENT_LOCATION)
 {
     auto sentinel_done = std::make_shared<bool>(false);
     mock_timer sentinel(ctx, mock_clock::now());
     sentinel.async_wait([sentinel_done](error_code) { *sentinel_done = true; });
     poll_until(ctx, sentinel_done.get(), loc);
+    poll_until(ctx, [&ctx]() { return ctx.poll() == 0u; }, loc);
 }
 
 class fixture : public io_context_fixture
