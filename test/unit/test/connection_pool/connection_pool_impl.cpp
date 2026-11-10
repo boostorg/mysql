@@ -92,6 +92,7 @@ enum class fn_type
     connect,
     pipeline,
     ping,
+    close,
 };
 
 std::ostream& operator<<(std::ostream& os, fn_type t)
@@ -101,6 +102,7 @@ std::ostream& operator<<(std::ostream& os, fn_type t)
     case fn_type::connect: return os << "fn_type::connect";
     case fn_type::pipeline: return os << "fn_type::pipeline";
     case fn_type::ping: return os << "fn_type::ping";
+    case fn_type::close: return os << "fn_type::close";
     default: return os << "<unknown fn_type>";
     }
 }
@@ -267,6 +269,13 @@ public:
         check_stages(req);
         set_response(res);  // This should technically happen after initiation, but is enough for these tests
         return impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token));
+    }
+
+    template <class CompletionToken>
+    auto async_close(CompletionToken&& token)
+        -> decltype(impl_.op_impl(fn_type::close, nullptr, std::forward<CompletionToken>(token)))
+    {
+        return impl_.op_impl(fn_type::close, nullptr, std::forward<CompletionToken>(token));
     }
 
     template <class CompletionToken>
@@ -445,6 +454,19 @@ std::shared_ptr<mock_pool> create_mock_pool(asio::io_context& ctx, pool_params&&
     return std::make_shared<mock_pool>(ctx.get_executor(), std::move(params));
 }
 
+// Runs the handlers that are ready at the current mock time, to check that nothing else happens.
+// Expired timers are collected together, so once an already expired sentinel timer completes,
+// the others have completed, too. Their handlers may post others, which Asio may leave
+// for the next poll, so we then poll until there is nothing left to run
+void poll_ready_handlers(asio::io_context& ctx, boost::source_location loc = BOOST_CURRENT_LOCATION)
+{
+    auto sentinel_done = std::make_shared<bool>(false);
+    mock_timer sentinel(ctx, mock_clock::now());
+    sentinel.async_wait([sentinel_done](error_code) { *sentinel_done = true; });
+    poll_until(ctx, sentinel_done.get(), loc);
+    poll_until(ctx, [&ctx]() { return ctx.poll() == 0u; }, loc);
+}
+
 class fixture : public io_context_fixture
 {
 private:
@@ -475,6 +497,7 @@ public:
     }
 
     mock_pool& pool() { return *pool_; }
+    bool run_finished() const { return run_finished_; }
 
     get_connection_task create_task(diagnostics* diag = nullptr, bool bind_slot = true)
     {
@@ -501,6 +524,18 @@ public:
     )
     {
         poll_until(ctx, [&node, status]() { return node.status() == status; }, loc);
+    }
+
+    // Checks the status of a node after running the handlers that are ready at the current
+    // mock time, when nothing else is expected to happen
+    void check_status_after_polling(
+        mock_node& node,
+        node_status status,
+        boost::source_location loc = BOOST_CURRENT_LOCATION
+    )
+    {
+        poll_ready_handlers(ctx, loc);
+        BOOST_TEST_CONTEXT("Called from " << loc) { BOOST_TEST(node.status() == status); }
     }
 
     // Waits until there is at least num_nodes connections in the list
@@ -853,6 +888,375 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
     // Connection won't ping, regardless of how much time we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
     poll_until(fix.ctx, [&]() { return node.status() == node_status::idle; });
+    fix.check_shared_st(diagnostics(), 0, 1);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_in_use_notification_lost)
+{
+    // Setup
+    pool_params params;
+    params.ping_interval = std::chrono::seconds(100);
+    fixture fix(std::move(params));
+
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, node_status::idle);
+
+    // The connection is handed to the user. The wait started while idle ends, and a new one starts
+    fix.create_task().wait(node, true);
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.check_status_after_polling(node, node_status::in_use);
+
+    // The connection is returned, but the notification is lost
+    node.mark_as_collectable(false);
+    mock_clock::advance_time_by(std::chrono::minutes(59));
+    fix.check_status_after_polling(node, node_status::in_use);
+
+    // An hour after the wait started, the connection notices it was returned
+    mock_clock::advance_time_by(std::chrono::minutes(1));
+    fix.wait_for_status(node, node_status::idle);
+}
+
+BOOST_DATA_TEST_CASE(lifecycle_idle_timeout, data::make({false, true}))
+{
+    // Setup. With initial_size = 0, any idle connection is surplus. Also run in thread-safe mode
+    pool_params params;
+    params.initial_size = 0;
+    params.ping_interval = std::chrono::seconds(100);
+    params.idle_timeout = std::chrono::seconds(150);
+    params.thread_safe = sample;
+    fixture fix(std::move(params));
+
+    // A request creates a connection, which is handed to the user
+    auto task = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+    task.wait(node, false);
+
+    // The user keeps the connection for a while, then returns it. This starts the idle period
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.pool().return_connection(node, false);
+    fix.wait_for_status(node, node_status::idle);
+
+    // ping_interval elapses. The connection hasn't been idle for idle_timeout yet, so it pings
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.step(node, fn_type::ping);
+    fix.wait_for_status(node, node_status::idle);
+
+    // idle_timeout elapses. The ping didn't restart the idle period, and the connection
+    // closes without waiting for the next ping
+    mock_clock::advance_time_by(std::chrono::seconds(50));
+    fix.step(node, fn_type::close);
+
+    // The connection is removed from the pool
+    fix.wait_for_num_nodes(0);
+    fix.check_shared_st(diagnostics(), 0, 0);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_initial_size)
+{
+    // Setup. The only connection is required by initial_size, so it's never closed.
+    // idle_timeout < ping_interval, so the idle timeout wakes the connection up first
+    pool_params params;
+    params.ping_interval = std::chrono::seconds(100);
+    params.idle_timeout = std::chrono::seconds(60);
+    fixture fix(std::move(params));
+
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, node_status::idle);
+
+    // idle_timeout elapses. The connection is neither closed nor pinged early
+    mock_clock::advance_time_by(std::chrono::seconds(60));
+    fix.check_status_after_polling(node, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 1);
+
+    // ping_interval elapses. The connection pings on schedule
+    mock_clock::advance_time_by(std::chrono::seconds(40));
+    fix.step(node, fn_type::ping);
+    fix.wait_for_status(node, node_status::idle);
+
+    // Pings keep checking idle_timeout, which has elapsed, but the connection is still required
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.step(node, fn_type::ping);
+    fix.wait_for_status(node, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 1);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_pings_disabled)
+{
+    // Setup. Closing idle connections doesn't depend on pings
+    pool_params params;
+    params.initial_size = 1;
+    params.max_size = 2;
+    params.ping_interval = std::chrono::seconds(0);
+    params.idle_timeout = std::chrono::seconds(100);
+    fixture fix(std::move(params));
+
+    // Two requests create two connections, which are handed to the user
+    auto task1 = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node1 = fix.pool().nodes().front();
+    fix.step(node1, fn_type::connect);
+    task1.wait(node1, false);
+
+    auto task2 = fix.create_task();
+    fix.wait_for_num_nodes(2);
+    auto& node2 = fix.pool().nodes().back();
+    fix.step(node2, fn_type::connect);
+    task2.wait(node2, false);
+
+    // The connections are returned one second apart, so their wake-ups are ordered
+    fix.pool().return_connection(node1, false);
+    fix.wait_for_status(node1, node_status::idle);
+    mock_clock::advance_time_by(std::chrono::seconds(1));
+    fix.pool().return_connection(node2, false);
+    fix.wait_for_status(node2, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 2);
+
+    // idle_timeout elapses for the first connection. It's surplus, so it closes
+    mock_clock::advance_time_by(std::chrono::seconds(99));
+    fix.step(node1, fn_type::close);
+    fix.wait_for_num_nodes(1);
+    fix.check_shared_st(diagnostics(), 0, 1);
+
+    // idle_timeout elapses for the second one. It's required by initial_size, and there
+    // are no pings, so it stays idle, regardless of how much time we wait
+    mock_clock::advance_time_by(std::chrono::hours(9999));
+    fix.check_status_after_polling(node2, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 1);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_in_use_counts)
+{
+    // Setup. initial_size bounds the number of connections in any state, not just idle ones
+    pool_params params;
+    params.initial_size = 1;
+    params.max_size = 2;
+    params.ping_interval = std::chrono::seconds(100);
+    params.idle_timeout = std::chrono::seconds(100);
+    fixture fix(std::move(params));
+
+    // The initial connection is handed to the user, and a second request creates another one
+    auto task1 = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node1 = fix.pool().nodes().front();
+    fix.step(node1, fn_type::connect);
+    task1.wait(node1, false);
+
+    auto task2 = fix.create_task();
+    fix.wait_for_num_nodes(2);
+    auto& node2 = fix.pool().nodes().back();
+    fix.step(node2, fn_type::connect);
+    task2.wait(node2, false);
+
+    // Only the second connection is returned
+    fix.pool().return_connection(node2, false);
+    fix.wait_for_status(node2, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 1);
+
+    // idle_timeout elapses. The connection in use counts towards initial_size,
+    // so the idle one is surplus and closes, although it's the only idle one
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.step(node2, fn_type::close);
+    fix.wait_for_num_nodes(1);
+    fix.check_shared_st(diagnostics(), 0, 0);
+
+    // The connection in use is returned. It's required by initial_size, so it never closes
+    fix.pool().return_connection(node1, false);
+    fix.wait_for_status(node1, node_status::idle);
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.step(node1, fn_type::ping);
+    fix.wait_for_status(node1, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 1);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_request_while_closing)
+{
+    // Setup. max_size = 1, but closing connections don't count towards it
+    pool_params params;
+    params.initial_size = 0;
+    params.max_size = 1;
+    params.ping_interval = std::chrono::seconds(100);
+    params.idle_timeout = std::chrono::seconds(100);
+    fixture fix(std::move(params));
+
+    // A request creates a connection, which is handed to the user and returned
+    auto task1 = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node1 = fix.pool().nodes().front();
+    fix.step(node1, fn_type::connect);
+    task1.wait(node1, false);
+    fix.pool().return_connection(node1, false);
+    fix.wait_for_status(node1, node_status::idle);
+
+    // idle_timeout elapses. The connection starts closing
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.wait_for_status(node1, node_status::close_in_progress);
+
+    // A request arrives while the connection is closing. A new connection is created
+    // right away, without waiting for the close to finish
+    auto task2 = fix.create_task();
+    fix.wait_for_num_nodes(2);
+    auto& node2 = fix.pool().nodes().back();
+    fix.step(node2, fn_type::connect);
+    task2.wait(node2, false);
+
+    // Once the close finishes, the closed connection is removed
+    fix.step(node1, fn_type::close);
+    fix.wait_for_num_nodes(1);
+    BOOST_TEST(&fix.pool().nodes().front() == &node2);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_surplus)
+{
+    // Setup. idle_timeout == ping_interval, so connections close on their first wake-up
+    pool_params params;
+    params.initial_size = 1;
+    params.max_size = 3;
+    params.ping_interval = std::chrono::seconds(100);
+    params.idle_timeout = std::chrono::seconds(100);
+    fixture fix(std::move(params));
+
+    // Three requests create three connections, which are handed to the user
+    auto task1 = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node1 = fix.pool().nodes().front();
+    fix.step(node1, fn_type::connect);
+    task1.wait(node1, false);
+
+    auto task2 = fix.create_task();
+    fix.wait_for_num_nodes(2);
+    auto& node2 = fix.pool().nodes().back();
+    fix.step(node2, fn_type::connect);
+    task2.wait(node2, false);
+
+    auto task3 = fix.create_task();
+    fix.wait_for_num_nodes(3);
+    auto& node3 = fix.pool().nodes().back();
+    fix.step(node3, fn_type::connect);
+    task3.wait(node3, false);
+
+    // The connections are returned one second apart, so their wake-ups are ordered
+    fix.pool().return_connection(node1, false);
+    fix.wait_for_status(node1, node_status::idle);
+    mock_clock::advance_time_by(std::chrono::seconds(1));
+    fix.pool().return_connection(node2, false);
+    fix.wait_for_status(node2, node_status::idle);
+    mock_clock::advance_time_by(std::chrono::seconds(1));
+    fix.pool().return_connection(node3, false);
+    fix.wait_for_status(node3, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 3);
+
+    // idle_timeout elapses for the first connection. The pool has more connections
+    // than initial_size, so it closes
+    mock_clock::advance_time_by(std::chrono::seconds(98));
+    fix.wait_for_status(node1, node_status::close_in_progress);
+    fix.check_shared_st(diagnostics(), 0, 2);
+
+    // Same for the second one: the first one is still closing, but it no longer counts
+    mock_clock::advance_time_by(std::chrono::seconds(1));
+    fix.wait_for_status(node2, node_status::close_in_progress);
+    fix.check_shared_st(diagnostics(), 0, 1);
+
+    // The third one is required by initial_size, so it pings instead
+    mock_clock::advance_time_by(std::chrono::seconds(1));
+    fix.wait_for_status(node3, node_status::ping_in_progress);
+    fix.check_shared_st(diagnostics(), 1, 0);
+
+    // The closed connections are removed from the pool. The remaining one goes back to idle
+    fix.step(node1, fn_type::close);
+    fix.step(node2, fn_type::close);
+    fix.wait_for_num_nodes(1);
+    fix.step(node3, fn_type::ping);
+    fix.wait_for_status(node3, node_status::idle);
+    fix.check_shared_st(diagnostics(), 0, 1);
+    BOOST_TEST(fix.pool().shared_state().num_closing_connections == 0u);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_close_timeout)
+{
+    // Setup. With initial_size = 0, any idle connection is surplus
+    pool_params params;
+    params.initial_size = 0;
+    params.ping_interval = std::chrono::seconds(100);
+    params.idle_timeout = std::chrono::seconds(100);
+    params.close_timeout = std::chrono::seconds(2);
+    fixture fix(std::move(params));
+
+    // A request creates a connection, which is handed to the user and returned
+    auto task = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+    task.wait(node, false);
+    fix.pool().return_connection(node, false);
+    fix.wait_for_status(node, node_status::idle);
+
+    // idle_timeout elapses. The connection starts closing
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.wait_for_status(node, node_status::close_in_progress);
+
+    // The close times out. The connection is removed from the pool anyway
+    mock_clock::advance_time_by(std::chrono::seconds(2));
+    fix.wait_for_num_nodes(0);
+    fix.check_shared_st(diagnostics(), 0, 0);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_cancel_while_closing)
+{
+    // Setup. With initial_size = 0, any idle connection is surplus
+    pool_params params;
+    params.initial_size = 0;
+    params.ping_interval = std::chrono::seconds(100);
+    params.idle_timeout = std::chrono::seconds(100);
+    fixture fix(std::move(params));
+
+    // A request creates a connection, which is handed to the user and returned
+    auto task = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+    task.wait(node, false);
+    fix.pool().return_connection(node, false);
+    fix.wait_for_status(node, node_status::idle);
+
+    // idle_timeout elapses. The connection starts closing
+    mock_clock::advance_time_by(std::chrono::seconds(100));
+    fix.wait_for_status(node, node_status::close_in_progress);
+
+    // The pool is cancelled while the connection is closing. The close is interrupted
+    // and run finishes. The node was never handed to the user, so it's removed
+    fix.pool().cancel();
+    poll_until(fix.ctx, [&]() { return fix.run_finished(); });
+    BOOST_TEST(fix.pool().nodes().size() == 0u);
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_idle_timeout_and_pings_disabled)
+{
+    // Setup. With initial_size = 0, any idle connection would be surplus
+    pool_params params;
+    params.initial_size = 0;
+    params.ping_interval = std::chrono::seconds(0);
+    params.idle_timeout = std::chrono::seconds(0);
+    fixture fix(std::move(params));
+
+    // A request creates a connection, which is handed to the user and returned
+    auto task = fix.create_task();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+    task.wait(node, false);
+    fix.pool().return_connection(node, false);
+    fix.wait_for_status(node, node_status::idle);
+
+    // The connection is neither pinged nor closed, regardless of how much time we wait
+    mock_clock::advance_time_by(std::chrono::hours(9999));
+    fix.check_status_after_polling(node, node_status::idle);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -1399,6 +1803,69 @@ BOOST_FIXTURE_TEST_CASE(run_bound_signal, io_context_fixture)
     pool->cancel();
 
     // Finish successfully
+    poll_until(ctx, &run_finished);
+}
+
+// Once all connections have exited (initial_size = 0 and idle_timeout), async_run
+// must still wait for connections created afterwards when the pool is cancelled
+BOOST_FIXTURE_TEST_CASE(run_waits_for_connections_created_after_all_exited, io_context_fixture)
+{
+    // Setup. connect_timeout = 0, so cancelling the pool doesn't interrupt the mocked connect
+    pool_params params;
+    params.initial_size = 0;
+    params.connect_timeout = std::chrono::seconds(0);
+    params.ping_interval = std::chrono::seconds(1);
+    params.idle_timeout = std::chrono::seconds(1);
+    auto pool = create_mock_pool(ctx, std::move(params));
+    bool run_finished = false;
+    pool->async_run([&run_finished](error_code ec) {
+        run_finished = true;
+        BOOST_TEST(ec == error_code());
+    });
+
+    // A connection is created on demand, returned, and closed for being idle
+    get_connection_task task1(*pool, nullptr);
+    poll_until(ctx, [&]() { return pool->nodes().size() == 1u; });
+    auto& node1 = pool->nodes().front();
+    node1.connection().step(fn_type::connect, as_netresult).validate_no_error_nodiag();
+    task1.wait(node1, false);
+    pool->return_connection(node1, false);
+    poll_until(ctx, [&]() { return node1.status() == node_status::idle; });
+    mock_clock::advance_time_by(std::chrono::seconds(1));
+    node1.connection().step(fn_type::close, as_netresult).validate_no_error_nodiag();
+    poll_until(ctx, [&]() { return pool->nodes().empty(); });
+
+    // Another connection is created on demand. The pool is cancelled while it connects
+    get_connection_task task2(*pool, nullptr);
+    poll_until(ctx, [&]() { return pool->nodes().size() == 1u; });
+    auto& node2 = pool->nodes().front();
+    pool->cancel();
+    task2.wait(client_errc::pool_cancelled, false);
+
+    // run doesn't finish until the connection task exits
+    poll_ready_handlers(ctx);
+    BOOST_TEST(!run_finished);
+    node2.connection().step(fn_type::connect, as_netresult).validate_no_error_nodiag();
+    poll_until(ctx, &run_finished);
+}
+
+// Cancelling a pool that never created a connection (initial_size = 0) completes async_run
+BOOST_FIXTURE_TEST_CASE(run_cancel_without_connections, io_context_fixture)
+{
+    // Create a pool that only creates connections on demand
+    pool_params params;
+    params.initial_size = 0;
+    auto pool = create_mock_pool(ctx, std::move(params));
+
+    // Run
+    bool run_finished = false;
+    pool->async_run([&run_finished](error_code ec) {
+        run_finished = true;
+        BOOST_TEST(ec == error_code());
+    });
+
+    // Cancel. There are no connections to wait for, so run finishes
+    pool->cancel();
     poll_until(ctx, &run_finished);
 }
 

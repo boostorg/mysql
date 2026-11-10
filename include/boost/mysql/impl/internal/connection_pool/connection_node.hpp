@@ -24,12 +24,14 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/asio/cancel_after.hpp>
+#include <boost/asio/cancel_at.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/list_hook.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <utility>
 #include <vector>
@@ -63,16 +65,27 @@ struct conn_shared_state
     // The number of running connections, to track when they exit
     std::size_t num_running_connections{0};
 
-    // Timer acting as a condition variable to wait for all connections to exit
+    // The number of connections closing because they were idle for too long, until they're
+    // removed from the pool. They will never be handed out again, so they don't count
+    // towards the pool size, neither when creating connections nor when closing more.
+    std::size_t num_closing_connections{0};
+
+    // Timer acting as a condition variable to wait for all connections to exit.
+    // Expired while no connection is running
     asio::basic_waitable_timer<ClockType> conns_finished_cv;
 
     conn_shared_state(asio::any_io_executor ex)
         : idle_connections_cv(ex, (ClockType::time_point::max)()),
-          conns_finished_cv(std::move(ex), (ClockType::time_point::max)())
+          conns_finished_cv(std::move(ex), (ClockType::time_point::min)())
     {
     }
 
-    void on_connection_start() { ++num_running_connections; }
+    void on_connection_start()
+    {
+        // Re-arm the latch, so async_run waits for this connection, too
+        if (num_running_connections++ == 0u)
+            conns_finished_cv.expires_at((ClockType::time_point::max)());
+    }
 
     void on_connection_finish()
     {
@@ -89,6 +102,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
 {
     using this_type = basic_connection_node<ConnectionType, ClockType>;
     using timer_type = asio::basic_waitable_timer<ClockType>;
+    using time_point = typename ClockType::time_point;
 
     // Not thread-safe
     const internal_pool_params* params_;
@@ -99,6 +113,8 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
     std::vector<stage_response> reset_pipeline_res_;
+    time_point close_deadline_{};  // When to close the connection if it's still idle and no longer needed
+    time_point ping_deadline_{};   // When the next ping is due
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -107,12 +123,54 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     friend class sansio_connection_node<this_type>;
     void entering_idle()
     {
+        auto now = ClockType::now();
+
+        // status() still holds the status we're leaving. Pings don't restart the idle period,
+        // otherwise an idle_timeout longer than ping_interval could never elapse
+        if (this->status() != node_status::ping_in_progress)
+            close_deadline_ = deadline_after(now, params_->idle_timeout);
+        ping_deadline_ = deadline_after(now, params_->ping_interval);
+
         shared_st_->idle_list.push_back(*this);
         shared_st_->idle_connections_cv.cancel_one();
     }
     void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
+    void entering_closing() { ++shared_st_->num_closing_connections; }
+
+    // now + interval, or never if the interval is zero (disabled). pool_params accepts
+    // duration::max, so the addition saturates instead of overflowing
+    static time_point deadline_after(time_point now, std::chrono::steady_clock::duration interval)
+    {
+        bool never = interval.count() == 0 ||
+                     now.time_since_epoch() >= (time_point::duration::max)() - interval;
+        return never ? (time_point::max)() : now + interval;
+    }
+
+    // Connections already closing are discounted, so simultaneous checks
+    // can't shrink the pool below initial_size
+    bool should_close_idle() const
+    {
+        return shared_st_->num_running_connections - shared_st_->num_closing_connections >
+                   params_->initial_size &&
+               ClockType::now() >= close_deadline_;
+    }
+
+    bool should_ping() const { return ClockType::now() >= ping_deadline_; }
+
+    // When the idle wait should end. An idle connection wakes up when a ping is due, or when
+    // idle_timeout elapses if that comes first. Once the close deadline has passed, and the
+    // connection was kept because of initial_size, only pings wake it up: waiting for a past
+    // deadline would spin. A connection in use only waits for the collection notification, but
+    // wakes up every hour just in case it was lost (see return_connection)
+    time_point wait_deadline() const
+    {
+        auto now = ClockType::now();
+        if (this->status() != node_status::idle)
+            return now + std::chrono::hours(1);
+        return close_deadline_ > now ? (std::min)(ping_deadline_, close_deadline_) : ping_deadline_;
+    }
 
     // Helpers
     void propagate_connect_diag(error_code ec)
@@ -198,9 +256,15 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 );
                 break;
             case next_connection_action::idle_wait:
+                // Wait for a collection notification, or until wait_deadline() wakes us up
+                node_.collection_timer_.async_wait(
+                    asio::cancel_at(node_.timer_, node_.wait_deadline(), std::move(self))
+                );
+                break;
+            case next_connection_action::close:
                 node_.run_with_timeout(
-                    node_.collection_timer_.async_wait(asio::deferred),
-                    node_.params_->ping_interval,
+                    node_.conn_.async_close(asio::deferred),
+                    node_.params_->close_timeout,
                     self
                 );
                 break;
@@ -224,7 +288,7 @@ public:
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
           timer_(pool_ex),
-          collection_timer_(pool_ex, (std::chrono::steady_clock::time_point::max)())
+          collection_timer_(pool_ex, (ClockType::time_point::max)())
     {
     }
 

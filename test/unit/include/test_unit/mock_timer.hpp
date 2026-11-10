@@ -23,7 +23,8 @@ struct mock_clock
     using rep = typename std::chrono::steady_clock::rep;
     using period = typename std::chrono::steady_clock::period;
     using duration = typename std::chrono::steady_clock::duration;
-    using time_point = typename std::chrono::steady_clock::time_point;
+    // A time point of its own, so asio::cancel_at can deduce the clock
+    using time_point = std::chrono::time_point<mock_clock, duration>;
     static constexpr bool is_steady = true;
     static time_point now();
     static void advance_time_by(std::chrono::steady_clock::duration dur);
@@ -50,7 +51,7 @@ struct wait_traits<mysql::test::mock_clock>
         return std::chrono::nanoseconds(0);
     }
 
-    static std::chrono::steady_clock::duration to_wait_duration(std::chrono::steady_clock::time_point)
+    static std::chrono::steady_clock::duration to_wait_duration(mysql::test::mock_clock::time_point)
     {
         return std::chrono::nanoseconds(0);
     }

@@ -241,7 +241,8 @@ struct pool_params
      * If a connection becomes idle and hasn't been handed to the user for
      * `ping_interval`, a health-check will be performed (using \ref any_connection::async_ping).
      * Pings will be sent with a periodicity of `ping_interval` until the connection
-     * is handed to the user, or a ping fails.
+     * is handed to the user, a ping fails, or the connection is closed because of
+     * \ref idle_timeout.
      *
      * Health checks serve two purposes:
      *
@@ -273,6 +274,31 @@ struct pool_params
      * This value must not be negative.
      */
     std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
+
+    /**
+     * \brief The time a connection may stay idle before being closed.
+     * \details
+     * If a connection stays idle for at least this value, and the pool has more
+     * than \ref initial_size connections (in any state), the connection is closed
+     * and removed from the pool. The pool never shrinks below \ref initial_size connections.
+     * \n
+     * Set this value to zero (the default) to never close idle connections.
+     * \n
+     * This value must not be negative.
+     */
+    std::chrono::steady_clock::duration idle_timeout{};
+
+    /**
+     * \brief The timeout to use when closing connections because of \ref idle_timeout.
+     * \details
+     * If closing a connection (as per \ref any_connection::async_close) takes longer
+     * than this timeout, the close is cancelled. The connection is removed from the pool anyway.
+     * \n
+     * Set this timeout to zero to disable it.
+     * \n
+     * This value must not be negative.
+     */
+    std::chrono::steady_clock::duration close_timeout{std::chrono::seconds(10)};
 
     /**
      * \brief Enables or disables thread-safety.
