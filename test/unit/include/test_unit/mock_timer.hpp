@@ -50,6 +50,11 @@ struct wait_traits<mysql::test::mock_clock>
     {
         return std::chrono::nanoseconds(0);
     }
+
+    static std::chrono::steady_clock::duration to_wait_duration(mysql::test::mock_clock::time_point)
+    {
+        return std::chrono::nanoseconds(0);
+    }
 };
 
 }  // namespace asio
