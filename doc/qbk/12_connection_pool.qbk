@@ -63,8 +63,7 @@ The resizing algorithm works like this:
   [refmem connection_pool async_get_connection] waits for a connection to become available.
 * By default, connections are never removed from the pool. If [refmem pool_params idle_timeout]
   is set to a non-zero value, connections that have been idle for at least this value are closed
-  and removed, as long as the pool has more than `initial_size` connections. The most recently returned
-  connection is handed out first, so connections that aren't needed stay idle and get closed.
+  and removed, as long as the pool has more than `initial_size` connections.
 
 By default, [refmem pool_params max_size] is 151, which is
 MySQL's default value for the [mysqllink server-system-variables.html#sysvar_max_connections `max_connections`]

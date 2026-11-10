@@ -160,9 +160,7 @@ class basic_pool_impl
     {
         if (!shared_st_.idle_list.empty())
         {
-            // Hand out the most recently returned connection. Under light load, the
-            // others stay idle, so idle_timeout can shrink the pool to what's being used
-            node_type& res = shared_st_.idle_list.back();
+            node_type& res = shared_st_.idle_list.front();
             res.mark_as_in_use();
             return &res;
         }

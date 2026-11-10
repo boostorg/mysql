@@ -1674,46 +1674,6 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
-BOOST_AUTO_TEST_CASE(get_connection_most_recently_returned_first)
-{
-    // Setup. The hand-out order matters when idle_timeout is set
-    pool_params params;
-    params.initial_size = 0;
-    params.max_size = 2;
-    params.ping_interval = std::chrono::seconds(100);
-    params.idle_timeout = std::chrono::seconds(300);
-    fixture fix(std::move(params));
-
-    // Two requests create two connections, which are handed to the user
-    auto task1 = fix.create_task();
-    fix.wait_for_num_nodes(1);
-    auto& node1 = fix.pool().nodes().front();
-    fix.step(node1, fn_type::connect);
-    task1.wait(node1, false);
-
-    auto task2 = fix.create_task();
-    fix.wait_for_num_nodes(2);
-    auto& node2 = fix.pool().nodes().back();
-    fix.step(node2, fn_type::connect);
-    task2.wait(node2, false);
-
-    // Both are returned, the second one last
-    fix.pool().return_connection(node1, false);
-    fix.wait_for_status(node1, node_status::idle);
-    mock_clock::advance_time_by(std::chrono::seconds(1));
-    fix.pool().return_connection(node2, false);
-    fix.wait_for_status(node2, node_status::idle);
-
-    // The first one pings. This doesn't make it the most recently returned
-    mock_clock::advance_time_by(std::chrono::seconds(99));
-    fix.step(node1, fn_type::ping);
-    fix.wait_for_status(node1, node_status::idle);
-
-    // A new request gets the most recently returned connection
-    fix.create_task().wait(node2, true);
-    BOOST_TEST(node1.status() == node_status::idle);
-}
-
 BOOST_AUTO_TEST_CASE(get_connection_supports_cancel_type)
 {
     using ct = asio::cancellation_type_t;
