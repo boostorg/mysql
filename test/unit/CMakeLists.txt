@@ -58,6 +58,7 @@ add_executable(
     test/execution_processor/static_results_impl.cpp
 
     test/connection_pool/sansio_connection_node.cpp
+    test/connection_pool/idle_connection_list.cpp
     test/connection_pool/connection_pool_impl.cpp
 
     test/detail/datetime.cpp
