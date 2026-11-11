@@ -18,6 +18,7 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
+#include <boost/mysql/impl/internal/connection_pool/idle_connection_list.hpp>
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 
@@ -28,8 +29,6 @@
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/intrusive/list.hpp>
-#include <boost/intrusive/list_hook.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -44,8 +43,9 @@ namespace detail {
 template <class ConnectionType, class ClockType>
 struct conn_shared_state
 {
-    // The list of connections that are currently idle. Non-owning.
-    intrusive::list<basic_connection_node<ConnectionType, ClockType>> idle_list;
+    // The list of connections that are currently idle, ordered by the time
+    // they were returned. Non-owning.
+    idle_connection_list<basic_connection_node<ConnectionType, ClockType>> idle_list;
 
     // Timer acting as a condition variable to wait for idle connections
     asio::basic_waitable_timer<ClockType> idle_connections_cv;
@@ -97,7 +97,7 @@ struct conn_shared_state
 // The templated type is never exposed to the user. We template
 // so tests can inject mocks.
 template <class ConnectionType, class ClockType>
-class basic_connection_node : public intrusive::list_base_hook<>,
+class basic_connection_node : public idle_list_hook,
                               public sansio_connection_node<basic_connection_node<ConnectionType, ClockType>>
 {
     using this_type = basic_connection_node<ConnectionType, ClockType>;
@@ -124,17 +124,24 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     void entering_idle()
     {
         auto now = ClockType::now();
-
-        // status() still holds the status we're leaving. Pings don't restart the idle period,
-        // otherwise an idle_timeout longer than ping_interval could never elapse
-        if (this->status() != node_status::ping_in_progress)
-            close_deadline_ = deadline_after(now, params_->idle_timeout);
         ping_deadline_ = deadline_after(now, params_->ping_interval);
 
-        shared_st_->idle_list.push_back(*this);
+        // status() still holds the status we're leaving. Pings don't restart the idle period,
+        // otherwise an idle_timeout longer than ping_interval could never elapse. For the same
+        // reason, a pinged connection gets back to its place, instead of being handed out next
+        if (this->status() == node_status::ping_in_progress)
+        {
+            shared_st_->idle_list.restore(*this);
+        }
+        else
+        {
+            close_deadline_ = deadline_after(now, params_->idle_timeout);
+            shared_st_->idle_list.push_back(*this);
+        }
+
         shared_st_->idle_connections_cv.cancel_one();
     }
-    void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
+    void exiting_idle() { shared_st_->idle_list.erase(*this); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
     void entering_closing() { ++shared_st_->num_closing_connections; }
