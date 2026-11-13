@@ -140,12 +140,8 @@ struct connection_state_data
     template <class Serializable>
     next_action write(const Serializable& msg, std::uint8_t& seqnum)
     {
-        // Check if there is data that have been read but not yet parsed.
-        // If reading is failed with client_errc::max_buffer_size_exceeded,
-        // we still need to be able write requests (as quit connection),
-        // so we just ignore unproccesed data.
-        BOOST_ASSERT(reader.done() || write_buffer.pending_size() == 0
-                     || reader.max_buffer_size_exceeded());
+        // Check if there is data that have been read but not yet parsed
+        BOOST_ASSERT(reader.done() || write_buffer.pending_size() == 0);
         // use_ssl is attached by top_level_algo
         write_buffer.clear();
         auto res = serialize_top_level(msg, write_buffer, seqnum, max_buffer_size());

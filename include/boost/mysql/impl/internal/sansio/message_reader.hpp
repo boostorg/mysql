@@ -68,8 +68,6 @@ public:
     // Is parsing the current message done?
     bool done() const { return state_.resume_point == -1; }
 
-    bool max_buffer_size_exceeded() { return buffer_.exceeds_max_size(state_.required_size); }
-
     // Returns any errors generated during parsing. Requires this->done()
     error_code error() const
     {
@@ -107,7 +105,10 @@ public:
         }
         auto ec = buffer_.grow_to_fit(state_.required_size);
         if (ec)
+        {
+            buffer_.reset();
             return ec;
+        }
         state_.required_size = 0;
         return error_code();
     }

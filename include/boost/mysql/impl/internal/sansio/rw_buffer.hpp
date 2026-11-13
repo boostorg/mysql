@@ -197,8 +197,6 @@ public:
         }
     }
 
-    inline bool exceeds_max_size(std::size_t n) { return n > max_size_; }
-
     // Makes sure the free size is at least n bytes long; resizes the buffer if required
     // Buffer grows to power of two, unless limited by max_size
     BOOST_ATTRIBUTE_NODISCARD
@@ -211,7 +209,7 @@ public:
             if (new_size > max_size_)
             {
                 new_size = required_size;
-                if (exceeds_max_size(new_size))
+                if (new_size > max_size_)
                     return client_errc::max_buffer_size_exceeded;
             }
             buffer_.resize(new_size);
