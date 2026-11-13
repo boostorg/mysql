@@ -813,12 +813,12 @@ BOOST_AUTO_TEST_CASE(resize_grows_to_power_of_two)
 BOOST_AUTO_TEST_CASE(resize_respects_max_size)
 {
     // Requesting up to max_size is fine
-    rw_buffer buff(4, 8);
+    rw_buffer buff(4, 12);
     stability_checker checker(buff);
 
-    buff.resize(8);
-    BOOST_TEST(buff.size() == 8u);
-    BOOST_TEST(buff.capacity() == 8u);
+    buff.resize(12);
+    BOOST_TEST(buff.size() == 12u);
+    BOOST_TEST(buff.capacity() == 12u);
     checker.check_reallocation();
 }
 
