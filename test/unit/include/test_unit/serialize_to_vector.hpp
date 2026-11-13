@@ -26,12 +26,9 @@ template <class Fn>
 std::vector<std::uint8_t> serialize_to_vector(const Fn& serialize_fn)
 {
     std::vector<std::uint8_t> buff;
-    detail::buffer_writer writer{buff};
-    detail::serialization_context ctx(writer, static_cast<std::size_t>(-1), detail::disable_framing);
+    detail::serialization_context ctx(buff, static_cast<std::size_t>(-1), detail::disable_framing);
     serialize_fn(ctx);
     BOOST_TEST(ctx.error() == error_code());
-    // Strip vector size to actual size
-    buff.resize(writer.size());
     return buff;
 }
 

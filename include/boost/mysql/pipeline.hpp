@@ -22,8 +22,6 @@
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
-#include <boost/mysql/impl/internal/sansio/buffer_writer.hpp>
-
 #include <boost/assert.hpp>
 #include <boost/core/span.hpp>
 #include <boost/variant2/variant.hpp>
@@ -263,10 +261,7 @@ class pipeline_request
 #ifndef BOOST_MYSQL_DOXYGEN
     struct impl_t
     {
-    private:
-        std::unique_ptr<std::vector<std::uint8_t>> buffer_{new std::vector<std::uint8_t>()};
-    public:
-        detail::buffer_writer write_buffer_{*buffer_};
+        std::vector<std::uint8_t> buffer_;
         std::vector<detail::pipeline_request_stage> stages_;
     } impl_;
 
@@ -427,7 +422,7 @@ public:
      */
     void clear() noexcept
     {
-        impl_.write_buffer_.clear();
+        impl_.buffer_.clear();
         impl_.stages_.clear();
     }
 };

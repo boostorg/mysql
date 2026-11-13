@@ -32,19 +32,22 @@ namespace detail {
 // quit
 struct quit_command
 {
-    void serialize(serialization_context& ctx) const { ctx.add(0x01); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.add(0x01); }
 };
 
 // ping
 struct ping_command
 {
-    void serialize(serialization_context& ctx) const { ctx.add(0x0e); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.add(0x0e); }
 };
 
 // reset_connection
 struct reset_connection_command
 {
-    void serialize(serialization_context& ctx) const { ctx.add(0x1f); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.add(0x1f); }
 };
 
 // query
@@ -52,7 +55,8 @@ struct query_command
 {
     string_view query;
 
-    void serialize(serialization_context& ctx) const
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const
     {
         ctx.add(0x03);
         string_eof{query}.serialize(ctx);
@@ -64,7 +68,8 @@ struct prepare_stmt_command
 {
     string_view stmt;
 
-    void serialize(serialization_context& ctx) const
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const
     {
         ctx.add(0x16);
         string_eof{stmt}.serialize(ctx);
@@ -77,14 +82,16 @@ struct execute_stmt_command
     std::uint32_t statement_id;
     span<const field_view> params;
 
-    inline void serialize(serialization_context& ctx) const;
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const;
 };
 
 // close statement
 struct close_stmt_command
 {
     std::uint32_t statement_id;
-    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(int1{0x19}, int4{statement_id}); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.serialize_fixed(int1{0x19}, int4{statement_id}); }
 };
 
 // Login request
@@ -98,7 +105,8 @@ struct login_request
     string_view database;
     string_view auth_plugin_name;
 
-    inline void serialize(serialization_context& ctx) const;
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const;
 };
 
 // SSL request
@@ -108,7 +116,8 @@ struct ssl_request
     std::uint32_t max_packet_size;
     std::uint32_t collation_id;
 
-    inline void serialize(serialization_context& ctx) const;
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const;
 };
 
 // Auth switch response
@@ -116,7 +125,8 @@ struct auth_switch_response
 {
     span<const std::uint8_t> auth_plugin_data;
 
-    void serialize(serialization_context& ctx) const { ctx.add(auth_plugin_data); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.add(auth_plugin_data); }
 };
 
 // The result of serialize_top_level (similar to system::result,
@@ -131,10 +141,10 @@ struct serialize_top_level_result
 };
 
 // Serialize a complete message. May fail
-template <class Serializable>
+template <class Serializable, class Buffer>
 inline serialize_top_level_result serialize_top_level(
     const Serializable& input,
-    buffer_writer& to,
+    Buffer& to,
     std::uint8_t seqnum = 0,
     std::size_t max_buffer_size = static_cast<std::size_t>(-1),
     std::size_t max_frame_size = max_packet_size
@@ -150,10 +160,10 @@ inline serialize_top_level_result serialize_top_level(
 }
 
 // Same, but for cases that can't fail. Does not enforce any limit on buffer size
-template <class Serializable>
+template <class Serializable, class Buffer>
 inline std::uint8_t serialize_top_level_checked(
     const Serializable& input,
-    buffer_writer& to,
+    Buffer& to,
     std::uint8_t seqnum = 0,
     std::size_t max_frame_size = max_packet_size
 )
@@ -204,7 +214,8 @@ inline std::uint8_t get_collation_first_byte(std::uint32_t collation_id)
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::detail::execute_stmt_command::serialize(serialization_context& ctx) const
+template <class SerializationContext>
+void boost::mysql::detail::execute_stmt_command::serialize(SerializationContext& ctx) const
 {
     // The wire layout is as follows:
     //  command ID
@@ -257,7 +268,8 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
     }
 }
 
-void boost::mysql::detail::login_request::serialize(serialization_context& ctx) const
+template <class SerializationContext>
+void boost::mysql::detail::login_request::serialize(SerializationContext& ctx) const
 {
     ctx.serialize_fixed(
         int4{static_cast<std::uint32_t>(negotiated_capabilities)},  // client_flag
@@ -276,7 +288,8 @@ void boost::mysql::detail::login_request::serialize(serialization_context& ctx) 
     string_null{auth_plugin_name}.serialize(ctx);  //  client_plugin_name
 }
 
-void boost::mysql::detail::ssl_request::serialize(serialization_context& ctx) const
+template <class SerializationContext>
+void boost::mysql::detail::ssl_request::serialize(SerializationContext& ctx) const
 {
     ctx.serialize_fixed(
         int4{static_cast<std::uint32_t>(negotiated_capabilities)},  // client_flag
