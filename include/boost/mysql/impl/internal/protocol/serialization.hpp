@@ -151,7 +151,7 @@ inline serialize_top_level_result serialize_top_level(
 )
 {
     std::size_t initial_offset = to.size();
-    serialization_context ctx(to, max_buffer_size, max_frame_size);
+    serialization_context<Buffer> ctx(to, max_buffer_size, max_frame_size);
     input.serialize(ctx);
     auto err = ctx.error();
     if (err)

@@ -26,6 +26,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Ignore false positive on GCC 15+
+#if defined(BOOST_GCC) && BOOST_GCC >= 150000
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
 // Custom buffer type optimized for read/write operations performed in the MySQL protocol.
 // The buffer is a single, resizable chunk of memory with four areas:
 //   - Reserved area: messages that have already been read but are kept alive,
@@ -192,6 +197,8 @@ public:
         }
     }
 
+    inline bool exceeds_max_size(std::size_t n) { return n > max_size_; }
+
     // Makes sure the free size is at least n bytes long; resizes the buffer if required
     // Buffer grows to power of two, unless limited by max_size
     BOOST_ATTRIBUTE_NODISCARD
@@ -204,7 +211,7 @@ public:
             if (new_size > max_size_)
             {
                 new_size = required_size;
-                if (new_size > max_size_)
+                if (exceeds_max_size(new_size))
                     return client_errc::max_buffer_size_exceeded;
             }
             buffer_.resize(new_size);
@@ -212,6 +219,9 @@ public:
         return error_code();
     }
 };
+#if defined(BOOST_GCC) && BOOST_GCC >= 150000
+#pragma GCC diagnostic pop
+#endif
 
 }  // namespace detail
 }  // namespace mysql
