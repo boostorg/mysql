@@ -76,7 +76,7 @@ public:
     {
         return create_frame(
             0,
-            serialize_to_vector([this](detail::serialization_context& ctx) {
+            serialize_to_vector([this](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
                 using namespace detail;
 
                 // Auth plugin data is separated in two parts
@@ -175,7 +175,8 @@ public:
 
     std::vector<std::uint8_t> build() const
     {
-        auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
+        auto body = serialize_to_vector([this](
+            detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
             ctx.serialize(
                 detail::login_request{
                     caps_,
@@ -194,7 +195,7 @@ public:
 
 inline std::vector<std::uint8_t> create_ssl_request()
 {
-    const auto body = serialize_to_vector([](detail::serialization_context& ctx) {
+    const auto body = serialize_to_vector([](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
         constexpr std::uint32_t collation_id = 45;  // utf8_general_ci
         detail::ssl_request req{tls_caps, detail::max_packet_size, collation_id};
         req.serialize(ctx);
@@ -208,7 +209,8 @@ inline std::vector<std::uint8_t> create_auth_switch_frame(
     boost::span<const std::uint8_t> data
 )
 {
-    return create_frame(seqnum, serialize_to_vector([=](detail::serialization_context& ctx) {
+    return create_frame(seqnum, serialize_to_vector(
+                            [=](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
                             ctx.add(0xfe);  // auth switch header
                             detail::string_null{plugin_name}.serialize(ctx);
                             ctx.add(data);
@@ -221,7 +223,8 @@ inline std::vector<std::uint8_t> create_more_data_frame(
     boost::span<const std::uint8_t> data
 )
 {
-    return create_frame(seqnum, serialize_to_vector([=](detail::serialization_context& ctx) {
+    return create_frame(seqnum, serialize_to_vector([=](
+                            detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
                             ctx.add(0x01);  // more data header
                             ctx.add(data);
                         }));

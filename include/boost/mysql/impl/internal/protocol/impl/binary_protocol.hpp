@@ -35,7 +35,8 @@ inline deserialize_errc deserialize_binary_field(
     field_view& output
 );
 
-inline void serialize_binary_field(serialization_context& ctx, field_view input);
+template <class SerializationContext>
+void serialize_binary_field(SerializationContext& ctx, field_view input);
 
 }  // namespace detail
 }  // namespace mysql
@@ -316,15 +317,16 @@ inline deserialize_errc deserialize_binary_field_time(deserialization_context& c
 //
 // Serialization
 //
-template <class T>
-inline void serialize_binary_float(serialization_context& ctx, T input)
+template <class T, class SerializationContext>
+void serialize_binary_float(SerializationContext& ctx, T input)
 {
     std::array<std::uint8_t, sizeof(T)> buffer{};
     boost::endian::endian_store<T, sizeof(T), boost::endian::order::little>(buffer.data(), input);
     ctx.add(buffer);
 }
 
-inline void serialize_binary_date(serialization_context& ctx, const date& input)
+template <class SerializationContext>
+void serialize_binary_date(SerializationContext& ctx, const date& input)
 {
     ctx.serialize_fixed(
         int1{static_cast<std::uint8_t>(binc::date_sz)},
@@ -334,7 +336,8 @@ inline void serialize_binary_date(serialization_context& ctx, const date& input)
     );
 }
 
-inline void serialize_binary_datetime(serialization_context& ctx, const datetime& input)
+template <class SerializationContext>
+void serialize_binary_datetime(SerializationContext& ctx, const datetime& input)
 {
     ctx.serialize_fixed(
         int1{static_cast<std::uint8_t>(binc::datetime_dhmsu_sz)},
@@ -348,7 +351,8 @@ inline void serialize_binary_datetime(serialization_context& ctx, const datetime
     );
 }
 
-inline void serialize_binary_time(serialization_context& ctx, const boost::mysql::time& input)
+template <class SerializationContext>
+void serialize_binary_time(SerializationContext& ctx, const boost::mysql::time& input)
 {
     using namespace binc;
     using boost::mysql::days;
@@ -424,7 +428,8 @@ boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_binary_
     }
 }
 
-void boost::mysql::detail::serialize_binary_field(serialization_context& ctx, field_view input)
+template <class SerializationContext>
+void boost::mysql::detail::serialize_binary_field(SerializationContext& ctx, field_view input)
 {
     switch (input.kind())
     {

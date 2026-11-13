@@ -25,7 +25,7 @@ add_executable(
     test/protocol/serialization.cpp
     test/protocol/deserialization.cpp
 
-    test/sansio/read_buffer.cpp
+    test/sansio/rw_buffer.cpp
     test/sansio/message_reader.cpp
     test/sansio/top_level_algo.cpp
 
