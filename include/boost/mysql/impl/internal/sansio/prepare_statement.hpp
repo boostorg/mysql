@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -111,10 +111,9 @@ public:
             // Read response
             while (!(act = read_response_st_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
-            return act;
         }
 
-        return next_action();
+        return act;
     }
 
     statement result(const connection_state_data& st) const { return read_response_st_.result(st); }

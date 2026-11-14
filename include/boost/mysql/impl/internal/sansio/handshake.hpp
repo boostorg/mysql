@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -114,8 +114,8 @@ public:
             return error_code(client_errc::bad_handshake_packet_type);
         case type_t::csha2p:
             return csha2p_.resume(st, server_data, password, scramble, secure_channel, seqnum);
-        default:
-            BOOST_ASSERT(false);
+        default:  // LCOV_EXCL_LINE
+            BOOST_ASSERT(false);  // LCOV_EXCL_LINE
             return next_action(client_errc::bad_handshake_packet_type);  // LCOV_EXCL_LINE
         }
     }
