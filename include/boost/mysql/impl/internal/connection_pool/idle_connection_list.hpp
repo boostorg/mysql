@@ -45,10 +45,12 @@ class idle_list_hook : public intrusive::set_base_hook<>
 template <class T>
 class idle_connection_list
 {
-    intrusive::set<T, intrusive::compare<idle_list_hook::returned_before>> impl_;
+    intrusive::multiset<T, intrusive::compare<idle_list_hook::returned_before>> impl_;
 
     // The number for the next returned element. It has 64 bits on every platform,
-    // so it doesn't wrap in practice: pings don't increment it, only returned connections do
+    // so it doesn't wrap in practice: pings don't increment it, only returned connections do.
+    // If it did wrap, elements would be handed out in the wrong order, but the list would
+    // still be valid: it's a multiset, and no insertion assumes where the element belongs
     std::uint64_t next_return_order_{0};
 
 public:
@@ -66,14 +68,16 @@ public:
     void push_back(T& elm) noexcept
     {
         static_cast<idle_list_hook&>(elm).return_order_ = next_return_order_++;
-        impl_.push_back(elm);
+
+        // The element belongs at the end, so the hint makes this constant time
+        impl_.insert(impl_.end(), elm);
     }
 
     // Removes an element. The element remembers its place, in case it's restored
     void erase(T& elm) noexcept { impl_.erase(impl_.iterator_to(elm)); }
 
     // Puts an element that was removed with erase back in its place
-    void restore(T& elm) noexcept { BOOST_VERIFY(impl_.insert(elm).second); }
+    void restore(T& elm) noexcept { impl_.insert(elm); }
 };
 
 }  // namespace detail
