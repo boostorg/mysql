@@ -16,6 +16,9 @@ using detail::idle_list_hook;
 
 BOOST_AUTO_TEST_SUITE(test_idle_connection_list)
 
+// Tests declare the nodes before the list, so the list is destroyed first.
+// Its destructor unlinks the nodes that are still in it. A node destroyed
+// while linked would trigger an assertion
 struct mock_node : idle_list_hook
 {
     int id;
@@ -23,15 +26,13 @@ struct mock_node : idle_list_hook
     explicit mock_node(int node_id) noexcept : id(node_id) {}
 };
 
-// Removes all the elements, most recently returned first, and returns their ids
-std::vector<int> drain(idle_connection_list<mock_node>& list)
+// The ids of the elements, from the least to the most recently returned
+std::vector<int> get_ids(const idle_connection_list<mock_node>& list)
 {
     std::vector<int> res;
-    while (!list.empty())
+    for (const mock_node& node : list)
     {
-        mock_node& node = list.back();
         res.push_back(node.id);
-        list.erase(node);
     }
     return res;
 }
@@ -44,7 +45,7 @@ BOOST_AUTO_TEST_CASE(empty_by_default)
     BOOST_TEST(list.size() == 0u);
 }
 
-BOOST_AUTO_TEST_CASE(push_back_most_recent_first)
+BOOST_AUTO_TEST_CASE(push_back_most_recent_last)
 {
     // Setup
     mock_node node1(1), node2(2), node3(3);
@@ -59,8 +60,8 @@ BOOST_AUTO_TEST_CASE(push_back_most_recent_first)
     BOOST_TEST(!list.empty());
     BOOST_TEST(list.size() == 3u);
     BOOST_TEST(list.back().id == 3);
-    const std::vector<int> expected{3, 2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    const std::vector<int> expected{1, 2, 3};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(push_back_after_erase_becomes_most_recent)
@@ -77,8 +78,9 @@ BOOST_AUTO_TEST_CASE(push_back_after_erase_becomes_most_recent)
     list.push_back(node1);
 
     // It's now the most recently returned
-    const std::vector<int> expected{1, 3, 2};
-    BOOST_TEST(drain(list) == expected, per_element());
+    BOOST_TEST(list.back().id == 1);
+    const std::vector<int> expected{2, 3, 1};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(erase_most_recent)
@@ -95,8 +97,9 @@ BOOST_AUTO_TEST_CASE(erase_most_recent)
 
     // The one returned before it becomes the most recently returned
     BOOST_TEST(list.size() == 2u);
-    const std::vector<int> expected{2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    BOOST_TEST(list.back().id == 2);
+    const std::vector<int> expected{1, 2};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(erase_middle)
@@ -113,8 +116,8 @@ BOOST_AUTO_TEST_CASE(erase_middle)
 
     // The others keep their order
     BOOST_TEST(list.size() == 2u);
-    const std::vector<int> expected{3, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    const std::vector<int> expected{1, 3};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 // Restoring an element puts it back in its place, wherever that is
@@ -133,8 +136,8 @@ BOOST_AUTO_TEST_CASE(restore_least_recent)
 
     // It's still the least recently returned
     BOOST_TEST(list.size() == 3u);
-    const std::vector<int> expected{3, 2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    const std::vector<int> expected{1, 2, 3};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(restore_middle)
@@ -151,8 +154,8 @@ BOOST_AUTO_TEST_CASE(restore_middle)
     list.restore(node2);
 
     // It's still in the middle
-    const std::vector<int> expected{3, 2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    const std::vector<int> expected{1, 2, 3};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(restore_most_recent)
@@ -169,8 +172,9 @@ BOOST_AUTO_TEST_CASE(restore_most_recent)
     list.restore(node3);
 
     // It's still the most recently returned
-    const std::vector<int> expected{3, 2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    BOOST_TEST(list.back().id == 3);
+    const std::vector<int> expected{1, 2, 3};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(restore_repeatedly)
@@ -189,8 +193,8 @@ BOOST_AUTO_TEST_CASE(restore_repeatedly)
     list.restore(node2);
 
     // It's still in its place
-    const std::vector<int> expected{3, 2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    const std::vector<int> expected{1, 2, 3};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(restore_after_push_back)
@@ -208,8 +212,9 @@ BOOST_AUTO_TEST_CASE(restore_after_push_back)
     list.restore(node2);
 
     // The element returned in the meanwhile is the most recently returned
-    const std::vector<int> expected{3, 2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    BOOST_TEST(list.back().id == 3);
+    const std::vector<int> expected{1, 2, 3};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(restore_after_neighbours_returned)
@@ -230,8 +235,8 @@ BOOST_AUTO_TEST_CASE(restore_after_neighbours_returned)
     list.restore(node2);
 
     // Both were returned after it
-    const std::vector<int> expected{1, 3, 2};
-    BOOST_TEST(drain(list) == expected, per_element());
+    const std::vector<int> expected{2, 3, 1};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(restore_into_empty_list)
@@ -252,7 +257,7 @@ BOOST_AUTO_TEST_CASE(restore_into_empty_list)
     // It's the only element
     BOOST_TEST(list.size() == 1u);
     const std::vector<int> expected{2};
-    BOOST_TEST(drain(list) == expected, per_element());
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(restore_several)
@@ -272,8 +277,8 @@ BOOST_AUTO_TEST_CASE(restore_several)
     list.restore(node3);
 
     // Both are in their places
-    const std::vector<int> expected{4, 3, 2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    const std::vector<int> expected{1, 2, 3, 4};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_CASE(restore_several_reverse_order)
@@ -293,8 +298,8 @@ BOOST_AUTO_TEST_CASE(restore_several_reverse_order)
     list.restore(node2);
 
     // Both are in their places
-    const std::vector<int> expected{4, 3, 2, 1};
-    BOOST_TEST(drain(list) == expected, per_element());
+    const std::vector<int> expected{1, 2, 3, 4};
+    BOOST_TEST(get_ids(list) == expected, per_element());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

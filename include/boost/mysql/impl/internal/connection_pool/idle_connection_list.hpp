@@ -45,7 +45,9 @@ class idle_list_hook : public intrusive::set_base_hook<>
 template <class T>
 class idle_connection_list
 {
-    intrusive::multiset<T, intrusive::compare<idle_list_hook::returned_before>> impl_;
+    using impl_type = intrusive::multiset<T, intrusive::compare<idle_list_hook::returned_before>>;
+
+    impl_type impl_;
 
     // The number for the next returned element. It has 64 bits on every platform,
     // so it doesn't wrap in practice: pings don't increment it, only returned connections do.
@@ -78,6 +80,10 @@ public:
 
     // Puts an element that was removed with erase back in its place
     void restore(T& elm) noexcept { impl_.insert(elm); }
+
+    // Exposed for testing. Iterates from the least to the most recently returned element
+    typename impl_type::const_iterator begin() const noexcept { return impl_.begin(); }
+    typename impl_type::const_iterator end() const noexcept { return impl_.end(); }
 };
 
 }  // namespace detail
