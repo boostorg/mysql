@@ -160,10 +160,9 @@ class basic_pool_impl
     {
         if (!shared_st_.idle_list.empty())
         {
-            // TODO: hand out the most recently returned connection instead, so idle_timeout can
-            // shrink the pool under a steady trickle of requests.
-            // See https://github.com/boostorg/mysql/issues/545
-            node_type& res = shared_st_.idle_list.front();
+            // Hand out the most recently returned connection. Under light load, the others
+            // stay idle, so idle_timeout can shrink the pool to what's being used
+            node_type& res = shared_st_.idle_list.back();
             res.mark_as_in_use();
             return &res;
         }
