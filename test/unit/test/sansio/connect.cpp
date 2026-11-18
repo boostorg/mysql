@@ -58,10 +58,6 @@ BOOST_AUTO_TEST_CASE(plaintext_success)
         .will_set_connection_id(42)
         .will_set_current_charset(utf8mb4_charset)
         .check(fix);
-
-    // Verify: handshake left the connection ready and plaintext
-    BOOST_TEST(fix.st.status == connection_status::ready);
-    BOOST_TEST(!fix.st.tls_active);
 }
 
 // A network error on the physical connect is returned directly:
@@ -77,10 +73,6 @@ BOOST_AUTO_TEST_CASE(plaintext_error_connect_network)
     algo_test()
         .expect_connect(asio::error::connection_refused)
         .check(fix, asio::error::connection_refused);
-
-    // Verify: state was not touched (fixture starts at `ready`)
-    BOOST_TEST(fix.st.status == connection_status::ready);
-    BOOST_TEST(!fix.st.tls_active);
 }
 
 // A handshake error must (a) request a close on the stream and
@@ -103,10 +95,6 @@ BOOST_AUTO_TEST_CASE(plaintext_error_handshake_closes)
         .expect_close()
         .will_set_status(connection_status::not_connected)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
-
-    // Verify: handshake_algo::resume resets the connection on error
-    BOOST_TEST(fix.st.status == connection_status::not_connected);
-    BOOST_TEST(!fix.st.tls_active);
 }
 
 // A close request that itself fails must not mask the handshake error:
@@ -136,13 +124,8 @@ BOOST_AUTO_TEST_CASE(plaintext_error_handshake_close_also_fails)
 BOOST_AUTO_TEST_CASE(ssl_success)
 {
     // Setup: the transport must support SSL for negotiation to include it
-    struct ssl_fixture : algo_fixture_base
-    {
-        detail::connect_algo algo{
-            {test_server_address, handshake_params("example_user", password), false, {}}
-        };
-        ssl_fixture() { st.tls_supported = true; }
-    } fix;
+    fixture fix;
+    fix.st.tls_supported = true;
 
     // Run the algo
     algo_test()
@@ -158,10 +141,6 @@ BOOST_AUTO_TEST_CASE(ssl_success)
         .will_set_connection_id(42)
         .will_set_current_charset(utf8mb4_charset)
         .check(fix);
-
-    // Verify
-    BOOST_TEST(fix.st.status == connection_status::ready);
-    BOOST_TEST(fix.st.tls_active);
 }
 
 // TLS handshake failing mid-way also triggers a close and returns
@@ -169,13 +148,8 @@ BOOST_AUTO_TEST_CASE(ssl_success)
 BOOST_AUTO_TEST_CASE(ssl_error_handshake_closes)
 {
     // Setup
-    struct ssl_fixture : algo_fixture_base
-    {
-        detail::connect_algo algo{
-            {test_server_address, handshake_params("example_user", password), false, {}}
-        };
-        ssl_fixture() { st.tls_supported = true; }
-    } fix;
+    fixture fix;
+    fix.st.tls_supported = true;
 
     // Run the algo: SSL handshake fails
     algo_test()
@@ -186,10 +160,33 @@ BOOST_AUTO_TEST_CASE(ssl_error_handshake_closes)
         .expect_close()
         .will_set_status(connection_status::not_connected)
         .check(fix, asio::error::connection_reset);
+}
 
-    // Verify: connection is not left in a half-open state
-    BOOST_TEST(fix.st.status == connection_status::not_connected);
-    BOOST_TEST(!fix.st.tls_active);
+// If the handshake fails AFTER the TLS handshake was performed, we must
+// shut down the SSL stream before closing the socket.
+BOOST_AUTO_TEST_CASE(ssl_error_auth_fails_performs_shutdown)
+{
+    // Setup
+    fixture fix;
+    fix.st.tls_supported = true;
+
+    // Run the algo. TLS succeeds, but authentication is rejected.
+    algo_test()
+        .expect_connect()
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_scramble).build())
+        .expect_write(create_ssl_request())
+        .expect_ssl_handshake()
+        .expect_write(login_request_builder().caps(tls_caps).seqnum(2).auth_response(mnp_hash).build())
+        .expect_read(err_builder()
+                         .seqnum(3)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .expect_ssl_shutdown()
+        .expect_close()
+        .will_set_status(connection_status::not_connected)
+        .will_set_tls_active(false)
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -28,6 +28,7 @@ class connect_algo
     const void* server_address_;
     handshake_algo handshake_;
     error_code stored_ec_;
+    bool tls_negotiated_{false};
 
 public:
     connect_algo(connect_algo_params params) noexcept
@@ -52,14 +53,29 @@ public:
 
             // Handshake
             while (!(act = handshake_.resume(st, diag, ec)).is_done())
-                BOOST_MYSQL_YIELD(resume_point_, 2, act)
+                if (act.type() == next_action_type::ssl_handshake)
+                {
+                    BOOST_MYSQL_YIELD(resume_point_, 5, act)
+                    if (!ec)
+                        // Store TLS status as separate flag, because
+                        // handshake_algo calls st.reset() upon error.
+                        tls_negotiated_ = true;
+                }
+                else
+                    BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
             // If handshake failed, close the stream ignoring the result
             // and return handshake's error code
             if (act.error())
             {
                 stored_ec_ = act.error();
-                BOOST_MYSQL_YIELD(resume_point_, 3, next_action::close())
+
+                if (tls_negotiated_)
+                {
+                    BOOST_MYSQL_YIELD(resume_point_, 3, next_action::ssl_shutdown())
+                }
+
+                BOOST_MYSQL_YIELD(resume_point_, 4, next_action::close())
                 return stored_ec_;
             }
 
