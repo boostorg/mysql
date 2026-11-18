@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -211,7 +211,7 @@ asio::awaitable<void> overview_coro(mysql::any_connection& conn)
         // st.should_read_rows() returns false once there are no more rows to read
         while (st.should_read_rows())
         {
-            // row_batch will be valid until conn performs the next network operation
+            // row_batch will be valid until conn initiates the next network operation
             mysql::rows_view row_batch = co_await conn.async_read_some_rows(st);
 
             for (mysql::row_view emp : row_batch)

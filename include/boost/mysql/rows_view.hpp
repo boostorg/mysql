@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -38,7 +38,7 @@ namespace mysql {
  *     the view acts as a reference to the `rows`' allocated memory, and is valid as long as
  *     references to that `rows` elements are valid.
  * \li If it was obtained by calling \ref connection::read_some_rows it's valid until the
- *     `connection` performs the next network call or is destroyed.
+ *     `connection` initiates the next network call or is destroyed.
  * \n
  * \ref row_view's and \ref field_view's obtained by using a `rows_view` object are valid as long as
  * the underlying storage that `*this` points to is valid. Destroying `*this` doesn't invalidate
