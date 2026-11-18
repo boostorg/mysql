@@ -41,7 +41,8 @@ struct query_with_params
     span<const format_arg> args;
     format_options opts;
 
-    void serialize(serialization_context& ctx) const
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const
     {
         // Create a format context
         auto fmt_ctx = access::construct<format_context_base>(output_string_ref::create(ctx), opts);

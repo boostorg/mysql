@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,9 +23,7 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <cstdint>
 #include <stdexcept>
-#include <type_traits>
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
@@ -214,6 +212,88 @@ void check_pipeline_single(
 )
 {
     check_pipeline(req, expected_buffer, {&expected_stage, 1});
+}
+
+pipeline_request make_sample_pipeline()
+{
+    pipeline_request req;
+    req.add_reset_connection()
+        .add_execute("SELECT 1")
+        .add_prepare_statement("SELECT ?")
+        .add_set_character_set(utf8mb4_charset)
+        .add_close_statement(statement_builder().id(8).build());
+    return req;
+}
+
+std::vector<std::uint8_t> sample_expected_buffer()
+{
+    return buffer_builder()
+        .add(create_frame(0, {0x1f}))
+        .add(create_query_frame(0, "SELECT 1"))
+        .add(create_prepare_statement_frame(0, "SELECT ?"))
+        .add(create_query_frame(0, "SET NAMES 'utf8mb4'"))
+        .add(create_frame(0, {0x19, 0x08, 0x00, 0x00, 0x00}))
+        .build();
+}
+
+std::array<pipeline_request_stage, 5> sample_expected_stages()
+{
+    return {{
+        {pipeline_stage_kind::reset_connection, 1u, {}},
+        {pipeline_stage_kind::execute,          1u, resultset_encoding::text},
+        {pipeline_stage_kind::prepare_statement, 1u, {}},
+        {pipeline_stage_kind::set_character_set, 1u, utf8mb4_charset},
+        {pipeline_stage_kind::close_statement,  1u, {}},
+    }};
+}
+
+BOOST_AUTO_TEST_CASE(copy_construct)
+{
+    pipeline_request req = make_sample_pipeline();;
+    pipeline_request copy(req);
+    check_pipeline(copy, sample_expected_buffer(), sample_expected_stages());
+    check_pipeline(req, sample_expected_buffer(), sample_expected_stages());
+    req.add_execute("SELECT 2");
+    check_pipeline(copy, sample_expected_buffer(), sample_expected_stages());
+}
+
+BOOST_AUTO_TEST_CASE(copy_assign)
+{
+    pipeline_request req = make_sample_pipeline();
+    pipeline_request copy;
+    copy.add_execute("SELECT 999");
+    copy = req;
+    check_pipeline(copy, sample_expected_buffer(), sample_expected_stages());
+    check_pipeline(req, sample_expected_buffer(), sample_expected_stages());
+    req.clear();
+    check_pipeline(copy, sample_expected_buffer(), sample_expected_stages());
+}
+
+BOOST_AUTO_TEST_CASE(move_construct)
+{
+    pipeline_request req = make_sample_pipeline();
+    pipeline_request moved(std::move(req));
+    check_pipeline(moved, sample_expected_buffer(), sample_expected_stages());
+    req.add_reset_connection();
+    check_pipeline(req, create_frame(0, {0x1f}), std::array<pipeline_request_stage, 1>{
+        {{pipeline_stage_kind::reset_connection, 1u, {}}}
+    });
+    check_pipeline(moved, sample_expected_buffer(), sample_expected_stages());
+}
+
+BOOST_AUTO_TEST_CASE(move_assign)
+{
+    pipeline_request req = make_sample_pipeline();
+    pipeline_request moved;
+    moved.add_execute("SELECT 999");
+    moved = std::move(req);
+    check_pipeline(moved, sample_expected_buffer(), sample_expected_stages());
+    req.add_prepare_statement("SELECT ?");
+    check_pipeline(req, create_prepare_statement_frame(0, "SELECT ?"),
+                   std::array<pipeline_request_stage, 1>{
+                       {{pipeline_stage_kind::prepare_statement, 1u, {}}}
+                   });
+    check_pipeline(moved, sample_expected_buffer(), sample_expected_stages());
 }
 
 // Text query

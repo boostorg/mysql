@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(add)
         {
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, 0xffff, fs);
+            detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 0xffff, fs);
 
             // Add the payload
             ctx.add(tc.payload);
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(add_initial_buffer_empty)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, 8);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 0xffff, 8);
 
     // Add data
     const std::array<std::uint8_t, 10> payload{
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE(chunks)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, 8);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 0xffff, 8);
     const std::array<std::uint8_t, 4> payload1{
         {1, 2, 3, 4}
     };
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(add_byte_fills_frame)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, 8);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 0xffff, 8);
     const std::array<std::uint8_t, 7> payload{
         {1, 2, 3, 4, 5, 6, 7}
     };
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
         {
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, 0xffff, 8);
+            detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 0xffff, 8);
             ctx.add(tc.payload);
 
             // Call and check
@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, 8);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 0xffff, 8);
     for (std::uint8_t i = 1; i <= 20; ++i)
         ctx.add(i);
 
@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE(disable_framing)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, detail::disable_framing);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 0xffff, detail::disable_framing);
 
     // Add data using the several functions available
     const std::array<std::uint8_t, 5> payload1{
@@ -281,7 +281,7 @@ BOOST_AUTO_TEST_CASE(header_exceeds_maxsize)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 3u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 3u);
 
     // Buffer can't hold the header
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_CASE(contents_exceed_maxsize)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 8u);
 
     // Header plus content would exceed max size
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6});
@@ -306,7 +306,7 @@ BOOST_AUTO_TEST_CASE(subsequent_header_exceeds_maxsize)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 13u, 8u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 13u, 8u);
 
     // Successfully add some data
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6});
@@ -323,7 +323,7 @@ BOOST_AUTO_TEST_CASE(maxsize_zero)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 0u);
 
     // Buffer can't hold the header
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_CASE(error_by_one_byte)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 12u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 12u);
 
     // Successfully add data until max size
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
@@ -352,7 +352,7 @@ BOOST_AUTO_TEST_CASE(error_add_u8)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 12u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 12u);
 
     // Successfully add data until max size
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
@@ -370,7 +370,7 @@ BOOST_AUTO_TEST_CASE(error_add_u8)
 BOOST_AUTO_TEST_CASE(buffer_exceeds_max_size)
 {
     std::vector<std::uint8_t> buff(48u, 0);
-    detail::serialization_context ctx(buff, 12u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 12u);
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
 }
 
@@ -379,7 +379,7 @@ BOOST_AUTO_TEST_CASE(buffer_with_previous_contents)
 {
     // Setup
     std::vector<std::uint8_t> buff{1, 2, 3};
-    detail::serialization_context ctx(buff, 8u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 8u);
 
     // Just max size
     ctx.add(42);
@@ -397,7 +397,7 @@ BOOST_AUTO_TEST_CASE(several_errors)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 12u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 12u);
 
     // Successfully add some data
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
@@ -420,7 +420,7 @@ BOOST_AUTO_TEST_CASE(success_after_error)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 12u);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff, 12u);
 
     // Successfully add some data
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
@@ -443,7 +443,7 @@ BOOST_AUTO_TEST_CASE(add_error)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff);
+    detail::serialization_context<std::vector<std::uint8_t>> ctx(buff);
 
     // Successfully add some data
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});

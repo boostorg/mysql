@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -26,9 +26,7 @@
 #include <boost/assert.hpp>
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
-#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -51,10 +49,6 @@ struct connection_state_data
     // Are we connected? In the middle of a multi-function operation?
     connection_status status{connection_status::not_connected};
 
-    // Are we currently executing an operation?
-    // Prevent the user from running concurrent operations
-    bool op_in_progress{false};
-
     // Are we talking to MySQL or MariaDB?
     db_flavor flavor{db_flavor::mysql};
 
@@ -76,6 +70,10 @@ struct connection_state_data
     // Do we want to retain metadata strings or not? Used to save allocations
     metadata_mode meta_mode{metadata_mode::minimal};
 
+    // Are we currently executing an operation?
+    // Prevent the user from running concurrent operations
+    bool op_in_progress{false};
+
     // Is TLS supported for the current connection?
     bool tls_supported;
 
@@ -93,8 +91,8 @@ struct connection_state_data
     // The current character set, or a value-initialized one if unknown
     character_set current_charset{};
 
-    // The write buffer
-    std::vector<std::uint8_t> write_buffer;
+    // The read/write buffer
+    rw_buffer write_buffer;
 
     // Reader
     message_reader reader;
@@ -106,9 +104,9 @@ struct connection_state_data
         std::size_t max_buff_size = static_cast<std::size_t>(-1),
         bool transport_supports_ssl = false
     )
-        : tls_supported(transport_supports_ssl), reader(read_buffer_size, max_buff_size)
-    {
-    }
+        : tls_supported(transport_supports_ssl),
+        write_buffer(read_buffer_size, max_buff_size),
+        reader(write_buffer) {}
 
     void reset()
     {
@@ -142,6 +140,8 @@ struct connection_state_data
     template <class Serializable>
     next_action write(const Serializable& msg, std::uint8_t& seqnum)
     {
+        // Check if there is data that have been read but not yet parsed
+        BOOST_ASSERT(reader.done() || write_buffer.pending_size() == 0);
         // use_ssl is attached by top_level_algo
         write_buffer.clear();
         auto res = serialize_top_level(msg, write_buffer, seqnum, max_buffer_size());

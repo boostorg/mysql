@@ -37,7 +37,7 @@ struct field_view_adaptor
 {
     field_view fv;
 
-    void serialize(detail::serialization_context& ctx) { detail::serialize_binary_field(ctx, fv); }
+    void serialize(detail::serialization_context<std::vector<std::uint8_t>>& ctx) { detail::serialize_binary_field(ctx, fv); }
 };
 
 BOOST_AUTO_TEST_CASE(serialize)

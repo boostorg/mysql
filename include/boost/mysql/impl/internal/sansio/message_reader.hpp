@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -14,7 +14,7 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/frame_header.hpp>
-#include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
+#include <boost/mysql/impl/internal/sansio/rw_buffer.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
@@ -38,11 +38,10 @@ class message_reader
 {
 public:
     message_reader(
-        std::size_t initial_buffer_size,
-        std::size_t max_buffer_size = static_cast<std::size_t>(-1),
+        rw_buffer& buffer,
         std::size_t max_frame_size = max_packet_size
     )
-        : buffer_(initial_buffer_size, max_buffer_size), max_frame_size_(max_frame_size)
+        : buffer_(buffer), max_frame_size_(max_frame_size)
     {
     }
 
@@ -106,7 +105,10 @@ public:
         }
         auto ec = buffer_.grow_to_fit(state_.required_size);
         if (ec)
+        {
+            buffer_.reset();
             return ec;
+        }
         state_.required_size = 0;
         return error_code();
     }
@@ -185,20 +187,20 @@ public:
     }
 
     // Exposed for testing
-    const read_buffer& internal_buffer() const { return buffer_; }
+    const rw_buffer& internal_buffer() const { return buffer_; }
 
 private:
-    read_buffer buffer_;
+    rw_buffer& buffer_;
     std::size_t max_frame_size_;
 
     struct parse_state
     {
-        int resume_point{0};
         std::uint8_t* sequence_number{};
-        bool is_first_frame{true};
         std::size_t body_bytes{0};
-        bool more_frames_follow{false};
         std::size_t required_size{0};
+        int resume_point{0};
+        bool is_first_frame{true};
+        bool more_frames_follow{false};
         error_code ec;
 
         parse_state() = default;

@@ -9,7 +9,6 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
-#include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -37,6 +36,7 @@ BOOST_AUTO_TEST_SUITE(test_message_reader)
 class reader_fixture
 {
 public:
+    rw_buffer buffer;
     message_reader reader;
     std::uint8_t seqnum{42};
 
@@ -46,7 +46,8 @@ public:
         std::size_t max_size = static_cast<std::size_t>(-1),
         std::size_t max_frame_size = 64 // max frame size is 64
     )
-        : reader(buffsize, max_size, max_frame_size),
+        : buffer(buffsize, max_size),
+          reader(buffer, max_frame_size),
           contents_(std::move(contents)),
           buffer_first_(reader.internal_buffer().first())
     {
@@ -100,7 +101,7 @@ public:
 
     void record_buffer_first() noexcept { buffer_first_ = reader.internal_buffer().first(); }
     void check_buffer_stability() { BOOST_TEST(reader.internal_buffer().first() == buffer_first_); }
-    std::size_t buffsize() const noexcept { return reader.internal_buffer().size(); }
+    std::size_t buffsize() const noexcept { return reader.internal_buffer().capacity(); }
 
 private:
     std::vector<std::uint8_t> contents_;

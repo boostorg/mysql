@@ -22,7 +22,8 @@ struct mock_message
 {
     span<const std::uint8_t> data;
 
-    void serialize(detail::serialization_context& ctx) const { ctx.add(data); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.add(data); }
 };
 
 }  // namespace test

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,10 +12,11 @@
 
 #include <boost/mysql/any_connection.hpp>
 
-#include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/engine_impl.hpp>
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
+
+#include <memory>
 
 std::unique_ptr<boost::mysql::detail::engine> boost::mysql::any_connection::create_engine(
     asio::any_io_executor ex,

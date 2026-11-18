@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(section_multi_function)
         // st.complete() returns true once the OK packet is received
         while (!st.complete())
         {
-            // row_batch will be valid until conn performs the next network operation
+            // row_batch will be valid until conn initiates the next network operation
             rows_view row_batch = conn.read_some_rows(st);
 
             for (row_view post : row_batch)

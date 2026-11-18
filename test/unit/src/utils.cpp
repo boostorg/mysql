@@ -281,7 +281,7 @@ std::vector<std::uint8_t> boost::mysql::test::serialize_ok_impl(
     std::uint8_t header
 )
 {
-    return serialize_to_vector([=](detail::serialization_context& ctx) {
+    return serialize_to_vector([=](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
         ctx.serialize(
             detail::int1{header},
             detail::int_lenenc{pack.affected_rows},
@@ -336,7 +336,7 @@ std::vector<std::uint8_t> boost::mysql::test::create_coldef_body(const detail::c
         }
     };
 
-    return serialize_to_vector([=](detail::serialization_context& ctx) {
+    return serialize_to_vector([=](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
         ctx.serialize(
             detail::string_lenenc{"def"},
             detail::string_lenenc{pack.database},
@@ -360,7 +360,7 @@ std::vector<std::uint8_t> boost::mysql::test::create_coldef_body(const detail::c
 //
 std::vector<std::uint8_t> boost::mysql::test::serialize_err_impl(detail::err_view pack, bool with_header)
 {
-    return serialize_to_vector([=](detail::serialization_context& ctx) {
+    return serialize_to_vector([=](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
         if (with_header)
             ctx.add(0xff);  // header
         ctx.serialize(
@@ -377,7 +377,7 @@ std::vector<std::uint8_t> boost::mysql::test::serialize_err_impl(detail::err_vie
 //
 std::vector<std::uint8_t> boost::mysql::test::prepare_stmt_response_builder::build() const
 {
-    auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
+    auto body = serialize_to_vector([this](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
         ctx.serialize(
             detail::int1{0u},             // OK header
             detail::int4{statement_id_},  // statement_id
@@ -395,7 +395,7 @@ std::vector<std::uint8_t> boost::mysql::test::prepare_stmt_response_builder::bui
 //
 std::vector<std::uint8_t> boost::mysql::test::create_query_body_impl(std::uint8_t command_id, string_view sql)
 {
-    return serialize_to_vector([=](detail::serialization_context& ctx) {
+    return serialize_to_vector([=](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
         ctx.add(command_id);
         ctx.add(detail::to_span(sql));
     });
@@ -406,7 +406,7 @@ std::vector<std::uint8_t> boost::mysql::test::create_query_body_impl(std::uint8_
 //
 std::vector<std::uint8_t> boost::mysql::test::serialize_text_row_impl(span<const field_view> fields)
 {
-    return serialize_to_vector([=](detail::serialization_context& ctx) {
+    return serialize_to_vector([=](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
         for (field_view f : fields)
         {
             std::string s;

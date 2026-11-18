@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -41,9 +41,10 @@ BOOST_INLINE_CONSTEXPR std::size_t disable_framing = static_cast<std::size_t>(-1
 // Like format_context_base, contains an error that can be set if a serialization
 // function helps (e.g. because it would overrun the buffer size limit).
 // Once set, serializing is a no-op. This pattern allows us to check for errors just once.
+template <class Buffer>
 class serialization_context
 {
-    std::vector<std::uint8_t>& buffer_;
+    Buffer& buffer_;
     std::size_t max_buffer_size_;
     std::size_t max_frame_size_;
     std::size_t next_header_offset_;
@@ -107,7 +108,7 @@ class serialization_context
 
 public:
     serialization_context(
-        std::vector<std::uint8_t>& buff,
+        Buffer& buff,
         std::size_t max_buffer_size = static_cast<std::size_t>(-1),
         std::size_t max_frame_size = max_packet_size
     )

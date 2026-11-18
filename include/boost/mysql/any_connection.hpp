@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_ANY_CONNECTION_HPP
 #define BOOST_MYSQL_ANY_CONNECTION_HPP
 
-#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/defaults.hpp>
@@ -24,7 +23,6 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/connection_impl.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
@@ -33,15 +31,11 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/deferred.hpp>
-#include <boost/assert.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/system/result.hpp>
 
 #include <cstddef>
-#include <cstdint>
-#include <memory>
 #include <type_traits>
-#include <utility>
 #include <vector>
 
 namespace boost {
@@ -833,7 +827,7 @@ public:
      * grown bigger by other read operations, if required.
      * \n
      * The returned view points into memory owned by `*this`. It will be valid until
-     * `*this` performs the next network operation or is destroyed.
+     * `*this` initiates the next network operation or is destroyed.
      */
     rows_view read_some_rows(execution_state& st, error_code& err, diagnostics& diag)
     {

@@ -39,7 +39,8 @@ struct int_holder
         endian::endian_store<IntType, sizeof(IntType), endian::order::little>(to, value);
     }
 
-    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
     {
@@ -69,7 +70,8 @@ struct int3
 
     void serialize_fixed(std::uint8_t* to) const { endian::store_little_u24(to, value); }
 
-    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
     {
@@ -85,7 +87,8 @@ struct int_lenenc
 {
     std::uint64_t value;
 
-    void serialize(serialization_context& ctx) const
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const
     {
         if (value < 251)
         {
@@ -151,7 +154,8 @@ struct string_null
 {
     string_view value;
 
-    void serialize(serialization_context& ctx) const
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const
     {
         ctx.add(to_span(value));
         ctx.add(static_cast<std::uint8_t>(0));  // null terminator
@@ -183,7 +187,8 @@ struct string_eof
         return deserialize_errc::ok;
     }
 
-    void serialize(serialization_context& ctx) const { ctx.add(to_span(value)); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.add(to_span(value)); }
 };
 
 struct string_lenenc
@@ -213,7 +218,8 @@ struct string_lenenc
         return deserialize_errc::ok;
     }
 
-    void serialize(serialization_context& ctx) const
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const
     {
         ctx.serialize(int_lenenc{value.size()});
         ctx.add(to_span(value));
@@ -230,7 +236,8 @@ struct string_fixed
 
     void serialize_fixed(std::uint8_t* to) const { std::memcpy(to, value.data(), N); }
 
-    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
+    template <class SerializationContext>
+    void serialize(SerializationContext& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
     {
