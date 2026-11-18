@@ -140,6 +140,7 @@ class handshake_algo
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
     character_set server_default_charset_{};
+    error_code stored_ec_;
 
     static capabilities conditional_capability(bool condition, capabilities cap)
     {
@@ -430,19 +431,21 @@ class handshake_algo
             else if (resp.type == handshake_server_response::type_t::error)
             {
                 // Error, quit
-                return resp.data.err;
+                stored_ec_ = resp.data.err;
             }
             else
             {
                 // Auth switches are no longer allowed at this point
                 BOOST_ASSERT(resp.type == handshake_server_response::type_t::auth_switch);
-                return error_code(client_errc::bad_handshake_packet_type);
+                stored_ec_ = client_errc::bad_handshake_packet_type;
             }
+            if (st.tls_active)
+                // If TLS was successfully negotiated, shut it down gracefully
+                // before propagating the error.
+                BOOST_MYSQL_YIELD(resume_point_, 11, next_action::ssl_shutdown())
         }
 
-        // We should never get here
-        BOOST_ASSERT(false);
-        return next_action();  // LCOV_EXCL_LINE
+        return stored_ec_;
     }
 
 public:
