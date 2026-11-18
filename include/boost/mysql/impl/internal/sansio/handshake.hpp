@@ -328,7 +328,12 @@ class handshake_algo
     next_action resume_impl(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
-            return ec;
+        {
+            // If there is stored_ec_, then ec is just an error
+            // from ssl_shutdown() that should be ignored.
+            if (stored_ec_) return stored_ec_;
+            else return ec;
+        }
 
         handshake_server_response resp(error_code{});
         next_action act;
