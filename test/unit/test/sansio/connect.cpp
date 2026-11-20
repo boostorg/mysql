@@ -189,6 +189,31 @@ BOOST_AUTO_TEST_CASE(ssl_error_auth_fails_performs_shutdown)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
+// If a client-side error occurs after TLS is established, we must
+// shut down the SSL stream and then close the socket.
+BOOST_AUTO_TEST_CASE(ssl_client_error_performs_shutdown_and_closes)
+{
+    // Setup
+    fixture fix;
+    fix.st.tls_supported = true;
+
+    // Run the algo. TLS succeeds, but the server sends an auth switch
+    // with an invalid scramble size. This triggers a client-side error
+    // (protocol_value_error) while the connection is still open.
+    algo_test()
+        .expect_connect()
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_scramble).build())
+        .expect_write(create_ssl_request())
+        .expect_ssl_handshake()
+        .expect_write(login_request_builder().caps(tls_caps).seqnum(2).auth_response(mnp_hash).build())
+        .expect_read(create_auth_switch_frame(3, "mysql_native_password", std::vector<std::uint8_t>(21, 0x0a)))
+        .expect_ssl_shutdown()
+        .expect_close()
+        .will_set_status(connection_status::not_connected)
+        .will_set_tls_active(false)
+        .check(fix, client_errc::protocol_value_error);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace

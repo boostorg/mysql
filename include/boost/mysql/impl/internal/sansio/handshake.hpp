@@ -23,7 +23,6 @@
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
@@ -328,12 +327,7 @@ class handshake_algo
     next_action resume_impl(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
-        {
-            // If there is stored_ec_, then ec is just an error
-            // from ssl_shutdown() that should be ignored.
-            if (stored_ec_) return stored_ec_;
-            else return ec;
-        }
+            return ec;
 
         handshake_server_response resp(error_code{});
         next_action act;
@@ -436,21 +430,19 @@ class handshake_algo
             else if (resp.type == handshake_server_response::type_t::error)
             {
                 // Error, quit
-                stored_ec_ = resp.data.err;
+                return resp.data.err;
             }
             else
             {
                 // Auth switches are no longer allowed at this point
                 BOOST_ASSERT(resp.type == handshake_server_response::type_t::auth_switch);
-                stored_ec_ = client_errc::bad_handshake_packet_type;
+                return error_code(client_errc::bad_handshake_packet_type);
             }
-            if (st.tls_active)
-                // If TLS was successfully negotiated, shut it down gracefully
-                // before propagating the error.
-                BOOST_MYSQL_YIELD(resume_point_, 11, next_action::ssl_shutdown())
         }
 
-        return stored_ec_;
+        // We should never get here
+        BOOST_ASSERT(false);
+        return next_action();  // LCOV_EXCL_LINE
     }
 
 public:
@@ -463,10 +455,25 @@ public:
 
     next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
+        if (stored_ec_)
+        {
+            st.reset();
+            return stored_ec_;
+        }
+
         // On error, reset the connection's state to well-known values
         auto act = resume_impl(st, diag, ec);
         if (act.is_done() && act.error())
+        {
+            // If TLS was negotiated and the failure was not a network error
+            if (st.tls_active && !ec)
+            {
+                stored_ec_ = act.error();
+                return next_action::ssl_shutdown();
+            }
             st.reset();
+        }
+
         return act;
     }
 };
