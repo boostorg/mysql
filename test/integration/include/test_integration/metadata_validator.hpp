@@ -11,6 +11,8 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 
+#include <boost/optional/optional.hpp>
+
 #include <vector>
 
 namespace boost {
@@ -27,7 +29,8 @@ public:
         column_type type,
         std::vector<flag_getter> flags = {},
         unsigned decimals = 0,
-        std::vector<flag_getter> ignore_flags = {}
+        std::vector<flag_getter> ignore_flags = {},
+        boost::optional<unsigned> length = {}
     )
         : table_(std::move(table)),
           org_table_(table_),
@@ -36,7 +39,8 @@ public:
           decimals_(decimals),
           type_(type),
           flags_(std::move(flags)),
-          ignore_flags_(std::move(ignore_flags))
+          ignore_flags_(std::move(ignore_flags)),
+          length_(length)
     {
     }
     meta_validator(
@@ -71,6 +75,7 @@ private:
     column_type type_;
     std::vector<flag_getter> flags_;
     std::vector<flag_getter> ignore_flags_;
+    boost::optional<unsigned> length_;
 };
 
 void validate_meta(const metadata_collection_view& actual, const std::vector<meta_validator>& expected);

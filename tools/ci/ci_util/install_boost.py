@@ -57,6 +57,9 @@ def install_boost(
     # Put our library inside boost root
     _copy_lib_to_boost(source_dir)
 
+    # Clone Boost.Decimal (TODO: this is just for the review)
+    run(['git', 'clone', '-b', 'develop', '--depth', '1', 'https://github.com/cppalliance/decimal.git', 'libs/decimal'])
+
     # Install Boost dependencies
     submodules = [
         'libs/context',
@@ -74,6 +77,7 @@ def install_boost(
         run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
     else:
         run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
+        
     
     # Bootstrap
     if IS_WINDOWS:
