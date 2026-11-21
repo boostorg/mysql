@@ -166,6 +166,12 @@ public:
     }
 
     BOOST_ATTRIBUTE_NODISCARD
+    algo_test& expect_connect(error_code result = {})
+    {
+        return add_step(detail::next_action_type::connect, {}, result);
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
     algo_test& will_set_status(detail::connection_status expected)
     {
         state_changes_.status = expected;

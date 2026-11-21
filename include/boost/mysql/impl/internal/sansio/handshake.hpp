@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,7 +23,6 @@
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
@@ -114,8 +113,8 @@ public:
             return error_code(client_errc::bad_handshake_packet_type);
         case type_t::csha2p:
             return csha2p_.resume(st, server_data, password, scramble, secure_channel, seqnum);
-        default:
-            BOOST_ASSERT(false);
+        default:  // LCOV_EXCL_LINE
+            BOOST_ASSERT(false);  // LCOV_EXCL_LINE
             return next_action(client_errc::bad_handshake_packet_type);  // LCOV_EXCL_LINE
         }
     }
@@ -140,6 +139,7 @@ class handshake_algo
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
     character_set server_default_charset_{};
+    error_code stored_ec_;
 
     static capabilities conditional_capability(bool condition, capabilities cap)
     {
@@ -455,10 +455,25 @@ public:
 
     next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
+        if (stored_ec_)
+        {
+            st.reset();
+            return stored_ec_;
+        }
+
         // On error, reset the connection's state to well-known values
         auto act = resume_impl(st, diag, ec);
         if (act.is_done() && act.error())
+        {
+            // If TLS was negotiated and the failure was not a network error
+            if (st.tls_active && !ec)
+            {
+                stored_ec_ = act.error();
+                return next_action::ssl_shutdown();
+            }
             st.reset();
+        }
+
         return act;
     }
 };

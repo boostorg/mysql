@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -165,7 +165,7 @@ public:
           expected_capabilities(changes.current_capabilities.value_or(st.current_capabilities)),
           expected_connection_id(changes.connection_id.value_or(st.connection_id)),
           expected_meta_mode(st.meta_mode),  // no algorithm should modify this
-          expected_tls_supported(changes.tls_active.value_or(st.tls_supported)),
+          expected_tls_supported(changes.tls_supported.value_or(st.tls_supported)),
           expected_tls_active(changes.tls_active.value_or(st.tls_active)),
           expected_backslash_escapes(changes.backslash_escapes.value_or(st.backslash_escapes)),
           expected_charset(changes.current_charset.value_or(st.current_charset)),
@@ -704,7 +704,7 @@ static const char* to_string(detail::next_action_type v)
     case detail::next_action_type::read: return "next_action_type::read";
     case detail::next_action_type::write: return "next_action_type::write";
     case detail::next_action_type::ssl_handshake: return "next_action_type::ssl_handshake";
-    case detail::next_action_type::ssl_shutdown: return "next_action_type::ssh_shutdown";
+    case detail::next_action_type::ssl_shutdown: return "next_action_type::ssl_shutdown";
     default: return "<unknown next_action_type>";
     }
 }
