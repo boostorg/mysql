@@ -101,7 +101,7 @@ public:
 
     void record_buffer_first() noexcept { buffer_first_ = reader.internal_buffer().first(); }
     void check_buffer_stability() { BOOST_TEST(reader.internal_buffer().first() == buffer_first_); }
-    std::size_t buffsize() const noexcept { return reader.internal_buffer().capacity(); }
+    std::size_t buffsize() const noexcept { return reader.internal_buffer().size(); }
 
 private:
     std::vector<std::uint8_t> contents_;

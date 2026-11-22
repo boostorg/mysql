@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
@@ -27,6 +28,11 @@ using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_rw_buffer)
 
+static_assert(!std::is_copy_constructible<rw_buffer>::value, "");
+static_assert(!std::is_copy_assignable<rw_buffer>::value, "");
+static_assert(!std::is_move_constructible<rw_buffer>::value, "");
+static_assert(!std::is_move_assignable<rw_buffer>::value, "");
+
 // Records the buffer first pointer and size to verify the buffer
 // didn't do any re-allocation
 class stability_checker
@@ -36,16 +42,16 @@ class stability_checker
     std::size_t total_size_;
 
 public:
-    stability_checker(rw_buffer& b) noexcept : b_(b), first_(b.first()), total_size_(b.capacity()) {}
+    stability_checker(rw_buffer& b) noexcept : b_(b), first_(b.first()), total_size_(b.size()) {}
     void check_stability()
     {
         BOOST_TEST(b_.first() == first_);
-        BOOST_TEST(b_.capacity() == total_size_);
+        BOOST_TEST(b_.size() == total_size_);
     }
     void check_reallocation()
     {
         BOOST_TEST(b_.first() != first_);
-        BOOST_TEST(b_.capacity() > total_size_);
+        BOOST_TEST(b_.size() > total_size_);
     }
 };
 
@@ -81,7 +87,7 @@ static void check_buffer(
     BOOST_TEST(buff.pending_area().size() == pending_size);
     BOOST_TEST(buff.free_area().size() == free_size);
 
-    BOOST_TEST(buff.capacity() == reserved_size + current_message_size + pending_size + free_size);
+    BOOST_TEST(buff.size() == reserved_size + current_message_size + pending_size + free_size);
 }
 
 static void check_buffer(
@@ -191,7 +197,7 @@ BOOST_AUTO_TEST_CASE(all_bytes)
     stability_checker checker(buff);
     std::vector<std::uint8_t> contents(8, 0x01);
     copy_to_free_area(buff, contents);
-    buff.move_to_pending(buff.capacity());
+    buff.move_to_pending(buff.size());
 
     check_buffer(buff, {}, {}, contents, 0);
     checker.check_stability();
@@ -608,10 +614,10 @@ BOOST_AUTO_TEST_CASE(is_power_of_two)
                 next_power_of_two *= 2;
             auto ec = buff.grow_to_fit(new_size);
             BOOST_TEST(ec == error_code());
-            BOOST_TEST(buff.capacity() == next_power_of_two);
+            BOOST_TEST(buff.size() == next_power_of_two);
         }
     }
-    BOOST_TEST(buff.capacity() == 1024u);
+    BOOST_TEST(buff.size() == 1024u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -622,7 +628,7 @@ BOOST_AUTO_TEST_CASE(zero_size_buffer)
 {
     rw_buffer buff(0, 1024);
     buff.reset();
-    BOOST_TEST(buff.capacity() == 0u);
+    BOOST_TEST(buff.size() == 0u);
     BOOST_TEST(buff.max_size() == 1024u);
 }
 
@@ -683,268 +689,6 @@ BOOST_AUTO_TEST_CASE(bytes_in_all_areas)
     check_buffer(buff, {}, {}, {}, 16);
     checker.check_stability();
     BOOST_TEST(buff.max_size() == 1024u);
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE(write_area)
-
-// Fresh buffer: write_offset_ == 0, data()/end() point to first(), span empty
-BOOST_AUTO_TEST_CASE(initial_state)
-{
-    rw_buffer buff(16);
-    BOOST_TEST(buff.size() == 0u);
-    BOOST_TEST(buff.data() == buff.first());
-    BOOST_TEST(buff.end() == buff.first());
-    BOOST_TEST(buff.data() == buff.end());
-
-    boost::span<const std::uint8_t> s = buff;
-    BOOST_TEST(s.size() == 0u);
-    BOOST_TEST(s.data() == buff.first());
-}
-
-// clear() resets the write position, but not the underlying buffer,
-// and does not touch the read areas
-BOOST_AUTO_TEST_CASE(clear_resets_write_area)
-{
-    rw_buffer buff(16);
-    stability_checker checker(buff);
-
-    buff.push_back(0x01);
-    buff.push_back(0x02);
-    BOOST_TEST(buff.size() == 2u);
-
-    buff.clear();
-    BOOST_TEST(buff.size() == 0u);
-    BOOST_TEST(buff.end() == buff.data());
-
-    // Read areas are untouched
-    check_buffer(buff, {}, {}, {}, 16);
-    checker.check_stability();
-}
-
-BOOST_AUTO_TEST_CASE(push_back_within_capacity)
-{
-    rw_buffer buff(16);
-    stability_checker checker(buff);
-
-    buff.push_back(0x01);
-    buff.push_back(0x02);
-    buff.push_back(0x03);
-
-    BOOST_TEST(buff.size() == 3u);
-    BOOST_TEST(buff.end() == buff.first() + 3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
-        boost::span<const std::uint8_t>(buff),
-        (std::vector<std::uint8_t>{0x01, 0x02, 0x03})
-    );
-    // Read areas are still all at 0
-    check_buffer(buff, {}, {}, {}, 16);
-    checker.check_stability();
-}
-
-BOOST_AUTO_TEST_CASE(push_back_from_empty_buffer)
-{
-    rw_buffer buff(0, 1024);
-    buff.push_back(0x01);
-
-    BOOST_TEST(buff.size() == 1u);
-    BOOST_TEST(buff.capacity() == 1u);
-}
-
-BOOST_AUTO_TEST_CASE(push_back_triggers_growth)
-{
-    rw_buffer buff(4);
-    stability_checker checker(buff);
-
-    buff.push_back(0x01);
-    buff.push_back(0x02);
-    buff.push_back(0x03);
-    buff.push_back(0x04);
-    BOOST_TEST(buff.size() == 4u);
-    checker.check_stability();
-
-    buff.push_back(0x05);
-    BOOST_TEST(buff.size() == 5u);
-    BOOST_TEST(buff.capacity() == 8u);
-    checker.check_reallocation();
-
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
-        boost::span<const std::uint8_t>(buff),
-        (std::vector<std::uint8_t>{0x01, 0x02, 0x03, 0x04, 0x05})
-    );
-}
-
-BOOST_AUTO_TEST_CASE(resize_within_capacity)
-{
-    rw_buffer buff(16);
-    stability_checker checker(buff);
-
-    buff.resize(4);
-    BOOST_TEST(buff.size() == 4u);
-
-    buff.resize(8);
-    BOOST_TEST(buff.size() == 8u);
-
-    // Shrinking only affects write_offset_, not the underlying buffer
-    buff.resize(2);
-    BOOST_TEST(buff.size() == 2u);
-    BOOST_TEST(buff.capacity() == 16u);
-
-    checker.check_stability();
-}
-
-BOOST_AUTO_TEST_CASE(resize_grows_to_power_of_two)
-{
-    rw_buffer buff(4);
-    stability_checker checker(buff);
-
-    buff.resize(5);
-    BOOST_TEST(buff.size() == 5u);
-    BOOST_TEST(buff.capacity() == 8u);
-    checker.check_reallocation();
-
-    // Already a power of two: no extra growth
-    buff.resize(16);
-    BOOST_TEST(buff.size() == 16u);
-    BOOST_TEST(buff.capacity() == 16u);
-}
-
-BOOST_AUTO_TEST_CASE(resize_respects_max_size)
-{
-    // Requesting up to max_size is fine
-    rw_buffer buff(4, 12);
-    stability_checker checker(buff);
-
-    buff.resize(12);
-    BOOST_TEST(buff.size() == 12u);
-    BOOST_TEST(buff.capacity() == 12u);
-    checker.check_reallocation();
-}
-
-BOOST_AUTO_TEST_CASE(insert_into_empty_buffer)
-{
-    rw_buffer buff(16);
-    stability_checker checker(buff);
-
-    const std::vector<std::uint8_t> bytes{0x01, 0x02, 0x03};
-    buff.insert(buff.data(), bytes.data(), bytes.data() + bytes.size());
-
-    BOOST_TEST(buff.size() == 3u);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(boost::span<const std::uint8_t>(buff), bytes);
-    checker.check_stability();
-}
-
-BOOST_AUTO_TEST_CASE(insert_appends_at_end)
-{
-    rw_buffer buff(16);
-    stability_checker checker(buff);
-
-    buff.push_back(0x01);
-    buff.push_back(0x02);
-    buff.push_back(0x03);
-
-    const std::vector<std::uint8_t> tail{0x04, 0x05};
-    buff.insert(buff.end(), tail.data(), tail.data() + tail.size());
-
-    BOOST_TEST(buff.size() == 5u);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
-        boost::span<const std::uint8_t>(buff),
-        (std::vector<std::uint8_t>{0x01, 0x02, 0x03, 0x04, 0x05})
-    );
-    checker.check_stability();
-}
-
-BOOST_AUTO_TEST_CASE(insert_triggers_growth)
-{
-    rw_buffer buff(4);
-    stability_checker checker(buff);
-
-    buff.push_back(0x01);
-    buff.push_back(0x02);
-    buff.push_back(0x03);
-    buff.push_back(0x04);
-    checker.check_stability();
-
-    // Inserting at end() forces realloc — insert() computes the offset before
-    // resize(), so the (pre-realloc) end() pointer stays safe
-    const std::vector<std::uint8_t> tail{0x05, 0x06, 0x07};
-    buff.insert(buff.end(), tail.data(), tail.data() + tail.size());
-
-    BOOST_TEST(buff.size() == 7u);
-    BOOST_TEST(buff.capacity() == 8u);
-    checker.check_reallocation();
-
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
-        boost::span<const std::uint8_t>(buff),
-        (std::vector<std::uint8_t>{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07})
-    );
-}
-
-BOOST_AUTO_TEST_CASE(implicit_span_conversion)
-{
-    rw_buffer buff(8);
-    buff.push_back(0x01);
-    buff.push_back(0x02);
-    buff.push_back(0x03);
-
-    // Implicit conversion used by next_action::write({write_buffer, ...})
-    boost::span<const std::uint8_t> s = buff;
-    BOOST_TEST(s.size() == 3u);
-    BOOST_TEST(s.data() == buff.data());
-    BOOST_TEST(s[0] == 0x01);
-    BOOST_TEST(s[1] == 0x02);
-    BOOST_TEST(s[2] == 0x03);
-}
-
-// The realistic lifecycle: consume a read message via reset(), then write
-BOOST_AUTO_TEST_CASE(write_after_reset)
-{
-    rw_buffer buff(16);
-    stability_checker checker(buff);
-
-    // Simulate a completed read cycle
-    copy_to_free_area(buff, {0x10, 0x11, 0x12, 0x13});
-    buff.move_to_pending(4);
-    buff.move_to_current_message(4);
-    buff.move_to_reserved(4);
-    BOOST_TEST(buff.pending_size() == 0u);
-
-    buff.reset();
-    check_buffer(buff, {}, {}, {}, 16);
-
-    buff.push_back(0xA0);
-    buff.push_back(0xA1);
-    BOOST_TEST(buff.size() == 2u);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
-        boost::span<const std::uint8_t>(buff),
-        (std::vector<std::uint8_t>{0xA0, 0xA1})
-    );
-    // Read areas are still all zero after reset
-    check_buffer(buff, {}, {}, {}, 16);
-    checker.check_stability();
-}
-
-// After a write cycle, clear() + read cycle works normally
-BOOST_AUTO_TEST_CASE(read_after_write)
-{
-    rw_buffer buff(16);
-    stability_checker checker(buff);
-
-    buff.push_back(0xAA);
-    buff.push_back(0xBB);
-    BOOST_TEST(buff.size() == 2u);
-
-    buff.clear();
-    BOOST_TEST(buff.size() == 0u);
-
-    // Read areas are unaffected by write + clear; use them as usual
-    copy_to_free_area(buff, {0x01, 0x02, 0x03});
-    buff.move_to_pending(3);
-    buff.move_to_current_message(2);
-
-    check_buffer(buff, {}, {0x01, 0x02}, {0x03}, 13);
-    checker.check_stability();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -16,8 +16,6 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
-#include <memory>
-
 std::unique_ptr<boost::mysql::detail::engine> boost::mysql::any_connection::create_engine(
     asio::any_io_executor ex,
     asio::ssl::context* ctx

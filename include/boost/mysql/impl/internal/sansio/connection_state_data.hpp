@@ -22,6 +22,7 @@
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
+#include <boost/mysql/impl/internal/sansio/write_adaptor.hpp>
 
 #include <boost/assert.hpp>
 
@@ -92,7 +93,7 @@ struct connection_state_data
     character_set current_charset{};
 
     // The read/write buffer
-    rw_buffer write_buffer;
+    rw_buffer buffer;
 
     // Reader
     message_reader reader;
@@ -105,8 +106,8 @@ struct connection_state_data
         bool transport_supports_ssl = false
     )
         : tls_supported(transport_supports_ssl),
-        write_buffer(read_buffer_size, max_buff_size),
-        reader(write_buffer) {}
+        buffer(read_buffer_size, max_buff_size),
+        reader(buffer) {}
 
     void reset()
     {
@@ -141,14 +142,14 @@ struct connection_state_data
     next_action write(const Serializable& msg, std::uint8_t& seqnum)
     {
         // Check if there is data that have been read but not yet parsed
-        BOOST_ASSERT(reader.done() || write_buffer.pending_size() == 0);
+        BOOST_ASSERT(reader.done() || buffer.pending_size() == 0);
         // use_ssl is attached by top_level_algo
-        write_buffer.clear();
-        auto res = serialize_top_level(msg, write_buffer, seqnum, max_buffer_size());
+        write_adaptor writer(buffer);
+        auto res = serialize_top_level(msg, writer, seqnum, max_buffer_size());
         if (res.err)
             return res.err;
         seqnum = res.seqnum;
-        return next_action::write({write_buffer, false});
+        return next_action::write({writer, false});
     }
 
     // Helpers to implement connection status in algorithms

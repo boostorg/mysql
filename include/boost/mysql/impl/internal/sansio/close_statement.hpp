@@ -26,16 +26,16 @@ inline run_pipeline_algo_params setup_close_statement_pipeline(
     // Pipeline a ping with the close statement, to avoid delays on old connections
     // that don't set tcp_nodelay. Both requests are small and fixed size, so
     // we don't enforce any buffer limits here.
-    st.write_buffer.clear();
-    auto seqnum1 = serialize_top_level_checked(close_stmt_command{params.stmt_id}, st.write_buffer);
-    auto seqnum2 = serialize_top_level_checked(ping_command{}, st.write_buffer);
+    write_adaptor writer(st.buffer);
+    auto seqnum1 = serialize_top_level_checked(close_stmt_command{params.stmt_id}, writer);
+    auto seqnum2 = serialize_top_level_checked(ping_command{}, writer);
     st.shared_pipeline_stages = {
         {
          {pipeline_stage_kind::close_statement, seqnum1, {}},
          {pipeline_stage_kind::ping, seqnum2, {}},
          }
     };
-    return {st.write_buffer, st.shared_pipeline_stages, nullptr};
+    return {writer, st.shared_pipeline_stages, nullptr};
 }
 
 }  // namespace detail

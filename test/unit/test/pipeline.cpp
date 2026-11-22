@@ -249,7 +249,7 @@ std::array<pipeline_request_stage, 5> sample_expected_stages()
 
 BOOST_AUTO_TEST_CASE(copy_construct)
 {
-    pipeline_request req = make_sample_pipeline();;
+    pipeline_request req = make_sample_pipeline();
     pipeline_request copy(req);
     check_pipeline(copy, sample_expected_buffer(), sample_expected_stages());
     check_pipeline(req, sample_expected_buffer(), sample_expected_stages());

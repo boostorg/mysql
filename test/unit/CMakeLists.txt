@@ -28,6 +28,7 @@ add_executable(
     test/sansio/rw_buffer.cpp
     test/sansio/message_reader.cpp
     test/sansio/top_level_algo.cpp
+    test/sansio/write_adaptor.cpp
 
     test/sansio/handshake/handshake.cpp
     test/sansio/handshake/handshake_mnp.cpp

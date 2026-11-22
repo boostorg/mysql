@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -35,8 +35,8 @@ inline deserialize_errc deserialize_binary_field(
     field_view& output
 );
 
-template <class SerializationContext>
-void serialize_binary_field(SerializationContext& ctx, field_view input);
+template <class Buffer>
+void serialize_binary_field(serialization_context<Buffer>& ctx, field_view input);
 
 }  // namespace detail
 }  // namespace mysql
@@ -317,16 +317,16 @@ inline deserialize_errc deserialize_binary_field_time(deserialization_context& c
 //
 // Serialization
 //
-template <class T, class SerializationContext>
-void serialize_binary_float(SerializationContext& ctx, T input)
+template <class T, class Buffer>
+void serialize_binary_float(serialization_context<Buffer>& ctx, T input)
 {
     std::array<std::uint8_t, sizeof(T)> buffer{};
     boost::endian::endian_store<T, sizeof(T), boost::endian::order::little>(buffer.data(), input);
     ctx.add(buffer);
 }
 
-template <class SerializationContext>
-void serialize_binary_date(SerializationContext& ctx, const date& input)
+template <class Buffer>
+void serialize_binary_date(serialization_context<Buffer>& ctx, const date& input)
 {
     ctx.serialize_fixed(
         int1{static_cast<std::uint8_t>(binc::date_sz)},
@@ -336,8 +336,8 @@ void serialize_binary_date(SerializationContext& ctx, const date& input)
     );
 }
 
-template <class SerializationContext>
-void serialize_binary_datetime(SerializationContext& ctx, const datetime& input)
+template <class Buffer>
+void serialize_binary_datetime(serialization_context<Buffer>& ctx, const datetime& input)
 {
     ctx.serialize_fixed(
         int1{static_cast<std::uint8_t>(binc::datetime_dhmsu_sz)},
@@ -351,8 +351,8 @@ void serialize_binary_datetime(SerializationContext& ctx, const datetime& input)
     );
 }
 
-template <class SerializationContext>
-void serialize_binary_time(SerializationContext& ctx, const boost::mysql::time& input)
+template <class Buffer>
+void serialize_binary_time(serialization_context<Buffer>& ctx, const boost::mysql::time& input)
 {
     using namespace binc;
     using boost::mysql::days;
@@ -428,8 +428,8 @@ boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_binary_
     }
 }
 
-template <class SerializationContext>
-void boost::mysql::detail::serialize_binary_field(SerializationContext& ctx, field_view input)
+template <class Buffer>
+void boost::mysql::detail::serialize_binary_field(serialization_context<Buffer>& ctx, field_view input)
 {
     switch (input.kind())
     {
@@ -447,4 +447,4 @@ void boost::mysql::detail::serialize_binary_field(SerializationContext& ctx, fie
     }
 }
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_DESERIALIZATION_HPP_ */
+#endif

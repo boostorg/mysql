@@ -253,7 +253,6 @@ struct algo_fixture_base
         : st(max_buffer_size, max_buffer_size)
     {
         st.status = detail::connection_status::ready;
-        st.write_buffer.push_back(0xff);  // Check that we clear the write buffer at each step
     }
 };
 
