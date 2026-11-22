@@ -10,6 +10,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <cstring>
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
@@ -124,6 +125,63 @@ BOOST_AUTO_TEST_CASE(insert_triggers_growth)
     BOOST_TEST(buff.size() == 8u);
 
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, data);
+}
+
+BOOST_AUTO_TEST_CASE(preserves_pending)
+{
+    rw_buffer buff(16);
+
+    const std::vector<std::uint8_t> reserved{0x01};
+    const std::vector<std::uint8_t> current{0x02, 0x03};
+    const std::vector<std::uint8_t> pending{0x04, 0x05, 0x06};
+
+    std::uint8_t* p = buff.free_first();
+    std::memcpy(p, reserved.data(), reserved.size());
+    p += reserved.size();
+    std::memcpy(p, current.data(), current.size());
+    p += current.size();
+    std::memcpy(p, pending.data(), pending.size());
+
+    buff.move_to_pending(reserved.size() + current.size() + pending.size());
+    buff.move_to_current_message(reserved.size() + current.size());
+    buff.move_to_reserved(reserved.size());
+
+    BOOST_TEST(buff.reserved_size() == 1u);
+    BOOST_TEST(buff.current_message_size() == 2u);
+    BOOST_TEST(buff.pending_size() == 3u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.pending_area(), pending);
+
+    // Reclaim space for writing the way connection_state_data::write() does:
+    // "reclassify" the current message as reserved, then drop everything reserved.
+    buff.move_to_reserved(buff.current_message_size());
+    buff.remove_reserved();
+
+    // Pending survived the compaction (it's now at the front of the buffer).
+    BOOST_TEST(buff.reserved_size() == 0u);
+    BOOST_TEST(buff.current_message_size() == 0u);
+    BOOST_TEST(buff.pending_size() == 3u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.pending_area(), pending);
+
+    // Write via adaptor: the write must land after pending, not over it.
+    write_adaptor adaptor(buff);
+    BOOST_TEST(adaptor.data() == buff.pending_first() + buff.pending_size());
+
+    const std::vector<std::uint8_t> data{0xAA, 0xBB, 0xCC};
+    adaptor.insert(adaptor.data(), data.data(), data.data() + data.size());
+
+    // Pending still intact after the write.
+    BOOST_TEST(buff.pending_size() == 3u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.pending_area(), pending);
+
+    // Written bytes went after pending.
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, data);
+
+    // Full layout is [pending][written].
+    const std::vector<std::uint8_t> expected{0x04, 0x05, 0x06, 0xAA, 0xBB, 0xCC};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
+        boost::span<const std::uint8_t>(buff.pending_first(), buff.pending_size() + adaptor.size()),
+        expected
+    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

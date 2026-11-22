@@ -143,6 +143,9 @@ struct connection_state_data
     {
         // Check if there is data that have been read but not yet parsed
         BOOST_ASSERT(reader.done() || buffer.pending_size() == 0);
+        // Clear parsed messages but pending data
+        buffer.move_to_reserved(buffer.current_message_size());
+        buffer.remove_reserved();
         // use_ssl is attached by top_level_algo
         write_adaptor writer(buffer);
         auto res = serialize_top_level(msg, writer, seqnum, max_buffer_size());
