@@ -14,7 +14,6 @@
 
 #include <cstddef>
 #include <cstring> // std::memcpy
-#include <iterator> // std::distance
 
 namespace boost {
 namespace mysql {

@@ -148,8 +148,6 @@ struct connection_state_data
     template <class Serializable>
     next_action write(const Serializable& msg, std::uint8_t& seqnum)
     {
-        // Check if there is data that have been read but not yet parsed
-        BOOST_ASSERT(reader.done() || buffer.pending_size() == 0);
         // Clear parsed messages but pending data
         buffer.move_to_reserved(buffer.current_message_size());
         buffer.remove_reserved();

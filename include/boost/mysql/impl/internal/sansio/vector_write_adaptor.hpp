@@ -13,7 +13,6 @@
 #include <boost/core/span.hpp>
 
 #include <cstddef>
-#include <iterator> // std::distance
 #include <vector>
 
 namespace boost {
