@@ -109,6 +109,13 @@ struct connection_state_data
         buffer(read_buffer_size, max_buff_size),
         reader(buffer) {}
 
+    // Since connection_state_data creates message_reader and write_adaptor wrappers
+    // that store a reference to rw_buffer, copy and move operations are deleted.
+    connection_state_data(const connection_state_data&) = delete;
+    connection_state_data& operator=(const connection_state_data&) = delete;
+    connection_state_data(connection_state_data&&) = delete;
+    connection_state_data& operator=(connection_state_data&&) = delete;
+
     void reset()
     {
         status = connection_status::not_connected;
@@ -147,12 +154,12 @@ struct connection_state_data
         buffer.move_to_reserved(buffer.current_message_size());
         buffer.remove_reserved();
         // use_ssl is attached by top_level_algo
-        write_adaptor writer(buffer);
-        auto res = serialize_top_level(msg, writer, seqnum, max_buffer_size());
+        write_adaptor adaptor(buffer);
+        auto res = serialize_top_level(msg, adaptor, seqnum, max_buffer_size());
         if (res.err)
             return res.err;
         seqnum = res.seqnum;
-        return next_action::write({writer, false});
+        return next_action::write({adaptor, false});
     }
 
     // Helpers to implement connection status in algorithms

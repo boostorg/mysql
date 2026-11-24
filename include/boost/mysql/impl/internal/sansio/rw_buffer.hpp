@@ -48,12 +48,7 @@ public:
         BOOST_ASSERT(size <= max_size_);
     }
 
-    rw_buffer(const rw_buffer&) = delete;
-    rw_buffer& operator=(const rw_buffer&) = delete;
-    rw_buffer(rw_buffer&&) = delete;
-    rw_buffer& operator=(rw_buffer&&) = delete;
-
-    inline void reset() noexcept
+    void reset() noexcept
     {
         current_message_offset_ = 0;
         pending_offset_ = 0;
@@ -61,45 +56,45 @@ public:
     }
 
     // Whole buffer accessors
-    inline const std::uint8_t* first() const noexcept { return buffer_.data(); }
-    inline std::size_t size() const noexcept { return buffer_.size(); }
-    inline std::size_t max_size() const { return max_size_; }
+    const std::uint8_t* first() const noexcept { return buffer_.data(); }
+    std::size_t size() const noexcept { return buffer_.size(); }
+    std::size_t max_size() const { return max_size_; }
 
     // Area accessors
-    inline std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
-    inline const std::uint8_t* reserved_first() const noexcept { return buffer_.data(); }
-    inline std::uint8_t* current_message_first() noexcept { return buffer_.data() + current_message_offset_; }
-    inline const std::uint8_t* current_message_first() const noexcept
+    std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
+    const std::uint8_t* reserved_first() const noexcept { return buffer_.data(); }
+    std::uint8_t* current_message_first() noexcept { return buffer_.data() + current_message_offset_; }
+    const std::uint8_t* current_message_first() const noexcept
     {
         return buffer_.data() + current_message_offset_;
     }
-    inline std::uint8_t* pending_first() noexcept { return buffer_.data() + pending_offset_; }
-    inline const std::uint8_t* pending_first() const noexcept { return buffer_.data() + pending_offset_; }
-    inline std::uint8_t* free_first() noexcept { return buffer_.data() + free_offset_; }
-    inline const std::uint8_t* free_first() const noexcept { return buffer_.data() + free_offset_; }
+    std::uint8_t* pending_first() noexcept { return buffer_.data() + pending_offset_; }
+    const std::uint8_t* pending_first() const noexcept { return buffer_.data() + pending_offset_; }
+    std::uint8_t* free_first() noexcept { return buffer_.data() + free_offset_; }
+    const std::uint8_t* free_first() const noexcept { return buffer_.data() + free_offset_; }
 
-    inline std::size_t reserved_size() const noexcept { return current_message_offset_; }
-    inline std::size_t current_message_size() const noexcept { return pending_offset_ - current_message_offset_; }
-    inline std::size_t pending_size() const noexcept { return free_offset_ - pending_offset_; }
-    inline std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
+    std::size_t reserved_size() const noexcept { return current_message_offset_; }
+    std::size_t current_message_size() const noexcept { return pending_offset_ - current_message_offset_; }
+    std::size_t pending_size() const noexcept { return free_offset_ - pending_offset_; }
+    std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
 
-    inline span<const std::uint8_t> reserved_area() const noexcept { return {reserved_first(), reserved_size()}; }
-    inline span<const std::uint8_t> current_message() const noexcept
+    span<const std::uint8_t> reserved_area() const noexcept { return {reserved_first(), reserved_size()}; }
+    span<const std::uint8_t> current_message() const noexcept
     {
         return {current_message_first(), current_message_size()};
     }
-    inline span<const std::uint8_t> pending_area() const noexcept { return {pending_first(), pending_size()}; }
-    inline span<std::uint8_t> free_area() noexcept { return {free_first(), free_size()}; }
+    span<const std::uint8_t> pending_area() const noexcept { return {pending_first(), pending_size()}; }
+    span<std::uint8_t> free_area() noexcept { return {free_first(), free_size()}; }
 
     // Moves n bytes from the free to the processing area (e.g. they've been read)
-    inline void move_to_pending(std::size_t length) noexcept
+    void move_to_pending(std::size_t length) noexcept
     {
         BOOST_ASSERT(length <= free_size());
         free_offset_ += length;
     }
 
     // Moves n bytes from the processing to the current message area
-    inline void move_to_current_message(std::size_t length) noexcept
+    void move_to_current_message(std::size_t length) noexcept
     {
         BOOST_ASSERT(length <= pending_size());
         pending_offset_ += length;
@@ -108,7 +103,7 @@ public:
     // Removes the last length bytes from the current message area,
     // effectively memmove'ing all subsequent bytes backwards.
     // Used to remove intermediate headers. length must be > 0
-    inline void remove_current_message_last(std::size_t length) noexcept
+    void remove_current_message_last(std::size_t length) noexcept
     {
         BOOST_ASSERT(length <= current_message_size());
         BOOST_ASSERT(length > 0);
@@ -119,14 +114,14 @@ public:
 
     // Moves length bytes from the current message area to the reserved area
     // Used to move entire parsed messages or message headers
-    inline void move_to_reserved(std::size_t length) noexcept
+    void move_to_reserved(std::size_t length) noexcept
     {
         BOOST_ASSERT(length <= current_message_size());
         current_message_offset_ += length;
     }
 
     // Removes the reserved area, effectively memmove'ing evth backwards
-    inline void remove_reserved() noexcept
+    void remove_reserved() noexcept
     {
         if (reserved_size() > 0)
         {
@@ -147,7 +142,7 @@ public:
     // Makes sure the free size is at least n bytes long; resizes the buffer if required
     // Buffer grows to power of two, unless limited by max_size
     BOOST_ATTRIBUTE_NODISCARD
-    inline error_code grow_to_fit(std::size_t n)
+    error_code grow_to_fit(std::size_t n)
     {
         if (free_size() < n)
         {

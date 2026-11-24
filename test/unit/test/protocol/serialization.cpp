@@ -14,6 +14,7 @@
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/sansio/vector_write_adaptor.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
@@ -51,7 +52,8 @@ BOOST_AUTO_TEST_CASE(serialize_top_level_multiframe)
                                              4,  5,  6,  7,  8,  3, 0, 0, 43, 9, 10, 11};
 
     std::vector<std::uint8_t> buff{80, 81, 82, 83, 85};
-    auto result = serialize_top_level(mock_message{payload}, buff, 42, 0xffff, frame_size);
+    vector_write_adaptor adaptor(buff);
+    auto result = serialize_top_level(mock_message{payload}, adaptor, 42, 0xffff, frame_size);
     BOOST_TEST(result.err == error_code());
     BOOST_TEST(result.seqnum == 44u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
@@ -64,7 +66,8 @@ BOOST_AUTO_TEST_CASE(serialize_top_level_error_max_size)
         {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
     };
     std::vector<std::uint8_t> buff;
-    auto result = serialize_top_level(mock_message{payload}, buff, 42, 8u);
+    vector_write_adaptor adaptor(buff);
+    auto result = serialize_top_level(mock_message{payload}, adaptor, 42, 8u);
     BOOST_TEST(result.err == boost::mysql::client_errc::max_buffer_size_exceeded);
     BOOST_TEST(result.seqnum == 0u);
 }

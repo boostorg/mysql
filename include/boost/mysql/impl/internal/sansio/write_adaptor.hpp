@@ -8,16 +8,13 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_WRITE_ADAPTOR_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_WRITE_ADAPTOR_HPP
 
-#include <boost/mysql/impl/internal/next_power_of_two.hpp>
 #include <boost/mysql/impl/internal/sansio/rw_buffer.hpp>
 
-#include <boost/assert.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
-#include <cstring>
-#include <iterator>
-#include <vector>
+#include <cstring> // std::memcpy
+#include <iterator> // std::distance
 
 namespace boost {
 namespace mysql {
@@ -29,30 +26,23 @@ class write_adaptor
     std::size_t offset_{0};
 
 public:
-    write_adaptor() = delete;
     explicit write_adaptor(rw_buffer& buffer)
      : buffer_(buffer) {}
 
-    inline std::uint8_t* data() noexcept { return buffer_.free_first(); }
-    inline std::uint8_t* end() noexcept { return buffer_.free_first() + offset_; }
-    inline std::size_t size() const noexcept { return offset_; }
-    inline void clear() noexcept { offset_ = 0; }
+    std::uint8_t* data() noexcept { return buffer_.free_first(); }
+    std::size_t size() const noexcept { return offset_; }
 
-    inline void insert(std::uint8_t* pos, const std::uint8_t* first, const std::uint8_t* last)
+    error_code append(span<const std::uint8_t> s)
     {
-        BOOST_ASSERT(first < last);
-        std::size_t count = std::distance(first, last);
+        std::size_t count = s.size();
         std::size_t new_offset = offset_ + count;
-        std::size_t insert_idx = pos - data();
         auto ec = buffer_.grow_to_fit(new_offset);
-        BOOST_ASSERT(!ec);
-        (void)ec;
-        if (insert_idx < offset_)
-        {
-            std::memmove(data() + insert_idx + count, data() + insert_idx, offset_ - insert_idx);
-        }
-        std::memcpy(data() + insert_idx, first, count);
+        if (ec)
+            return ec;
+        std::memcpy(data() + offset_, s.data(), count);
         offset_ = new_offset;
+
+        return error_code();
     }
 };
 

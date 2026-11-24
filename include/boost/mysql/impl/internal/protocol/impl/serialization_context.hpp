@@ -41,10 +41,10 @@ BOOST_INLINE_CONSTEXPR std::size_t disable_framing = static_cast<std::size_t>(-1
 // Like format_context_base, contains an error that can be set if a serialization
 // function helps (e.g. because it would overrun the buffer size limit).
 // Once set, serializing is a no-op. This pattern allows us to check for errors just once.
-template <class Buffer>
+template <class WriteAdaptor>
 class serialization_context
 {
-    Buffer& buffer_;
+    WriteAdaptor& adaptor_;
     std::size_t max_buffer_size_;
     std::size_t max_frame_size_;
     std::size_t next_header_offset_;
@@ -56,12 +56,12 @@ class serialization_context
     void append_to_buffer(span<const std::uint8_t> contents)
     {
         // Check if the buffer has space for the given contents
-        if (buffer_.size() + contents.size() > max_buffer_size_)
+        if (adaptor_.size() + contents.size() > max_buffer_size_)
             add_error(client_errc::max_buffer_size_exceeded);
 
-        // Copy if there was no error
+        // Append if there was no error
         if (!err_)
-            buffer_.insert(buffer_.end(), contents.begin(), contents.end());
+            err_ = adaptor_.append(contents);
     }
 
     void append_header() { append_to_buffer(std::array<std::uint8_t, frame_header_size>{}); }
@@ -73,15 +73,15 @@ class serialization_context
         while (content_offset < content.size())
         {
             // Serialize what we've got space for
-            BOOST_ASSERT(next_header_offset_ > buffer_.size());
+            BOOST_ASSERT(next_header_offset_ > adaptor_.size());
             auto remaining_content = static_cast<std::size_t>(content.size() - content_offset);
-            auto remaining_frame = static_cast<std::size_t>(next_header_offset_ - buffer_.size());
+            auto remaining_frame = static_cast<std::size_t>(next_header_offset_ - adaptor_.size());
             auto size_to_write = (std::min)(remaining_content, remaining_frame);
             append_to_buffer(content.subspan(content_offset, size_to_write));
             content_offset += size_to_write;
 
             // Insert space for a frame header if required
-            if (buffer_.size() == next_header_offset_)
+            if (adaptor_.size() == next_header_offset_)
             {
                 append_header();
                 next_header_offset_ += (max_frame_size_ + frame_header_size);
@@ -108,15 +108,15 @@ class serialization_context
 
 public:
     serialization_context(
-        Buffer& buff,
+        WriteAdaptor& adaptor,
         std::size_t max_buffer_size = static_cast<std::size_t>(-1),
         std::size_t max_frame_size = max_packet_size
     )
-        : buffer_(buff),
+        : adaptor_(adaptor),
           max_buffer_size_(max_buffer_size),
           max_frame_size_(max_frame_size),
           next_header_offset_(
-              framing_enabled() ? buffer_.size() + max_frame_size_ + frame_header_size
+              framing_enabled() ? adaptor_.size() + max_frame_size_ + frame_header_size
                                 : static_cast<std::size_t>(-1)
           )
     {
@@ -153,21 +153,21 @@ public:
     {
         BOOST_ASSERT(framing_enabled());
         BOOST_ASSERT(!err_);
-        BOOST_ASSERT(initial_offset < buffer_.size());
+        BOOST_ASSERT(initial_offset < adaptor_.size());
 
         // Actually write the headers
         std::size_t offset = initial_offset;
-        while (offset < buffer_.size())
+        while (offset < adaptor_.size())
         {
             // Calculate the current frame size
             std::size_t frame_first = offset + frame_header_size;
-            std::size_t frame_last = (std::min)(frame_first + max_frame_size_, buffer_.size());
+            std::size_t frame_last = (std::min)(frame_first + max_frame_size_, adaptor_.size());
             auto frame_size = static_cast<std::uint32_t>(frame_last - frame_first);
 
             // Write the frame header
-            BOOST_ASSERT(frame_first <= buffer_.size());
+            BOOST_ASSERT(frame_first <= adaptor_.size());
             serialize_frame_header(
-                span<std::uint8_t, frame_header_size>(buffer_.data() + offset, frame_header_size),
+                span<std::uint8_t, frame_header_size>(adaptor_.data() + offset, frame_header_size),
                 frame_header{frame_size, seqnum++}
             );
 
@@ -176,7 +176,7 @@ public:
         }
 
         // We should have finished just at the buffer end
-        BOOST_ASSERT(offset == buffer_.size());
+        BOOST_ASSERT(offset == adaptor_.size());
 
         return seqnum;
     }

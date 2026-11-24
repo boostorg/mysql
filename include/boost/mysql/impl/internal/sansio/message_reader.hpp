@@ -105,10 +105,7 @@ public:
         }
         auto ec = buffer_.grow_to_fit(state_.required_size);
         if (ec)
-        {
-            buffer_.reset();
             return ec;
-        }
         state_.required_size = 0;
         return error_code();
     }

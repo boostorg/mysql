@@ -14,7 +14,9 @@
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/printing.hpp"
 
+using namespace boost::mysql;
 using namespace boost::mysql::detail;
 
 BOOST_AUTO_TEST_SUITE(test_write_adaptor)
@@ -26,105 +28,92 @@ BOOST_AUTO_TEST_CASE(initial_state)
 
     BOOST_TEST(adaptor.size() == 0u);
     BOOST_TEST(adaptor.data() == buff.free_first());
-    BOOST_TEST(adaptor.end() == buff.free_first());
-    BOOST_TEST(adaptor.data() == adaptor.end());
 
     // implicit span conversion should be empty
     boost::span<const std::uint8_t> s = adaptor;
     BOOST_TEST(s.size() == 0u);
 }
 
-BOOST_AUTO_TEST_CASE(clear)
-{
-    rw_buffer buff(16);
-    write_adaptor adaptor(buff);
-
-    const std::vector<std::uint8_t> data{0x01, 0x02, 0x03};
-    adaptor.insert(adaptor.data(), data.data(), data.data() + data.size());
-
-    BOOST_TEST(adaptor.size() == 3u);
-
-    adaptor.clear();
-    BOOST_TEST(adaptor.size() == 0u);
-    BOOST_TEST(adaptor.end() == adaptor.data());
-    BOOST_TEST(adaptor.end() == buff.free_first());
-}
-
-BOOST_AUTO_TEST_CASE(insert_empty)
-{
-    rw_buffer buff(16);
-    write_adaptor adaptor(buff);
-
-    const std::vector<std::uint8_t> data{0x01, 0x02, 0x03};
-    adaptor.insert(adaptor.data(), data.data(), data.data() + data.size());
-
-    BOOST_TEST(adaptor.size() == 3u);
-    BOOST_TEST(adaptor.end() == adaptor.data() + 3);
-
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, data);
-}
-
-BOOST_AUTO_TEST_CASE(insert_append)
+BOOST_AUTO_TEST_CASE(append)
 {
     rw_buffer buff(16);
     write_adaptor adaptor(buff);
 
     const std::vector<std::uint8_t> part1{0x01, 0x02};
     const std::vector<std::uint8_t> part2{0x03, 0x04};
+    const std::vector<std::uint8_t> part3{0x05, 0x06, 0x07};
 
-    adaptor.insert(adaptor.data(), part1.data(), part1.data() + part1.size());
-    adaptor.insert(adaptor.end(), part2.data(), part2.data() + part2.size());
-
+    BOOST_TEST(adaptor.append(part1) == error_code());
+    BOOST_TEST(adaptor.size() == 2u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, std::vector<std::uint8_t>({0x01, 0x02}));
+    BOOST_TEST(adaptor.append(part2) == error_code());
     BOOST_TEST(adaptor.size() == 4u);
-
-    const std::vector<std::uint8_t> expected{0x01, 0x02, 0x03, 0x04};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, std::vector<std::uint8_t>({0x01, 0x02, 0x03, 0x04}));
+    BOOST_TEST(adaptor.append(part3) == error_code());
+    BOOST_TEST(adaptor.size() == 7u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, std::vector<std::uint8_t>({0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}));
 }
 
-BOOST_AUTO_TEST_CASE(insert_beggining)
+BOOST_AUTO_TEST_CASE(append_empty)
 {
     rw_buffer buff(16);
     write_adaptor adaptor(buff);
 
-    const std::vector<std::uint8_t> initial{0x01, 0x02, 0x03, 0x04, 0x05};
-    adaptor.insert(adaptor.data(), initial.data(), initial.data() + initial.size());
-
-    const std::vector<std::uint8_t> overwrite{0xAA, 0xBB};
-    adaptor.insert(adaptor.data(), overwrite.data(), overwrite.data() + overwrite.size());
-
-    BOOST_TEST(adaptor.size() == 7u);
-    std::vector<std::uint8_t> expected{0xAA, 0xBB, 0x01, 0x02, 0x03, 0x04, 0x05};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
+    BOOST_TEST(adaptor.append(boost::span<const std::uint8_t>()) == error_code());
+    BOOST_TEST(adaptor.size() == 0u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, std::vector<std::uint8_t>());
 }
 
-BOOST_AUTO_TEST_CASE(insert_middle)
-{
-    rw_buffer buff(16);
-    write_adaptor adaptor(buff);
-
-    const std::vector<std::uint8_t> initial{0x01, 0x02, 0x03, 0x04, 0x05};
-    adaptor.insert(adaptor.data(), initial.data(), initial.data() + initial.size());
-
-    const std::vector<std::uint8_t> overwrite{0xAA, 0xBB};
-    adaptor.insert(adaptor.data() + 1, overwrite.data(), overwrite.data() + overwrite.size());
-
-    BOOST_TEST(adaptor.size() == 7u);
-    std::vector<std::uint8_t> expected{0x01, 0xAA, 0xBB, 0x02, 0x03, 0x04, 0x05};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
-}
-
-BOOST_AUTO_TEST_CASE(insert_triggers_growth)
+BOOST_AUTO_TEST_CASE(append_triggers_growth)
 {
     rw_buffer buff(4);
     write_adaptor adaptor(buff);
 
     const std::vector<std::uint8_t> data{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
-    adaptor.insert(adaptor.data(), data.data(), data.data() + data.size());
+    BOOST_TEST(adaptor.append(data) == error_code());
 
     BOOST_TEST(adaptor.size() == 8u);
     BOOST_TEST(buff.size() == 8u);
 
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, data);
+}
+
+BOOST_AUTO_TEST_CASE(append_exceeds_max_size)
+{
+    rw_buffer buff(4, 8);
+    write_adaptor adaptor(buff);
+
+    const std::vector<std::uint8_t> data(9, 0xAB);
+    error_code ec = adaptor.append(data);
+    BOOST_TEST(ec == client_errc::max_buffer_size_exceeded);
+
+    // Nothing was written and the buffer was not grown.
+    BOOST_TEST(adaptor.size() == 0u);
+    BOOST_TEST(buff.size() == 4u);
+}
+
+BOOST_AUTO_TEST_CASE(append_exceeds_max_size_with_pending)
+{
+    // The limit must account for pending (unread) bytes, not just
+    // the bytes this adaptor writes.
+    rw_buffer buff(16, 16);
+
+    const std::vector<std::uint8_t> pending(8, 0x01);
+    std::memcpy(buff.free_first(), pending.data(), pending.size());
+    buff.move_to_pending(pending.size());
+    BOOST_TEST(buff.pending_size() == 8u);
+
+    write_adaptor adaptor(buff);
+
+    const std::vector<std::uint8_t> data(9, 0xAB);
+    error_code ec = adaptor.append(data);
+    BOOST_TEST(ec == client_errc::max_buffer_size_exceeded);
+
+    // Pending data intact, nothing written, buffer not grown.
+    BOOST_TEST(adaptor.size() == 0u);
+    BOOST_TEST(buff.size() == 16u);
+    BOOST_TEST(buff.pending_size() == 8u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.pending_area(), pending);
 }
 
 BOOST_AUTO_TEST_CASE(preserves_pending)
@@ -167,7 +156,7 @@ BOOST_AUTO_TEST_CASE(preserves_pending)
     BOOST_TEST(adaptor.data() == buff.pending_first() + buff.pending_size());
 
     const std::vector<std::uint8_t> data{0xAA, 0xBB, 0xCC};
-    adaptor.insert(adaptor.data(), data.data(), data.data() + data.size());
+    BOOST_TEST(adaptor.append(data) == error_code());
 
     // Pending still intact after the write.
     BOOST_TEST(buff.pending_size() == 3u);

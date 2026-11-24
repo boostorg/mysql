@@ -14,6 +14,7 @@
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/sansio/handshake.hpp>
+#include <boost/mysql/impl/internal/sansio/vector_write_adaptor.hpp>
 
 #include <algorithm>
 
@@ -76,7 +77,7 @@ public:
     {
         return create_frame(
             0,
-            serialize_to_vector([this](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
+            serialize_to_vector([this](detail::serialization_context<detail::vector_write_adaptor>& ctx) {
                 using namespace detail;
 
                 // Auth plugin data is separated in two parts
@@ -176,7 +177,7 @@ public:
     std::vector<std::uint8_t> build() const
     {
         auto body = serialize_to_vector([this](
-            detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
+            detail::serialization_context<detail::vector_write_adaptor>& ctx) {
             ctx.serialize(
                 detail::login_request{
                     caps_,
@@ -195,7 +196,7 @@ public:
 
 inline std::vector<std::uint8_t> create_ssl_request()
 {
-    const auto body = serialize_to_vector([](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
+    const auto body = serialize_to_vector([](detail::serialization_context<detail::vector_write_adaptor>& ctx) {
         constexpr std::uint32_t collation_id = 45;  // utf8_general_ci
         detail::ssl_request req{tls_caps, detail::max_packet_size, collation_id};
         req.serialize(ctx);
@@ -210,7 +211,7 @@ inline std::vector<std::uint8_t> create_auth_switch_frame(
 )
 {
     return create_frame(seqnum, serialize_to_vector(
-                            [=](detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
+                            [=](detail::serialization_context<detail::vector_write_adaptor>& ctx) {
                             ctx.add(0xfe);  // auth switch header
                             detail::string_null{plugin_name}.serialize(ctx);
                             ctx.add(data);
@@ -224,7 +225,7 @@ inline std::vector<std::uint8_t> create_more_data_frame(
 )
 {
     return create_frame(seqnum, serialize_to_vector([=](
-                            detail::serialization_context<std::vector<std::uint8_t>>& ctx) {
+                            detail::serialization_context<detail::vector_write_adaptor>& ctx) {
                             ctx.add(0x01);  // more data header
                             ctx.add(data);
                         }));

@@ -68,7 +68,7 @@ void do_serialize_test(T value, span<const std::uint8_t> expected)
 {
     // Serialize
     auto actual = serialize_to_vector(
-        [&](detail::serialization_context<std::vector<std::uint8_t>>& ctx) { value.serialize(ctx); });
+        [&](detail::serialization_context<detail::vector_write_adaptor>& ctx) { value.serialize(ctx); });
 
     // Check
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected, actual);

@@ -28,11 +28,6 @@ using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_rw_buffer)
 
-static_assert(!std::is_copy_constructible<rw_buffer>::value, "");
-static_assert(!std::is_copy_assignable<rw_buffer>::value, "");
-static_assert(!std::is_move_constructible<rw_buffer>::value, "");
-static_assert(!std::is_move_assignable<rw_buffer>::value, "");
-
 // Records the buffer first pointer and size to verify the buffer
 // didn't do any re-allocation
 class stability_checker

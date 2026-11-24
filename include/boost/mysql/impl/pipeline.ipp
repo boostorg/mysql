@@ -19,6 +19,7 @@
 
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
+#include <boost/mysql/impl/internal/sansio/vector_write_adaptor.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/throw_exception.hpp>
@@ -28,9 +29,10 @@
 boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_execute(string_view query)
 {
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
+    detail::vector_write_adaptor adaptor{impl_.buffer_};
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::execute,
-        detail::serialize_top_level_checked(detail::query_command{query}, impl_.buffer_),
+        detail::serialize_top_level_checked(detail::query_command{query}, adaptor),
         detail::resultset_encoding::text,
     });
     return *this;
@@ -48,9 +50,10 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_execute_rang
         );
     }
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
+    detail::vector_write_adaptor adaptor{impl_.buffer_};
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::execute,
-        detail::serialize_top_level_checked(detail::execute_stmt_command{stmt.id(), params}, impl_.buffer_),
+        detail::serialize_top_level_checked(detail::execute_stmt_command{stmt.id(), params}, adaptor),
         detail::resultset_encoding::binary,
     });
     return *this;
@@ -59,9 +62,10 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_execute_rang
 boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_prepare_statement(string_view stmt_sql)
 {
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
+    detail::vector_write_adaptor adaptor{impl_.buffer_};
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::prepare_statement,
-        detail::serialize_top_level_checked(detail::prepare_stmt_command{stmt_sql}, impl_.buffer_),
+        detail::serialize_top_level_checked(detail::prepare_stmt_command{stmt_sql}, adaptor),
         {},
     });
     return *this;
@@ -70,9 +74,10 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_prepare_stat
 boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_close_statement(statement stmt)
 {
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
+    detail::vector_write_adaptor adaptor{impl_.buffer_};
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::close_statement,
-        detail::serialize_top_level_checked(detail::close_stmt_command{stmt.id()}, impl_.buffer_),
+        detail::serialize_top_level_checked(detail::close_stmt_command{stmt.id()}, adaptor),
         {},
     });
     return *this;
@@ -81,9 +86,10 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_close_statem
 boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_reset_connection()
 {
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
+    detail::vector_write_adaptor adaptor{impl_.buffer_};
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::reset_connection,
-        detail::serialize_top_level_checked(detail::reset_connection_command{}, impl_.buffer_),
+        detail::serialize_top_level_checked(detail::reset_connection_command{}, adaptor),
         {},
     });
     return *this;
@@ -97,9 +103,10 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_set_characte
         BOOST_THROW_EXCEPTION(std::invalid_argument("Invalid character set name"));
     }
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
+    detail::vector_write_adaptor adaptor{impl_.buffer_};
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::set_character_set,
-        detail::serialize_top_level_checked(detail::query_command{*q}, impl_.buffer_),
+        detail::serialize_top_level_checked(detail::query_command{*q}, adaptor),
         charset,
     });
     return *this;
