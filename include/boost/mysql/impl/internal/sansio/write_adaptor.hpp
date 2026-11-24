@@ -33,6 +33,9 @@ public:
 
     error_code append(span<const std::uint8_t> s)
     {
+        if (s.empty())
+            return error_code();
+
         std::size_t count = s.size();
         std::size_t new_offset = offset_ + count;
         auto ec = buffer_.grow_to_fit(new_offset);
