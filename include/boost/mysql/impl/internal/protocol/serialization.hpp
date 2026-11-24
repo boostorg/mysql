@@ -146,12 +146,11 @@ inline serialize_top_level_result serialize_top_level(
     const Serializable& input,
     WriteAdaptor& to,
     std::uint8_t seqnum = 0,
-    std::size_t max_buffer_size = static_cast<std::size_t>(-1),
     std::size_t max_frame_size = max_packet_size
 )
 {
     std::size_t initial_offset = to.size();
-    serialization_context<WriteAdaptor> ctx(to, max_buffer_size, max_frame_size);
+    serialization_context<WriteAdaptor> ctx(to, max_frame_size);
     input.serialize(ctx);
     auto err = ctx.error();
     if (err)
@@ -168,7 +167,7 @@ inline std::uint8_t serialize_top_level_checked(
     std::size_t max_frame_size = max_packet_size
 )
 {
-    auto res = serialize_top_level(input, to, seqnum, static_cast<std::size_t>(-1), max_frame_size);
+    auto res = serialize_top_level(input, to, seqnum, max_frame_size);
     BOOST_ASSERT(res.err == error_code());
     return res.seqnum;
 }

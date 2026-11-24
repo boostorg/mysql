@@ -45,7 +45,6 @@ template <class WriteAdaptor>
 class serialization_context
 {
     WriteAdaptor& adaptor_;
-    std::size_t max_buffer_size_;
     std::size_t max_frame_size_;
     std::size_t next_header_offset_;
     error_code err_;
@@ -55,10 +54,6 @@ class serialization_context
 
     void append_to_buffer(span<const std::uint8_t> contents)
     {
-        // Check if the buffer has space for the given contents
-        if (adaptor_.size() + contents.size() > max_buffer_size_)
-            add_error(client_errc::max_buffer_size_exceeded);
-
         // Append if there was no error
         if (!err_)
             err_ = adaptor_.append(contents);
@@ -109,11 +104,9 @@ class serialization_context
 public:
     serialization_context(
         WriteAdaptor& adaptor,
-        std::size_t max_buffer_size = static_cast<std::size_t>(-1),
         std::size_t max_frame_size = max_packet_size
     )
         : adaptor_(adaptor),
-          max_buffer_size_(max_buffer_size),
           max_frame_size_(max_frame_size),
           next_header_offset_(
               framing_enabled() ? adaptor_.size() + max_frame_size_ + frame_header_size

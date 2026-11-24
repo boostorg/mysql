@@ -153,7 +153,7 @@ struct connection_state_data
         buffer.remove_reserved();
         // use_ssl is attached by top_level_algo
         write_adaptor adaptor(buffer);
-        auto res = serialize_top_level(msg, adaptor, seqnum, max_buffer_size());
+        auto res = serialize_top_level(msg, adaptor, seqnum);
         if (res.err)
             return res.err;
         seqnum = res.seqnum;

@@ -29,7 +29,7 @@ std::vector<std::uint8_t> serialize_to_vector(const Fn& serialize_fn)
     std::vector<std::uint8_t> buff;
     detail::vector_write_adaptor adaptor(buff);
     detail::serialization_context<detail::vector_write_adaptor> ctx(
-        adaptor, static_cast<std::size_t>(-1), detail::disable_framing);
+        adaptor, detail::disable_framing);
     serialize_fn(ctx);
     BOOST_TEST(ctx.error() == error_code());
     return buff;
