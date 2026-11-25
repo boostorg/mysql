@@ -10,6 +10,7 @@
 
 #include <boost/mysql/impl/internal/sansio/rw_buffer.hpp>
 
+#include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -19,6 +20,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Ignore false positive on GCC 10, 12+
+#if defined(BOOST_GCC) && ((BOOST_GCC >= 100000 && BOOST_GCC < 110000) || BOOST_GCC >= 120000)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
 class write_adaptor
 {
     rw_buffer& buffer_;
@@ -47,6 +53,9 @@ public:
         return error_code();
     }
 };
+#if defined(BOOST_GCC) && ((BOOST_GCC >= 100000 && BOOST_GCC < 110000) || BOOST_GCC >= 120000)
+#pragma GCC diagnostic pop
+#endif
 
 }  // namespace detail
 }  // namespace mysql
