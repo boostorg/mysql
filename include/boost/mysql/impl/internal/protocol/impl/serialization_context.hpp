@@ -41,6 +41,22 @@ BOOST_INLINE_CONSTEXPR std::size_t disable_framing = static_cast<std::size_t>(-1
 // Like format_context_base, contains an error that can be set if a serialization
 // function helps (e.g. because it would overrun the buffer size limit).
 // Once set, serializing is a no-op. This pattern allows us to check for errors just once.
+//
+// The WriteAdaptor template parameter is a proxy object into the write buffer. It allows
+// using the class with different buffer types: write_adaptor (over rw_buffer, used by the
+// connection_state_data) and vector_write_adaptor (over std::vector, used by pipeline_request).
+// It must provide the following interface:
+//
+//     struct some_write_adaptor {
+//         // Returns a pointer to the first byte of data in the underlying buffer
+//         std::uint8_t* data() noexcept;
+//         // Returns the number of bytes in the underlying buffer
+//         std::size_t size() const noexcept;
+//         // Appends data to the end of the buffer. May fail if the buffer doesn't have enough
+//         // space. Enforcing the max buffer size is the buffer's responsibility, so
+//         // serialization_context performs no size check of its own.
+//         error_code append(span<const std::uint8_t>);
+//     };
 template <class WriteAdaptor>
 class serialization_context
 {

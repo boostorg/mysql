@@ -25,18 +25,29 @@ namespace detail {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
+// Adaptor that exposes the free area of an rw_buffer as a contiguous,
+// append-only sequence, satisfying the WriteAdaptor concept required by
+// serialization_context.
+//
+// Used by connection_state_data to accumulate serialized messages into the rw_buffer.
 class write_adaptor
 {
     rw_buffer& buffer_;
+    // Bytes appended in the current serialization session
     std::size_t offset_{0};
 
 public:
-    explicit write_adaptor(rw_buffer& buffer)
+    explicit write_adaptor(rw_buffer& buffer) noexcept
      : buffer_(buffer) {}
 
+    // Pointer to the start of the free area in the underlying buffer.
     std::uint8_t* data() noexcept { return buffer_.free_first(); }
+    // Number of bytes appended during the current session.
     std::size_t size() const noexcept { return offset_; }
 
+    // Appends data to the free area of the buffer.
+    // Returns an error if the buffer cannot grow to accommodate the data
+    // (enforcing the max_buffer_size limit).
     error_code append(span<const std::uint8_t> s)
     {
         if (s.empty())
