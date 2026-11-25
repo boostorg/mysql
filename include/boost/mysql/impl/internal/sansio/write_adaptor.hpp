@@ -20,8 +20,8 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Ignore false positive on GCC 10, 12+
-#if defined(BOOST_GCC) && ((BOOST_GCC >= 100000 && BOOST_GCC < 110000) || BOOST_GCC >= 120000)
+// Suppress false positive on GCC 10+
+#if defined(BOOST_GCC) && BOOST_GCC >= 100000
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
@@ -53,7 +53,7 @@ public:
         return error_code();
     }
 };
-#if defined(BOOST_GCC) && ((BOOST_GCC >= 100000 && BOOST_GCC < 110000) || BOOST_GCC >= 120000)
+#if defined(BOOST_GCC) && BOOST_GCC >= 100000
 #pragma GCC diagnostic pop
 #endif
 
