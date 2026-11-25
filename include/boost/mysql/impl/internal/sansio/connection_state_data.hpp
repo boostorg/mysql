@@ -91,10 +91,10 @@ struct connection_state_data
 
     // The current character set, or a value-initialized one if unknown
     character_set current_charset{};
-
+private:
     // The read/write buffer
     rw_buffer buffer;
-
+public:
     // Reader
     message_reader reader;
 
@@ -145,14 +145,19 @@ struct connection_state_data
         return next_action::read({});
     }
 
-    template <class Serializable>
-    next_action write(const Serializable& msg, std::uint8_t& seqnum)
+    write_adaptor create_write_adaptor()
     {
         // Clear parsed messages but pending data
         buffer.move_to_reserved(buffer.current_message_size());
         buffer.remove_reserved();
+        return write_adaptor(buffer);
+    }
+
+    template <class Serializable>
+    next_action write(const Serializable& msg, std::uint8_t& seqnum)
+    {
         // use_ssl is attached by top_level_algo
-        write_adaptor adaptor(buffer);
+        write_adaptor adaptor(create_write_adaptor());
         auto res = serialize_top_level(msg, adaptor, seqnum);
         if (res.err)
             return res.err;

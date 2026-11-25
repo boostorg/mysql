@@ -61,7 +61,7 @@ public:
 inline run_pipeline_algo_params setup_reset_connection_pipeline(connection_state_data& st)
 {
     // reset_connection request is fixed size and small, so we don't enforce any buffer limit
-    write_adaptor writer(st.buffer);
+    write_adaptor writer(st.create_write_adaptor());
     st.shared_pipeline_stages[0] = {
         pipeline_stage_kind::reset_connection,
         serialize_top_level_checked(reset_connection_command{}, writer),

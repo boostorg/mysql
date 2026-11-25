@@ -41,8 +41,8 @@ struct query_with_params
     span<const format_arg> args;
     format_options opts;
 
-    template <class Buffer>
-    void serialize(serialization_context<Buffer>& ctx) const
+    template <class WriteAdaptor>
+    void serialize(serialization_context<WriteAdaptor>& ctx) const
     {
         // Create a format context
         auto fmt_ctx = access::construct<format_context_base>(output_string_ref::create(ctx), opts);

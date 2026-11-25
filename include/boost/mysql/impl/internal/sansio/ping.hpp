@@ -50,7 +50,7 @@ public:
 inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st)
 {
     // The ping request is fixed size and small. No buffer limit is enforced on it.
-    write_adaptor writer(st.buffer);
+    write_adaptor writer(st.create_write_adaptor());
     st.shared_pipeline_stages[0] = {
         pipeline_stage_kind::ping,
         serialize_top_level_checked(ping_command{}, writer),
