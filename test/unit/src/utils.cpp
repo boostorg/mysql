@@ -748,6 +748,11 @@ bool boost::mysql::detail::operator==(const pipeline_request_stage& lhs, const p
     }
 }
 
+bool boost::mysql::detail::operator!=(const pipeline_request_stage& lhs, const pipeline_request_stage& rhs)
+{
+    return !(lhs == rhs);
+}
+
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, pipeline_request_stage v)
 {
     os << "pipeline_request_stage{ .kind = " << v.kind << ", .seqnum = " << +v.seqnum;

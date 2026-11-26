@@ -55,6 +55,7 @@ std::ostream& operator<<(std::ostream& os, pipeline_stage_kind v);
 // pipeline_request_stage
 struct pipeline_request_stage;
 bool operator==(const pipeline_request_stage& lhs, const pipeline_request_stage& rhs);
+bool operator!=(const pipeline_request_stage& lhs, const pipeline_request_stage& rhs);
 std::ostream& operator<<(std::ostream& os, pipeline_request_stage v);
 
 // node_status (pool)

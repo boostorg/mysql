@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 
 struct ping_fixture : algo_fixture_base
 {
-    detail::run_pipeline_algo algo{detail::setup_ping_pipeline(st)};
+    detail::run_pipeline_algo algo{detail::setup_ping_pipeline(st).value()};
 };
 
 BOOST_AUTO_TEST_CASE(ping_success)

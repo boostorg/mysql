@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -14,7 +14,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/pipeline.hpp>
 
-#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
@@ -26,12 +25,24 @@
 
 #include <stdexcept>
 
+// Serializes a pipeline stage into the request's own buffer. This buffer is
+// unbounded (it's owned by pipeline_request, not by a connection), so there is
+// no size limit to enforce and serialization cannot fail.
+template <class Serializable>
+inline std::uint8_t serialize_pipeline_stage(const Serializable& cmd, std::vector<std::uint8_t>& to)
+{
+    auto res = boost::mysql::detail::serialize_top_level(cmd, to);
+    // Never fires
+    BOOST_ASSERT(res.err == boost::mysql::error_code());
+    return res.seqnum;
+}
+
 boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_execute(string_view query)
 {
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::execute,
-        detail::serialize_top_level_checked(detail::query_command{query}, impl_.buffer_),
+        serialize_pipeline_stage(detail::query_command{query}, impl_.buffer_),
         detail::resultset_encoding::text,
     });
     return *this;
@@ -51,7 +62,7 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_execute_rang
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::execute,
-        detail::serialize_top_level_checked(detail::execute_stmt_command{stmt.id(), params}, impl_.buffer_),
+        serialize_pipeline_stage(detail::execute_stmt_command{stmt.id(), params}, impl_.buffer_),
         detail::resultset_encoding::binary,
     });
     return *this;
@@ -62,7 +73,7 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_prepare_stat
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::prepare_statement,
-        detail::serialize_top_level_checked(detail::prepare_stmt_command{stmt_sql}, impl_.buffer_),
+        serialize_pipeline_stage(detail::prepare_stmt_command{stmt_sql}, impl_.buffer_),
         {},
     });
     return *this;
@@ -73,7 +84,7 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_close_statem
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::close_statement,
-        detail::serialize_top_level_checked(detail::close_stmt_command{stmt.id()}, impl_.buffer_),
+        serialize_pipeline_stage(detail::close_stmt_command{stmt.id()}, impl_.buffer_),
         {},
     });
     return *this;
@@ -84,7 +95,7 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_reset_connec
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::reset_connection,
-        detail::serialize_top_level_checked(detail::reset_connection_command{}, impl_.buffer_),
+        serialize_pipeline_stage(detail::reset_connection_command{}, impl_.buffer_),
         {},
     });
     return *this;
@@ -100,7 +111,7 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_set_characte
     impl_.stages_.reserve(impl_.stages_.size() + 1);  // strong guarantee
     impl_.stages_.push_back({
         detail::pipeline_stage_kind::set_character_set,
-        detail::serialize_top_level_checked(detail::query_command{*q}, impl_.buffer_),
+        serialize_pipeline_stage(detail::query_command{*q}, impl_.buffer_),
         charset,
     });
     return *this;
