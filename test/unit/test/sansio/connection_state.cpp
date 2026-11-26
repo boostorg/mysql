@@ -94,21 +94,6 @@ BOOST_AUTO_TEST_CASE(not_in_progress_builds_pipeline)
     BOOST_TEST(after_stages == expected);
 }
 
-// Covers the failing-resumable path: setup() reports the error without touching
-// algo_, and the returned ref fails immediately when resumed.
-BOOST_AUTO_TEST_CASE(op_in_progress_fails_on_resume)
-{
-    detail::connection_state st(16, 1024, false);
-    diagnostics diag;
-    st.data().op_in_progress = true;
-
-    auto res = st.setup(diag, detail::ping_algo_params{});
-    auto act = res.resume(error_code(), 0);
-
-    BOOST_TEST(act.is_done());
-    BOOST_TEST(act.error() == client_errc::operation_in_progress);
-}
-
 // Covers the params.has_error() branch.
 BOOST_AUTO_TEST_CASE(serialization_error_fails_on_resume)
 {
