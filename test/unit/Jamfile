@@ -34,9 +34,11 @@ run
         test/protocol/serialization.cpp
         test/protocol/deserialization.cpp
 
-        test/sansio/read_buffer.cpp
+        test/sansio/rw_buffer.cpp
         test/sansio/message_reader.cpp
         test/sansio/top_level_algo.cpp
+        test/sansio/vector_write_adaptor.cpp
+        test/sansio/write_adaptor.cpp
 
         test/sansio/handshake/handshake.cpp
         test/sansio/handshake/handshake_mnp.cpp

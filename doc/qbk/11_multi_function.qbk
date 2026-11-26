@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -87,7 +87,7 @@ Some remarks:
 * Calling `read_some_rows` after reading the final OK packet returns an empty batch.
 
 `read_some_rows` returns a [reflink rows_view] object pointing into the connection's internal buffer.
-This view is valid until the connection performs any other operation involving a network transfer. 
+This view is valid until the connection initiates any other operation involving a network transfer.
 
 Note that there is no need to distinguish between ['case 1] and ['case 2] in the diagram above in our code,
 as reading rows for a complete operation is well defined.

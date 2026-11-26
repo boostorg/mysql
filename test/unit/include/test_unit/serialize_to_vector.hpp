@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,6 +12,7 @@
 
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/sansio/vector_write_adaptor.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -26,7 +27,9 @@ template <class Fn>
 std::vector<std::uint8_t> serialize_to_vector(const Fn& serialize_fn)
 {
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, static_cast<std::size_t>(-1), detail::disable_framing);
+    detail::vector_write_adaptor adaptor(buff);
+    detail::serialization_context<detail::vector_write_adaptor> ctx(
+        adaptor, detail::disable_framing);
     serialize_fn(ctx);
     BOOST_TEST(ctx.error() == error_code());
     return buff;

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -10,6 +10,8 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+#include <boost/mysql/impl/internal/sansio/vector_write_adaptor.hpp>
+#include <boost/mysql/impl/internal/sansio/write_adaptor.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -73,7 +75,8 @@ BOOST_AUTO_TEST_CASE(add)
         {
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, 0xffff, fs);
+            detail::vector_write_adaptor adaptor(buff);
+            detail::serialization_context<detail::vector_write_adaptor> ctx(adaptor, fs);
 
             // Add the payload
             ctx.add(tc.payload);
@@ -92,7 +95,8 @@ BOOST_AUTO_TEST_CASE(add_initial_buffer_empty)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, 8);
+    detail::vector_write_adaptor adaptor(buff);
+    detail::serialization_context<detail::vector_write_adaptor> ctx(adaptor, 8);
 
     // Add data
     const std::array<std::uint8_t, 10> payload{
@@ -112,7 +116,8 @@ BOOST_AUTO_TEST_CASE(chunks)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, 8);
+    detail::vector_write_adaptor adaptor(buff);
+    detail::serialization_context<detail::vector_write_adaptor> ctx(adaptor, 8);
     const std::array<std::uint8_t, 4> payload1{
         {1, 2, 3, 4}
     };
@@ -156,7 +161,8 @@ BOOST_AUTO_TEST_CASE(add_byte_fills_frame)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, 8);
+    detail::vector_write_adaptor adaptor(buff);
+    detail::serialization_context<detail::vector_write_adaptor> ctx(adaptor, 8);
     const std::array<std::uint8_t, 7> payload{
         {1, 2, 3, 4, 5, 6, 7}
     };
@@ -217,7 +223,8 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
         {
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, 0xffff, 8);
+            detail::vector_write_adaptor adaptor(buff);
+            detail::serialization_context<detail::vector_write_adaptor> ctx(adaptor, 8);
             ctx.add(tc.payload);
 
             // Call and check
@@ -235,7 +242,8 @@ BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, 8);
+    detail::vector_write_adaptor adaptor(buff);
+    detail::serialization_context<detail::vector_write_adaptor> ctx(adaptor, 8);
     for (std::uint8_t i = 1; i <= 20; ++i)
         ctx.add(i);
 
@@ -256,7 +264,8 @@ BOOST_AUTO_TEST_CASE(disable_framing)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0xffff, detail::disable_framing);
+    detail::vector_write_adaptor adaptor(buff);
+    detail::serialization_context<detail::vector_write_adaptor> ctx(adaptor, detail::disable_framing);
 
     // Add data using the several functions available
     const std::array<std::uint8_t, 5> payload1{
@@ -280,8 +289,9 @@ BOOST_AUTO_TEST_SUITE(max_buffer_size_error)
 BOOST_AUTO_TEST_CASE(header_exceeds_maxsize)
 {
     // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 3u);
+    detail::rw_buffer buff(3, 3);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
 
     // Buffer can't hold the header
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
@@ -290,8 +300,9 @@ BOOST_AUTO_TEST_CASE(header_exceeds_maxsize)
 BOOST_AUTO_TEST_CASE(contents_exceed_maxsize)
 {
     // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8u);
+    detail::rw_buffer buff(8, 8);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
 
     // Header plus content would exceed max size
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6});
@@ -299,20 +310,21 @@ BOOST_AUTO_TEST_CASE(contents_exceed_maxsize)
 
     // Only header written
     std::array<std::uint8_t, 4> expected{};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 }
 
 BOOST_AUTO_TEST_CASE(subsequent_header_exceeds_maxsize)
 {
     // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 13u, 8u);
+    detail::rw_buffer buff(13, 13);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor, 8);
 
     // Successfully add some data
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 
     // Add data triggering a header that can't fit
     ctx.add(std::vector<std::uint8_t>{7, 8});
@@ -322,8 +334,9 @@ BOOST_AUTO_TEST_CASE(subsequent_header_exceeds_maxsize)
 BOOST_AUTO_TEST_CASE(maxsize_zero)
 {
     // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 0u);
+    detail::rw_buffer buff(0, 0);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
 
     // Buffer can't hold the header
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
@@ -332,45 +345,49 @@ BOOST_AUTO_TEST_CASE(maxsize_zero)
 BOOST_AUTO_TEST_CASE(error_by_one_byte)
 {
     // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 12u);
+    detail::rw_buffer buff(12, 12);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
 
     // Successfully add data until max size
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 
     // Adding more data fails. No data is written to the buffer
     ctx.add(std::vector<std::uint8_t>{1});
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 }
 
 // Spotcheck: adding a single byte triggers the same behavior
 BOOST_AUTO_TEST_CASE(error_add_u8)
 {
     // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 12u);
+    detail::rw_buffer buff(12, 12);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
 
     // Successfully add data until max size
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 
     // Adding more data fails. No data is written to the buffer
     ctx.add(42);
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 }
 
 // Edge case: if the input buffer exceeded the max size, we fail
 BOOST_AUTO_TEST_CASE(buffer_exceeds_max_size)
 {
-    std::vector<std::uint8_t> buff(48u, 0);
-    detail::serialization_context ctx(buff, 12u);
+    detail::rw_buffer buff(48, 48);
+    buff.move_to_pending(48);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
 }
 
@@ -378,72 +395,77 @@ BOOST_AUTO_TEST_CASE(buffer_exceeds_max_size)
 BOOST_AUTO_TEST_CASE(buffer_with_previous_contents)
 {
     // Setup
-    std::vector<std::uint8_t> buff{1, 2, 3};
-    detail::serialization_context ctx(buff, 8u);
+    detail::rw_buffer buff(8, 8);
+    detail::write_adaptor adaptor(buff);
+    adaptor.append(std::vector<std::uint8_t>{1, 2, 3});
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
 
     // Just max size
     ctx.add(42);
     std::vector<std::uint8_t> expected{1, 2, 3, 0, 0, 0, 0, 42};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 
     // Past max size
     ctx.add(80);
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 }
 
 BOOST_AUTO_TEST_CASE(several_errors)
 {
     // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 12u);
+    detail::rw_buffer buff(12, 12);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
 
     // Successfully add some data
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 
     // Adding more data fails. No data is written to the buffer
     ctx.add(std::vector<std::uint8_t>{6, 7, 8, 9});
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 
     // Adding more data again does nothing
     ctx.add(std::vector<std::uint8_t>{10, 11, 12});
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 }
 
 BOOST_AUTO_TEST_CASE(success_after_error)
 {
     // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 12u);
+    detail::rw_buffer buff(12, 12);
+    detail::write_adaptor adaptor(buff);
+    detail::serialization_context<detail::write_adaptor> ctx(adaptor);
 
     // Successfully add some data
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5};
     BOOST_TEST(ctx.error() == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 
     // Adding more data fails. No data is written to the buffer
     ctx.add(std::vector<std::uint8_t>{6, 7, 8, 9});
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 
     // Adding more data again does nothing, even if the data would fit
     ctx.add(1);
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(adaptor, expected);
 }
 
 BOOST_AUTO_TEST_CASE(add_error)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff);
+    detail::vector_write_adaptor adaptor(buff);
+    detail::serialization_context<detail::vector_write_adaptor> ctx(adaptor);
 
     // Successfully add some data
     ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});

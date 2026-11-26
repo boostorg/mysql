@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -26,14 +26,14 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Custom buffer type optimized for read operations performed in the MySQL protocol.
+// Custom buffer type optimized for read/write operations performed in the MySQL protocol.
 // The buffer is a single, resizable chunk of memory with four areas:
 //   - Reserved area: messages that have already been read but are kept alive,
 //     either because we need them or because we haven't cleaned them yet.
 //   - Current message area: delimits the message we are currently parsing.
 //   - Pending bytes area: bytes we've read but haven't been parsed into a message yet.
 //   - Free area: free space for more bytes to be read.
-class read_buffer
+class rw_buffer
 {
     std::vector<std::uint8_t> buffer_;
     std::size_t current_message_offset_{0};
@@ -42,7 +42,7 @@ class read_buffer
     std::size_t max_size_;
 
 public:
-    read_buffer(std::size_t size, std::size_t max_size = static_cast<std::size_t>(-1))
+    rw_buffer(std::size_t size, std::size_t max_size = static_cast<std::size_t>(-1))
         : buffer_(size), max_size_(max_size)
     {
         BOOST_ASSERT(size <= max_size_);

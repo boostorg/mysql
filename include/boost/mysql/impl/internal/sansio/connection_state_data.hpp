@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,13 +22,12 @@
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
+#include <boost/mysql/impl/internal/sansio/write_adaptor.hpp>
 
 #include <boost/assert.hpp>
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
-#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -51,10 +50,6 @@ struct connection_state_data
     // Are we connected? In the middle of a multi-function operation?
     connection_status status{connection_status::not_connected};
 
-    // Are we currently executing an operation?
-    // Prevent the user from running concurrent operations
-    bool op_in_progress{false};
-
     // Are we talking to MySQL or MariaDB?
     db_flavor flavor{db_flavor::mysql};
 
@@ -76,6 +71,10 @@ struct connection_state_data
     // Do we want to retain metadata strings or not? Used to save allocations
     metadata_mode meta_mode{metadata_mode::minimal};
 
+    // Are we currently executing an operation?
+    // Prevent the user from running concurrent operations
+    bool op_in_progress{false};
+
     // Is TLS supported for the current connection?
     bool tls_supported;
 
@@ -92,10 +91,10 @@ struct connection_state_data
 
     // The current character set, or a value-initialized one if unknown
     character_set current_charset{};
-
-    // The write buffer
-    std::vector<std::uint8_t> write_buffer;
-
+private:
+    // The read/write buffer
+    rw_buffer buffer;
+public:
     // Reader
     message_reader reader;
 
@@ -106,9 +105,16 @@ struct connection_state_data
         std::size_t max_buff_size = static_cast<std::size_t>(-1),
         bool transport_supports_ssl = false
     )
-        : tls_supported(transport_supports_ssl), reader(read_buffer_size, max_buff_size)
-    {
-    }
+        : tls_supported(transport_supports_ssl),
+        buffer(read_buffer_size, max_buff_size),
+        reader(buffer) {}
+
+    // Since connection_state_data creates message_reader and write_adaptor wrappers
+    // that store a reference to rw_buffer, copy and move operations are deleted.
+    connection_state_data(const connection_state_data&) = delete;
+    connection_state_data& operator=(const connection_state_data&) = delete;
+    connection_state_data(connection_state_data&&) = delete;
+    connection_state_data& operator=(connection_state_data&&) = delete;
 
     void reset()
     {
@@ -139,16 +145,24 @@ struct connection_state_data
         return next_action::read({});
     }
 
+    write_adaptor create_write_adaptor()
+    {
+        // Clear parsed messages but pending data
+        buffer.move_to_reserved(buffer.current_message_size());
+        buffer.remove_reserved();
+        return write_adaptor(buffer);
+    }
+
     template <class Serializable>
     next_action write(const Serializable& msg, std::uint8_t& seqnum)
     {
         // use_ssl is attached by top_level_algo
-        write_buffer.clear();
-        auto res = serialize_top_level(msg, write_buffer, seqnum, max_buffer_size());
+        write_adaptor adaptor(create_write_adaptor());
+        auto res = serialize_top_level(msg, adaptor, seqnum);
         if (res.err)
             return res.err;
         seqnum = res.seqnum;
-        return next_action::write({write_buffer, false});
+        return next_action::write({adaptor, false});
     }
 
     // Helpers to implement connection status in algorithms
