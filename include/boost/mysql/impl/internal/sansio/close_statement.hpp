@@ -29,7 +29,7 @@ inline system::result<run_pipeline_algo_params> setup_close_statement_pipeline(
     // Pipeline a ping with the close statement, to avoid delays on old connections
     // that don't set tcp_nodelay.
     st.write_buffer.clear();
-    auto res1 = serialize_top_level(close_stmt_command{params.stmt_id}, st.write_buffer);
+    auto res1 = serialize_top_level(close_stmt_command{params.stmt_id}, st.write_buffer, 0, st.max_buffer_size());
     if (BOOST_UNLIKELY(res1.err.failed())) return res1.err;
     auto res2 = serialize_top_level(ping_command{}, st.write_buffer);
     if (BOOST_UNLIKELY(res2.err.failed())) return res2.err;

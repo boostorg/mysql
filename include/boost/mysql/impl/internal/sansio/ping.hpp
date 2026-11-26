@@ -53,7 +53,7 @@ public:
 inline system::result<run_pipeline_algo_params> setup_ping_pipeline(connection_state_data& st)
 {
     st.write_buffer.clear();
-    auto res = serialize_top_level(ping_command{}, st.write_buffer);
+    auto res = serialize_top_level(ping_command{}, st.write_buffer, 0, st.max_buffer_size());
     if (BOOST_UNLIKELY(res.err.failed())) return res.err;
     st.shared_pipeline_stages[0] = {
         pipeline_stage_kind::ping,
