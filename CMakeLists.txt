@@ -14,6 +14,10 @@ project(boost_mysql VERSION "${BOOST_SUPERPROJECT_VERSION}" LANGUAGES CXX)
 add_library(boost_mysql INTERFACE)
 add_library(Boost::mysql ALIAS boost_mysql)
 
+# Includes & features
+target_include_directories(boost_mysql INTERFACE include)
+target_compile_features(boost_mysql INTERFACE cxx_std_11)
+
 # Dependencies. If non-Boost dependencies are not found, we just bail out
 find_package(Threads)
 if(NOT Threads_FOUND)
@@ -50,10 +54,6 @@ target_link_libraries(
     OpenSSL::Crypto
     OpenSSL::SSL
 )
-
-# Includes & features
-target_include_directories(boost_mysql INTERFACE include)
-target_compile_features(boost_mysql INTERFACE cxx_std_11)
 
 # Don't run integration testing unless explicitly requested, since these require a running MySQL server
 option(BOOST_MYSQL_INTEGRATION_TESTS OFF "Whether to build and run integration tests or not")
