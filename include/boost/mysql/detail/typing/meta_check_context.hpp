@@ -68,23 +68,6 @@ class meta_check_context
     metadata_collection_view meta_{};
     bool nullability_checked_{};
 
-    std::ostringstream& add_error()
-    {
-        if (!errors_)
-            errors_.reset(new std::ostringstream);
-        else
-            *errors_ << '\n';
-        return *errors_;
-    }
-
-    void insert_field_name(std::ostringstream& os)
-    {
-        if (has_field_names(name_table_))
-            os << "'" << name_table_[current_index_] << "'";
-        else
-            os << "in position " << current_index_;
-    }
-
 public:
     meta_check_context(
         span<const std::size_t> pos_map,
@@ -111,6 +94,23 @@ public:
     bool nullability_checked() const noexcept { return nullability_checked_; }
 
     // Error reporting
+    std::ostringstream& add_error()
+    {
+        if (!errors_)
+            errors_.reset(new std::ostringstream);
+        else
+            *errors_ << '\n';
+        return *errors_;
+    }
+
+    void insert_field_name(std::ostringstream& os)
+    {
+        if (has_field_names(name_table_))
+            os << "'" << name_table_[current_index_] << "'";
+        else
+            os << "in position " << current_index_;
+    }
+
     BOOST_MYSQL_DECL
     void add_field_absent_error();
 
