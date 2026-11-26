@@ -32,9 +32,9 @@ namespace {
 
 void prepare_busy_state(detail::connection_state& st)
 {
-    st.data().shared_pipeline_stages = {
+    st.data().shared_pipeline_stages = {{
         detail::pipeline_request_stage{detail::pipeline_stage_kind::execute, 42u, detail::resultset_encoding::text},
-        detail::pipeline_request_stage{}};
+        detail::pipeline_request_stage{}}};
     st.data().op_in_progress = true;
 }
 
@@ -88,9 +88,9 @@ BOOST_AUTO_TEST_CASE(not_in_progress_builds_pipeline)
     const auto after_stages = st.data().shared_pipeline_stages;
 
     BOOST_TEST(after_stages != before_stages);
-    decltype(after_stages) expected{
+    decltype(after_stages) expected{{
         detail::pipeline_request_stage{detail::pipeline_stage_kind::ping, 1, {}},
-        detail::pipeline_request_stage{}};
+        detail::pipeline_request_stage{}}};
     BOOST_TEST(after_stages == expected);
 }
 
