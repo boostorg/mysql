@@ -18,6 +18,9 @@
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
+#include <boost/config.hpp>
+#include <boost/system/result.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -58,16 +61,17 @@ public:
     }
 };
 
-inline run_pipeline_algo_params setup_reset_connection_pipeline(connection_state_data& st)
+inline system::result<run_pipeline_algo_params> setup_reset_connection_pipeline(connection_state_data& st)
 {
-    // reset_connection request is fixed size and small, so we don't enforce any buffer limit
     st.write_buffer.clear();
+    auto res = serialize_top_level(reset_connection_command{}, st.write_buffer, 0, st.max_buffer_size());
+    if (BOOST_UNLIKELY(res.err.failed())) return res.err;
     st.shared_pipeline_stages[0] = {
         pipeline_stage_kind::reset_connection,
-        serialize_top_level_checked(reset_connection_command{}, st.write_buffer),
+        res.seqnum,
         {}
     };
-    return {
+    return run_pipeline_algo_params{
         st.write_buffer,
         {st.shared_pipeline_stages.data(), 1},
         nullptr

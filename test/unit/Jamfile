@@ -47,6 +47,7 @@ run
         test/sansio/handshake/handshake_capabilities.cpp
         test/sansio/handshake/handshake_connection_state_data.cpp
         test/sansio/connect.cpp
+        test/sansio/connection_state.cpp
         test/sansio/read_resultset_head.cpp
         test/sansio/start_execution.cpp
         test/sansio/read_some_rows.cpp

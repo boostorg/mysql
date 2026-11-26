@@ -16,6 +16,9 @@
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
+#include <boost/config.hpp>
+#include <boost/system/result.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -47,16 +50,17 @@ public:
     }
 };
 
-inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st)
+inline system::result<run_pipeline_algo_params> setup_ping_pipeline(connection_state_data& st)
 {
-    // The ping request is fixed size and small. No buffer limit is enforced on it.
     st.write_buffer.clear();
+    auto res = serialize_top_level(ping_command{}, st.write_buffer, 0, st.max_buffer_size());
+    if (BOOST_UNLIKELY(res.err.failed())) return res.err;
     st.shared_pipeline_stages[0] = {
         pipeline_stage_kind::ping,
-        serialize_top_level_checked(ping_command{}, st.write_buffer),
+        res.seqnum,
         {}
     };
-    return {
+    return run_pipeline_algo_params{
         st.write_buffer,
         {st.shared_pipeline_stages.data(), 1},
         nullptr

@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 //
 struct reset_conn_fixture : algo_fixture_base
 {
-    detail::run_pipeline_algo algo{detail::setup_reset_connection_pipeline(st)};
+    detail::run_pipeline_algo algo{detail::setup_reset_connection_pipeline(st).value()};
 };
 
 BOOST_AUTO_TEST_CASE(success)

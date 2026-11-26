@@ -149,20 +149,6 @@ inline serialize_top_level_result serialize_top_level(
     return ctx.write_frame_headers(seqnum, initial_offset);
 }
 
-// Same, but for cases that can't fail. Does not enforce any limit on buffer size
-template <class Serializable>
-inline std::uint8_t serialize_top_level_checked(
-    const Serializable& input,
-    std::vector<std::uint8_t>& to,
-    std::uint8_t seqnum = 0,
-    std::size_t max_frame_size = max_packet_size
-)
-{
-    auto res = serialize_top_level(input, to, seqnum, static_cast<std::size_t>(-1), max_frame_size);
-    BOOST_ASSERT(res.err == error_code());
-    return res.seqnum;
-}
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost

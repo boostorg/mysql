@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2026 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -36,6 +36,8 @@
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
 #include <boost/mysql/impl/internal/sansio/top_level_algo.hpp>
 
+#include <boost/config.hpp>
+#include <boost/system/result.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>
@@ -83,6 +85,7 @@ class connection_state
 
     connection_state_data st_data_;
     any_algo algo_;
+    error_code setup_err_{};
 
     // A function compatible with any_resumable_ref that always fails immediately
     // with operation_in_progress. We can't change algo_ while an algorithm is running,
@@ -90,6 +93,40 @@ class connection_state
     static next_action fail_op_in_progress(void*, error_code, std::size_t)
     {
         return error_code(client_errc::operation_in_progress);
+    }
+
+    static next_action fail_setup(void* self, error_code, std::size_t)
+    {
+        return static_cast<connection_state*>(self)->setup_err_;
+    }
+
+    any_resumable_ref fail(error_code ec)
+    {
+        setup_err_ = ec;
+        return any_resumable_ref(this, &fail_setup);
+    }
+
+    // Invokes make_params() only if no operation is in progress.
+    // setup_*_pipeline() mutate st_data_ (they serialize into the shared buffer),
+    // so they must not run while another operation is using it.
+    template <class MakeParams>
+    any_resumable_ref setup_impl(diagnostics& diag, MakeParams make_params)
+    {
+        // Clear diagnostics
+        diag.clear();
+
+        // If there is an operation in progress, don't change anything, just fail
+        if (st_data_.op_in_progress)
+            return any_resumable_ref(nullptr, &fail_op_in_progress);
+
+        auto params = make_params();
+        if (BOOST_UNLIKELY(params.has_error()))
+            return fail(params.error());
+
+        // Emplace the algorithm
+        using params_type = typename decltype(make_params())::value_type;
+        using algo_type = top_level_algo<get_algo_t<params_type>>;
+        return any_resumable_ref(algo_.emplace<algo_type>(st_data_, diag,  params.value()));
     }
 
 public:
@@ -112,31 +149,22 @@ public:
     template <class AlgoParams>
     any_resumable_ref setup(diagnostics& diag, AlgoParams params)
     {
-        // Clear diagnostics
-        diag.clear();
-
-        // If there is an operation in progress, don't change anything, just fail
-        if (st_data_.op_in_progress)
-            return any_resumable_ref(nullptr, &fail_op_in_progress);
-
-        // Emplace the algorithm
-        using algo_type = top_level_algo<get_algo_t<AlgoParams>>;
-        return any_resumable_ref(algo_.emplace<algo_type>(st_data_, diag, params));
+        return setup_impl(diag, [&]() { return system::result<AlgoParams>(params); });
     }
 
     any_resumable_ref setup(diagnostics& diag, close_statement_algo_params params)
     {
-        return setup(diag, setup_close_statement_pipeline(st_data_, params));
+        return setup_impl(diag, [&]() { return setup_close_statement_pipeline(st_data_, params); });
     }
 
     any_resumable_ref setup(diagnostics& diag, reset_connection_algo_params)
     {
-        return setup(diag, setup_reset_connection_pipeline(st_data_));
+        return setup_impl(diag, [&]() { return setup_reset_connection_pipeline(st_data_); });
     }
 
     any_resumable_ref setup(diagnostics& diag, ping_algo_params)
     {
-        return setup(diag, setup_ping_pipeline(st_data_));
+        return setup_impl(diag, [&]() { return setup_ping_pipeline(st_data_); });
     }
 
     template <typename AlgoParams>
